@@ -29,7 +29,7 @@ class Cal(object):
 		return tiles_dict
 
 	def get_tile_numbers(self):
-		tiles_dict = self._extract_tiles()
+		tiles_dict = self.extract_tiles()
 		tiles = list(tiles_dict)
 		tnums = [int(tl.strip('Tile')) for tl in tiles]
 		return tnums
@@ -50,10 +50,9 @@ class Cal(object):
 		amps, _ = self.get_amps_phases()
 		_sh1, _sh2, _sh3 = amps.shape
 		freqs = np.arange(0, _sh2)
-		tiles_dict = self._extract_tiles()
+		tiles_dict = self.extract_tiles()
 		nants = len(amps)
 		if pols ==  '':
-
 			pols = ['XX', 'XY', 'YX', 'YY']
 		if ant == '':
 			fig = pylab.figure(figsize=(16, 16))
@@ -93,7 +92,7 @@ class Cal(object):
 		phases = phases * 180 / np.pi
 		_sh1, _sh2, _sh3 = phases.shape
 		freqs = np.arange(0, _sh2)
-		tiles_dict = self._extract_tiles()
+		tiles_dict = self.extract_tiles()
 		nants = len(phases)
 		if pols ==  '':
 			pols = ['XX', 'XY', 'YX', 'YY']
