@@ -148,14 +148,48 @@ class Stats(object):
 		tiles_dict = self.cal.extract_tiles()
 		ydata = amps[tiles_dict['Tile{0:03d}'.format(tile)], :, rs.pol_dict[pol.upper()]]	
 		nn_inds = np.where(~np.isnan(ydata))
-		poly = np.polyfit(fq_chans[nn_inds], ydata[nn_inds], deg=deg)
-		return poly
+		poly, res, _, _, _ = np.polyfit(fq_chans[nn_inds], ydata[nn_inds], deg=deg, full=True)
+		return poly, res
 
-	def get_polyfit(self, pol, tiles='', deg=3):	
+	def get_fit_params(self, pol, deg=3):
 		fit_params = OrderedDict()
-		if tiles == '':
-			tiles = self.cal.get_tile_numbers()
+		tiles = self.cal.get_tile_numbers()
 		for i in range(len(tiles)):
-			poly = self.fit_polynomial(pol, tiles[i], deg)	
-			fit_params['Tile{0:03d}'.format(tiles[i])] = poly
+			try:
+				poly, res = self.fit_polynomial(pol, tiles[i], deg)
+				# the last parameter is the error in the polynomial fitting
+				fit_params['Tile{0:03d}'.format(tiles[i])] = np.append(poly, res)
+			except TypeError:
+				print ('WARNING: Data for tile{} seems to be flagged'.format(tiles[i]))
 		return fit_params
+
+	def plot_fit_soln(self, pol='XX', deg=3, save=None, figname=None):
+		fit_params = self.get_fit_params(pol=pol, deg=deg)
+		amps, _ = self.cal.get_amps_phases()
+		fq_chans = np.arange(0, amps.shape[1])
+		tiles = self.cal.get_tile_numbers()
+		fig = pylab.figure(figsize=(16, 16))
+		ax = fig.subplots(8, 16)
+		for i, tl in enumerate(tiles):
+			try:
+				ax[i // 16, i % 16].plot(fq_chans, np.polyval(fit_params['Tile{:03d}'.format(tl)][:-1], fq_chans), 'k-', linewidth=1)
+				ax[i // 16, i % 16].text(100, 1.3, '{:.4f}'.format(fit_params['Tile{:03d}'.format(tl)][-1]), color='green', fontsize=6)
+			except KeyError:
+				print ('WARNING: Omitting Tile{:03d}'.format(tl))
+			ax[i // 16, i % 16].scatter(fq_chans, amps[i, :, rs.pol_dict[pol]].flatten(), s=0.5, c='red', alpha=0.7, marker='.')
+			ax[i // 16, i % 16].set_aspect('auto')
+			ax[i // 16, i % 16].grid(ls='dashed')
+			ax[i // 16, i % 16].xaxis.tick_top()
+			ax[i // 16, i % 16].tick_params(labelsize=5)
+			ax[i // 16, i % 16].set_ylim(0.5, 1.5)
+			if i%16 != 0:
+				ax[i // 16, i % 16].tick_params(left=False, right=False , labelleft=False ,labelbottom=False, bottom=False)
+			pylab.subplots_adjust(right=0.99, left=0.02, top=0.95, bottom=0.05, wspace=0, hspace=0.5)
+
+		pylab.suptitle('Polynomial Fitting (n = {}) to {}'.format(deg, pol))
+		if save:
+			if not figname is None: figname = calfile.replace('.fits', '_amps.png')
+			pylab.savefig(figname)
+		else:
+			pylab.show()
+
