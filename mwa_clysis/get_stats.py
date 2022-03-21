@@ -1,7 +1,9 @@
 from collections import OrderedDict
 import numpy as np
-import read_csoln as rs
+from mwa_clysis import read_csoln as rs
 import pylab
+
+pols= ['XX', 'XY', 'YX', 'YY']
 
 class Stats(object):
 	def __init__(self, calfile, metafits):
@@ -9,24 +11,126 @@ class Stats(object):
 		self.metafits = metafits
 		self.cal = rs.Cal(self.calfile, self.metafits)
 
-	def _call_Cal(self):
-		se;f.cal
-
-	def cal_stats(self):
+	def eval_mean(self):
 		data = np.array(self.cal.get_real_imag())
 		mean = np.nanmean(data, axis=2)
+		return mean
+	
+	def eval_median(self):
+		data = np.array(self.cal.get_real_imag())
 		median = np.nanmedian(data, axis=2)
-		return mean, median
+		return median
+
+	def eval_std(self): 
+		data = np.array(self.cal.get_real_imag())
+		std = np.nanmedian(data, axis=2)
+		return std
 
 	def plot_stats(self):
-		mean, median = self.cal_stats()
+		mean = self.eval_mean()
+		median = self.eval_median()
+		std = self.eval_std()
+		tiles = self.cal.get_tile_numbers()
+		
+		# plotting mean
+		fig = pylab.figure(figsize=(12, 5))
+		ax = fig.subplots(2, 2)
+		for i in range(4):
+			ax[i // 2, i % 2].plot(tiles, mean[0, :, i], '.-', color='orange', alpha=0.6, label='real')
+			ax[i // 2, i % 2].plot(tiles, mean[1, :, i], '.-',color='green', alpha=0.6, label='imag')
+			mmean_r, mmean_i = np.nanmean(mean[0, :, i]), np.nanmean(mean[1, :,i])
+			ax[i // 2, i % 2].plot(tiles, np.ones(len(tiles)) * mmean_r, color='orange', ls='dashed', linewidth=2)
+			ax[i // 2, i % 2].plot(tiles, np.ones(len(tiles)) * mmean_i, color='green', ls='dashed', linewidth=2)
+			ax[i // 2, i % 2].set_ylabel(pols[i])
+			ax[i // 2, i % 2].grid(ls='dotted')
+			if  i > 1:
+				ax[i // 2, i % 2].set_xlabel('Tile Number')
+			if i == 1:
+				ax[i // 2, i % 2].legend(bbox_to_anchor=(0.9,1.2), loc="upper right", fancybox=True, ncol=2)
+			if i == 0 or i == 3:
+				ax[i // 2, i % 2].set_ylim(-1.4, 1.4)
+				y_coord = 1.1
+			else:
+				ax[i // 2, i % 2].set_ylim(-0.3, 0.3)
+				y_coord = 0.2			
+			x1_coord = 10
+			x2_coord = 35
+			ax[i // 2, i % 2].text(x1_coord, y_coord, '{:.4f}'.format(mmean_r), bbox={'facecolor': 'orange', 'alpha': 0.3, 'pad': 3})
+			ax[i // 2, i % 2].text(x2_coord, y_coord, '{:.4f}'.format(mmean_i), bbox={'facecolor': 'green', 'alpha': 0.3, 'pad': 3})
+
+		pylab.suptitle('Mean', size=15)
+		pylab.subplots_adjust(hspace=0.2)
+		
+		# plottng median
+		fig = pylab.figure(figsize=(12, 5))
+		ax = fig.subplots(2, 2)
+		for i in range(4):
+			ax[i // 2, i % 2].plot(tiles, median[0, :, i], '.-', color='orange', alpha=0.6, label='real')
+			ax[i //2, i % 2].plot(tiles, median[1, :, i], '.-',color='green', alpha=0.6, label='imag')
+			mmedian_r, mmedian_i = np.nanmean(median[0, :, i]), np.nanmedian(median[1, :,i])
+			ax[i // 2, i % 2].plot(tiles, np.ones(len(tiles)) * mmedian_r, color='orange', ls='dashed', linewidth=2)
+			ax[i // 2, i % 2].plot(tiles, np.ones(len(tiles)) * mmedian_i, color='green', ls='dashed', linewidth=2)
+			ax[i // 2, i % 2].set_ylabel(pols[i])
+			ax[i // 2, i % 2].grid(ls='dotted')
+			if  i > 1:
+				ax[i // 2, i % 2].set_xlabel('Tile Number')
+			if i == 1:
+				ax[i // 2, i % 2].legend(bbox_to_anchor=(0.9,1.2), loc="upper right", fancybox=True, ncol=2)
+			if i == 0 or i == 3:
+				ax[i // 2, i % 2].set_ylim(-1.4, 1.4)
+				y_coord = 1.1
+			else:
+				ax[i // 2, i % 2].set_ylim(-0.3, 0.3)
+				y_coord = 0.2
+			x1_coord = 10
+			x2_coord = 35
+			ax[i // 2, i % 2].text(x1_coord, y_coord, '{:.4f}'.format(mmedian_r), bbox={'facecolor': 'orange', 'alpha': 0.3, 'pad': 3})
+			ax[i // 2, i % 2].text(x2_coord, y_coord, '{:.4f}'.format(mmedian_i), bbox={'facecolor': 'green', 'alpha': 0.3, 'pad': 3})
+
+		pylab.suptitle('Median', size=15)
+		pylab.subplots_adjust(hspace=0.2)
+		
+		# plottng std
+		fig = pylab.figure(figsize=(12, 5))
+		ax = fig.subplots(2, 2)
+		for i in range(4):
+			ax[i // 2, i % 2].plot(tiles, std[0, :, i], '.-', color='orange', alpha=0.6, label='real')
+			ax[i //2, i % 2].plot(tiles, std[1, :, i], '.-',color='green', alpha=0.6, label='imag')
+			mstd_r, mstd_i = np.nanstd(std[0, :, i]), np.nanstd(std[1, :,i])
+			ax[i // 2, i % 2].plot(tiles, np.ones(len(tiles)) * mstd_r, color='orange', ls='dashed', linewidth=2)
+			ax[i // 2, i % 2].plot(tiles, np.ones(len(tiles)) * mstd_i, color='green', ls='dashed', linewidth=2)
+			ax[i // 2, i % 2].set_ylabel(pols[i])
+			ax[i // 2, i % 2].grid(ls='dotted')
+			if  i > 1:
+				ax[i // 2, i % 2].set_xlabel('Tile Number')
+			if i == 1:
+				ax[i // 2, i % 2].legend(bbox_to_anchor=(0.9,1.2), loc="upper right", fancybox=True, ncol=2)
+			if i == 0 or i == 3:
+				ax[i // 2, i % 2].set_ylim(-1.4, 1.4)
+				y_coord = 1.1
+			else:
+				ax[i // 2, i % 2].set_ylim(-0.3, 0.3)
+				y_coord = 0.2
+			x1_coord = 10
+			x2_coord = 35
+			ax[i // 2, i % 2].text(x1_coord, y_coord, '{:.4f}'.format(mstd_r), bbox={'facecolor': 'orange', 'alpha': 0.3, 'pad': 3})
+			ax[i // 2, i % 2].text(x2_coord, y_coord, '{:.4f}'.format(mstd_i), bbox={'facecolor': 'green', 'alpha': 0.3, 'pad': 3})
+
+		pylab.suptitle('Standard deviation', size=15)
+		pylab.subplots_adjust(hspace=0.2)
+
+		pylab.show()
+
+	def plot_stats1(self):
+		mean = self.eval_mean()
+		median = self.eval_median()
 		tiles = np.arange(11, 139)
 		fig = pylab.figure(figsize=(10, 10))
 		ax = fig.subplots(4, 2)
 		for i in range(4):
 			mmean_r, mmean_i = np.nanmean(mean[0, :, i]), np.nanmean(mean[1, :,i])
 			mmedian_r, mmedian_i = np.nanmedian(mean[0, :, i]), np.nanmean(median[1, :,i])
-			ax[i, 0].plot(tiles, mean[0, :, i], '.', color='red', label='real')
+			ax = fig.subplots(2, 2)
 			ax[i, 0].plot(tiles, mean[1, :, i], '.',color='green', alpha=0.9, label='imag')
 			ax[i, 0].plot(tiles, np.nanmean(mean[0, :, i]) * np.ones(len(tiles)), color='black', alpha=0.5)
 			ax[i, 1].plot(tiles, median[0, :, i], '.', color='red', label='real')
