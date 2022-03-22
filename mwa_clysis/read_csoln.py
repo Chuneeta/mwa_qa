@@ -33,8 +33,8 @@ class Cal(object):
 
 	def get_nchans(self):
 		mhdr = self.read_metaheader()
-        nchans = mhdr['NCHANS']
-        return nchans
+		nchans = mhdr['NCHANS']
+		return nchans
 	
 	def get_obsdata(self):
 		mhdr = self.read_metaheader()
