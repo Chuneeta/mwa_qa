@@ -148,22 +148,25 @@ class Stats(object):
 		tiles_dict = self.cal.extract_tiles()
 		ydata = amps[tiles_dict['Tile{0:03d}'.format(tile)], :, rs.pol_dict[pol.upper()]]	
 		nn_inds = np.where(~np.isnan(ydata))
-		poly, res, _, _, _ = np.polyfit(fq_chans[nn_inds], ydata[nn_inds], deg=deg, full=True)
-		return poly, res
+		poly = np.polyfit(fq_chans[nn_inds], ydata[nn_inds], deg=deg)
+		return poly
 
 	def get_fit_params(self, pol, deg=3):
 		fit_params = OrderedDict()
 		tiles = self.cal.get_tile_numbers()
+		amps, _ = self.cal.get_amps_phases()
+		fq_chans = np.arange(0, amps.shape[1])
 		for i in range(len(tiles)):
 			try:
-				poly, res = self.fit_polynomial(pol, tiles[i], deg)
+				poly = self.fit_polynomial(pol, tiles[i], deg)
+				fit_err = np.sqrt(np.nansum((np.polyval(poly, fq_chans) - amps[i, :, rs.pol_dict[pol]]) ** 2))
 				# the last parameter is the error in the polynomial fitting
-				fit_params['Tile{0:03d}'.format(tiles[i])] = np.append(poly, res)
+				fit_params['Tile{0:03d}'.format(tiles[i])] = np.append(poly, fit_err)
 			except TypeError:
 				print ('WARNING: Data for tile{} seems to be flagged'.format(tiles[i]))
 		return fit_params
 
-	def plot_fit_soln(self, pol='XX', deg=3, save=None, figname=None):
+	def plot_fit_soln(self, pol, deg=3, save=None, figname=None):
 		fit_params = self.get_fit_params(pol=pol, deg=deg)
 		amps, _ = self.cal.get_amps_phases()
 		fq_chans = np.arange(0, amps.shape[1])
@@ -193,3 +196,12 @@ class Stats(object):
 		else:
 			pylab.show()
 
+	def plot_fit_err(self, pol, deg=3):
+		fit_params = self.get_fit_params(pol=pol, deg=deg)
+		tiles = [int(tl.strip('Tile')) for tl in fit_params.keys()] 
+		fig = pylab.figure()
+		pylab.plot(tiles, np.array([*fit_params.values()])[:, -1], 'o-')
+		pylab.xlabel('Tile Number')
+		pylab.ylabel('Fit error')
+		pylab.grid(ls='dotted', color='black')
+		pylab.show()
