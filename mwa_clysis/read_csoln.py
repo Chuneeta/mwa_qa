@@ -20,7 +20,27 @@ class Cal(object):
 		hdu = fits.open(self.metafits)
 		mdata = hdu[1].data
 		return mdata
+
+	def read_metaheader(self):
+		hdu = fits.open(self.metafits)
+		mhdr = hdu[0].header
+		return mhr
+
+	def get_freqs(self):
+		mhdr = self.read_metaheader()
+		freqs = mhdr['CHANNELS']	
+		return freqs		
+
+	def get_nchans(self):
+		mhdr = self.read_metaheader()
+        nchans = mhdr['NCHANS']
+        return nchans
 	
+	def get_obsdata(self):
+		mhdr = self.read_metaheader()
+        absdate = mhdr['CHANNELS']
+        return obsdate
+
 	def extract_tiles(self):
 		mdata = self.read_metadata()
 		tiles = np.array([])
