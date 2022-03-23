@@ -24,22 +24,26 @@ class Cal(object):
 	def read_metaheader(self):
 		hdu = fits.open(self.metafits)
 		mhdr = hdu[0].header
-		return mhr
-
-	def get_freqs(self):
-		mhdr = self.read_metaheader()
-		freqs = mhdr['CHANNELS']	
-		return freqs		
+		return mhdr
 
 	def get_nchans(self):
 		mhdr = self.read_metaheader()
 		nchans = mhdr['NCHANS']
 		return nchans
-	
-	def get_obsdata(self):
+
+	def get_freqs(self):
 		mhdr = self.read_metaheader()
-        absdate = mhdr['CHANNELS']
-        return obsdate
+		coarse_ch = mhdr['CHANNELS']
+		nchans = self.get_nchans()
+		start = float(coarse_ch.split(',')[0]) * 1.28
+		stop = float(coarse_ch.split(',')[-1]) * 1.28
+		freqs = np.linspace(start, stop, nchans) 
+		return freqs		
+
+	def get_obsdate(self):
+		mhdr = self.read_metaheader()
+		obsdate = mhdr['DATE-OBS']
+		return obsdate
 
 	def extract_tiles(self):
 		mdata = self.read_metadata()
