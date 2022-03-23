@@ -11,22 +11,70 @@ class Stats(object):
 		self.metafits = metafits
 		self.cal = rs.Cal(self.calfile, self.metafits)
 
+#	def eval_mean(self):
+#		data = np.array(self.cal.get_real_imag())
+#		mean = np.nanmean(data, axis=2)
+#		return mean
+	
+#	def eval_median(self):
+#		data = np.array(self.cal.get_real_imag())
+#		median = np.nanmedian(data, axis=2)
+#		return median
+
+#	def eval_std(self): 
+#		data = np.array(self.cal.get_real_imag())
+#		std = np.nanmedian(data, axis=2)
+#		return std
+
 	def eval_mean(self):
-		data = np.array(self.cal.get_real_imag())
-		mean = np.nanmean(data, axis=2)
+		amps, _ = self.cal.get_amps_phases()
+		mean = np.nanmean(amps, axis=0)
+		return mean
+
+	def eval_median(self):
+		amps, _ = self.cal.get_amps_phases()
+		mean = np.nanmean(amps, axis=0)
 		return mean
 	
-	def eval_median(self):
-		data = np.array(self.cal.get_real_imag())
-		median = np.nanmedian(data, axis=2)
-		return median
+	def eval_rms(self):
+		amps, _ = self.cal.get_amps_phases()
+		rms = np.sqrt(np.nanmean(amps ** 2, axis=0))
+		return rms
 
-	def eval_std(self): 
-		data = np.array(self.cal.get_real_imag())
-		std = np.nanmedian(data, axis=2)
-		return std
+	def eval_var(self):
+		amps, _ = self.cal.get_amps_phases()
+		var = np.nanvar(amps, axis = 0)
+		return var
 
-	def plot_stats(self):
+	def plot_stats(self, pols=[], save=None):
+		fig = pylab.figure(figsize=(12, 8))
+		ax = fig.subplots(2, 2)
+		mean = self.eval_mean()
+		median = self.eval_median()
+		var = self.eval_var()
+		rms = self.eval_rms()
+		freqs = self.cal.get_freqs()
+		modes = [mean, median, var, rms]
+		modes_str = ['mean', 'median', 'var', 'rms']
+		plot_colors = ['cornflowerblue', 'indianred', 'mediumorchid', 'olivedrab']
+		for i in range(4):
+			for j, p in enumerate(pols):
+				ax[i // 2, i % 2].plot(freqs, modes[i][:, rs.pol_dict[p.upper()]], '.-', color=plot_colors[j], label=p)
+			ax[i //2, i % 2].grid(ls='dashed')
+			ax[i // 2, i % 2].set_ylabel(modes_str[i], fontsize=12)
+			if i == 2 or i == 3:
+				ax[i // 2, i % 2].set_xlabel('Frequency(MHz)', fontsize=12)
+			if i == 1:
+				ax[i // 2, i % 2].legend(bbox_to_anchor=(0.9,1.2), loc="upper right", fancybox=True, ncol=2)
+		pylab.suptitle('Gain Amplitude', size=15)
+		if save:
+			figname = self.calfile.replace('.fits', '_stats.png')
+			pylab.savefig(figname)
+			pylab.close()
+		else:
+			pylab.show()
+
+	def plot_stats1(self, save=None):
 		mean = self.eval_mean()
 		median = self.eval_median()
 		std = self.eval_std()
@@ -60,7 +108,11 @@ class Stats(object):
 
 		pylab.suptitle('Mean', size=15)
 		pylab.subplots_adjust(hspace=0.2)
-		
+		if save:
+			figname = self.calfile.replace('.fits', '_mean.png')
+			pylab.savefig(figname)
+			pylab.close()
+
 		# plotting median
 		fig = pylab.figure(figsize=(12, 5))
 		ax = fig.subplots(2, 2)
@@ -89,7 +141,11 @@ class Stats(object):
 
 		pylab.suptitle('Median', size=15)
 		pylab.subplots_adjust(hspace=0.2)
-		
+		if save:
+			figname = self.calfile.replace('.fits', '_median.png')
+			pylab.savefig(figname)
+			pylab.close()		
+
 		# plottng std
 		fig = pylab.figure(figsize=(12, 5))
 		ax = fig.subplots(2, 2)
@@ -118,8 +174,12 @@ class Stats(object):
 
 		pylab.suptitle('Standard deviation', size=15)
 		pylab.subplots_adjust(hspace=0.2)
-
-		pylab.show()
+		if save:
+			figname = self.calfile.replace('.fits', '_std.png')
+			pylab.savefig(figname)
+			pylab.close()
+		else:
+			pylab.show()
 
 	def display_stats(self, mode='mean', write_to=None, outfile=None):
 		mean = self.eval_mean()
@@ -166,7 +226,7 @@ class Stats(object):
 				print ('WARNING: Data for tile{} seems to be flagged'.format(tiles[i]))
 		return fit_params
 
-	def plot_fit_soln(self, pol, deg=3, save=None, figname=None):
+	def plot_fit_soln(self, pol, deg=3, save=None):
 		fit_params = self.get_fit_params(pol=pol, deg=deg)
 		amps, _ = self.cal.get_amps_phases()
 		fq_chans = np.arange(0, amps.shape[1])
@@ -191,17 +251,24 @@ class Stats(object):
 
 		pylab.suptitle('Polynomial Fitting (n = {}) to {}'.format(deg, pol))
 		if save:
-			if not figname is None: figname = calfile.replace('.fits', '_amps.png')
+			figname = calfile.replace('.fits', '_{}_fit.png')
 			pylab.savefig(figname)
+			pylab.close()
 		else:
 			pylab.show()
 
-	def plot_fit_err(self, pol, deg=3):
+	def plot_fit_err(self, pol, deg=3, save=None):
 		fit_params = self.get_fit_params(pol=pol, deg=deg)
 		tiles = [int(tl.strip('Tile')) for tl in fit_params.keys()] 
 		fig = pylab.figure()
-		pylab.plot(tiles, np.array([*fit_params.values()])[:, -1], 'o-')
+		pylab.plot(tiles, np.array([*fit_params.values()])[:, -1], '.-', color='maroon')
 		pylab.xlabel('Tile Number')
 		pylab.ylabel('Fit error')
-		pylab.grid(ls='dotted', color='black')
-		pylab.show()
+		pylab.grid(ls='dotted')
+		if save:
+			figname = calfile.replace('.fits', '_{}_fit_err.png')
+			pylab.savefig(figname)
+			pylab.close()
+		else:
+			pylab.show()
+
