@@ -22,12 +22,12 @@ class Cal(object):
 	# need to check function, need to debug
 	def normalize_data(self):
 		data = self.read_data()
+		# the last antenna/tile is usually taken as refernce antenna
 		i_tile_ref = -1
 		refs = []
 		for ref in data[i_tile_ref].reshape((-1, 2, 2)):
-			print (ref)
 			refs.append(np.linalg.inv(ref))
-			refs = np.array(refs)
+		refs = np.array(refs)
 		j_div_ref = []
 		for tile_j in data:
 			for (j, ref) in zip(tile_j, refs):
@@ -79,6 +79,7 @@ class Cal(object):
 
 	def get_amps_phases(self):
 		data = self.read_data()
+		data = self.normalize_data()
 		amps = np.abs(data)
 		phases = np.angle(data)
 		return amps, phases
