@@ -204,22 +204,24 @@ class Stats(object):
 
 	def fit_polynomial(self, pol, tile, deg):
 		amps, _ = self.cal.get_amps_phases()
-		fq_chans = np.arange(0, amps.shape[1]) 
+		fq_chans = np.arange(0, amps.shape[1])
+		freqs = self.cal.get_freqs() 
 		tiles_dict = self.cal.extract_tiles()
 		ydata = amps[tiles_dict['Tile{0:03d}'.format(tile)], :, rs.pol_dict[pol.upper()]]	
 		nn_inds = np.where(~np.isnan(ydata))
-		poly = np.polyfit(fq_chans[nn_inds], ydata[nn_inds], deg=deg)
+		poly = np.polyfit(freqs[nn_inds], ydata[nn_inds], deg=deg)
 		return poly
 
 	def get_fit_params(self, pol, deg=3):
 		fit_params = OrderedDict()
 		tiles = self.cal.get_tile_numbers()
 		amps, _ = self.cal.get_amps_phases()
-		fq_chans = np.arange(0, amps.shape[1])
+		freqs = self.cal.get_freqs()
+		fq_chans = np.arange(0, amps.shape[0])
 		for i in range(len(tiles)):
 			try:
 				poly = self.fit_polynomial(pol, tiles[i], deg)
-				fit_err = np.sqrt(np.nansum((np.polyval(poly, fq_chans) - amps[i, :, rs.pol_dict[pol]]) ** 2))
+				fit_err = np.sqrt(np.nansum((np.polyval(poly, freqs) - amps[i, :, rs.pol_dict[pol]]) ** 2))
 				# the last parameter is the error in the polynomial fitting
 				fit_params['Tile{0:03d}'.format(tiles[i])] = np.append(poly, fit_err)
 			except TypeError:
@@ -229,29 +231,30 @@ class Stats(object):
 	def plot_fit_soln(self, pol, deg=3, save=None):
 		fit_params = self.get_fit_params(pol=pol, deg=deg)
 		amps, _ = self.cal.get_amps_phases()
-		fq_chans = np.arange(0, amps.shape[1])
+		freqs = self.cal.get_freqs()
 		tiles = self.cal.get_tile_numbers()
 		fig = pylab.figure(figsize=(16, 16))
 		ax = fig.subplots(8, 16)
 		for i, tl in enumerate(tiles):
 			try:
-				ax[i // 16, i % 16].plot(fq_chans, np.polyval(fit_params['Tile{:03d}'.format(tl)][:-1], fq_chans), 'k-', linewidth=1)
-				ax[i // 16, i % 16].text(100, 1.3, '{:.4f}'.format(fit_params['Tile{:03d}'.format(tl)][-1]), color='green', fontsize=6)
+				ax[i // 16, i % 16].plot(freqs, np.polyval(fit_params['Tile{:03d}'.format(tl)][:-1], freqs), 'k-', linewidth=1)
+				ax[i // 16, i % 16].text(170, 1.3, '{:.4f}'.format(fit_params['Tile{:03d}'.format(tl)][-1]), color='green', fontsize=6)
 			except KeyError:
 				print ('WARNING: Omitting Tile{:03d}'.format(tl))
-			ax[i // 16, i % 16].scatter(fq_chans, amps[i, :, rs.pol_dict[pol]].flatten(), s=0.5, c='red', alpha=0.7, marker='.')
+			ax[i // 16, i % 16].scatter(freqs, amps[i, :, rs.pol_dict[pol]].flatten(), s=0.5, c='red', alpha=0.7, marker='.')
 			ax[i // 16, i % 16].set_aspect('auto')
 			ax[i // 16, i % 16].grid(ls='dashed')
-			ax[i // 16, i % 16].xaxis.tick_top()
+			ax[i // 16, i % 16].set_ylim(0.6, 1.5)
+			#ax[i // 16, i % 16].xaxis.tick_top()
+			ax[i // 16, i % 16]
 			ax[i // 16, i % 16].tick_params(labelsize=5)
-			ax[i // 16, i % 16].set_ylim(0.5, 1.5)
 			if i%16 != 0:
 				ax[i // 16, i % 16].tick_params(left=False, right=False , labelleft=False ,labelbottom=False, bottom=False)
 			pylab.subplots_adjust(right=0.99, left=0.02, top=0.95, bottom=0.05, wspace=0, hspace=0.5)
 
 		pylab.suptitle('Polynomial Fitting (n = {}) to {}'.format(deg, pol))
 		if save:
-			figname = calfile.replace('.fits', '_{}_fit.png')
+			figname = self.calfile.replace('.fits', '_{}_fit.png'.format(pol))
 			pylab.savefig(figname)
 			pylab.close()
 		else:
@@ -261,12 +264,13 @@ class Stats(object):
 		fit_params = self.get_fit_params(pol=pol, deg=deg)
 		tiles = [int(tl.strip('Tile')) for tl in fit_params.keys()] 
 		fig = pylab.figure()
-		pylab.plot(tiles, np.array([*fit_params.values()])[:, -1], '.-', color='maroon')
+		pylab.plot(tiles, np.array([*fit_params.values()])[:, -1], '.-', color='olive')
 		pylab.xlabel('Tile Number')
 		pylab.ylabel('Fit error')
+		pylab.title('Amplitude -- {}'.format(pol))
 		pylab.grid(ls='dotted')
 		if save:
-			figname = calfile.replace('.fits', '_{}_fit_err.png')
+			figname = self.calfile.replace('.fits', '_{}_fit_err.png'.format(pol))
 			pylab.savefig(figname)
 			pylab.close()
 		else:
