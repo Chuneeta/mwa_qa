@@ -11,9 +11,28 @@ class Cal(object):
 		self.calfile = calfile
 		self.metafits = metafits
 
-	def read_soln(self):
+	def read_data(self):
 		hdu = fits.open(self.calfile)
 		data = hdu[1].data
+		# Only looking at the first timeblock.
+		i_timeblock = 0
+		data = data[i_timeblock, :, :, ::2] + data[i_timeblock, :, :, 1::2] * 1j
+		return data
+
+	# need to check function, need to debug
+	def normalize_data(self):
+		data = self.read_data()
+		i_tile_ref = -1
+		refs = []
+		for ref in data[i_tile_ref].reshape((-1, 2, 2)):
+			print (ref)
+			refs.append(np.linalg.inv(ref))
+			refs = np.array(refs)
+		j_div_ref = []
+		for tile_j in data:
+			for (j, ref) in zip(tile_j, refs):
+				j_div_ref.append(j.reshape((2, 2)).dot(ref))
+		data = np.array(j_div_ref).reshape(data.shape)
 		return data
 
 	def read_metadata(self):
@@ -59,13 +78,13 @@ class Cal(object):
 		return tnums
 
 	def get_amps_phases(self):
-		data = self.read_soln()
-		amps = np.abs(data[0, :, :, ::2] + data[0, :, :, 1::2] * 1j)
-		phases = np.angle(data[0, :, :, ::2] + data[0, :, :, 1::2] * 1j)
+		data = self.read_data()
+		amps = np.abs(data)
+		phases = np.angle(data)
 		return amps, phases
 
 	def get_real_imag(self):
-		data = self.read_soln()
+		data = self.read_data()
 		d_real = data[0, :, :, ::2]
 		d_imag = data[0, :, :, 1::2]
 		return d_real, d_imag
