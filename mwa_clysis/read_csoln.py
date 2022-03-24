@@ -7,7 +7,7 @@ _pol_color = ['red', 'red', 'blue', 'blue']
 _pol_alpha = [1, 0.2, 0.2, 1]
 
 class Cal(object):
-	def __init__(self, calfile, metafits):
+	def __init__(self, calfile=None, metafits=None):
 		self.calfile = calfile
 		self.metafits = metafits
 
