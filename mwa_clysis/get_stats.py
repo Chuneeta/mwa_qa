@@ -40,13 +40,13 @@ class Stats(object):
 		rms = self.eval_rms()
 		freqs = self.cal.get_freqs()
 		modes = [mean, median, var, rms]
-		modes_str = ['mean', 'median', 'var', 'rms']
+		modes_str = ['mean', 'median', 'rms', 'var']
 		plot_colors = ['cornflowerblue', 'indianred', 'mediumorchid', 'olive']
 		for i in range(4):
 			for j, p in enumerate(pols):
 				ax[i // 2, i % 2].plot(freqs, modes[i][:, rs.pol_dict[p.upper()]], '.-', color=plot_colors[j], label=p)
 			ax[i //2, i % 2].grid(ls='dashed')
-			ax[i // 2, i % 2].set_ylabel(modes_str[i], fontsize=12)
+			ax[i // 2, i % 2].set_ylabel(modes_str[i].upper(), fontsize=12)
 			if i == 2 or i == 3:
 				ax[i // 2, i % 2].set_xlabel('Frequency(MHz)', fontsize=12)
 			if i == 1:
