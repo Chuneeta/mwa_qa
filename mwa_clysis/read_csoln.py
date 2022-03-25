@@ -84,12 +84,6 @@ class Cal(object):
 		phases = np.angle(data)
 		return amps, phases
 
-	def get_real_imag(self):
-		data = self.read_data()
-		d_real = data[0, :, :, ::2]
-		d_imag = data[0, :, :, 1::2]
-		return d_real, d_imag
-
 	def plot_soln_amps(self, ant='', pols='', save=None, figname=None):
 		amps, _ = self.get_amps_phases()
 		_sh1, _sh2, _sh3 = amps.shape
