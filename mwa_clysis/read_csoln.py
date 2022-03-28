@@ -19,7 +19,6 @@ class Cal(object):
 		data = data[i_timeblock, :, :, ::2] + data[i_timeblock, :, :, 1::2] * 1j
 		return data
 
-	# need to check function, need to debug
 	def normalize_data(self):
 		data = self.read_data()
 		# the last antenna/tile is usually taken as refernce antenna
