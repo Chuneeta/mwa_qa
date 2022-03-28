@@ -5,19 +5,9 @@ import numpy as np
 import astropy
 import os
 
-calfile = os.path.join(DATA_PATH, 'hypsols_1061313616.fits')
-metafits = os.path.join(DATA_PATH, '1061313616.metafits')
+calfile = os.path.join(DATA_PATH, 'test_1061313616.fits')
+metafits = os.path.join(DATA_PATH, 'test.metafits')
 hdr = astropy.io.fits.open(metafits)[0].header
-tile_nums = [ 11,  12,  13,  14,  15,  16,  17,  18,  21,  22,  23,  24,  25,
-        26,  27,  28,  31,  32,  33,  34,  35,  36,  37,  38,  41,  42,
-        43,  44,  45,  46,  47,  48,  51,  52,  53,  54,  55,  56,  57,
-        58,  61,  62,  63,  64,  65,  66,  67,  68,  71,  72,  73,  74,
-        75,  76,  77,  78,  81,  82,  83,  84,  85,  86,  87,  88,  91,
-        92,  93,  94,  95,  96,  97,  98, 101, 102, 103, 104, 105, 106,
-       107, 108, 111, 112, 113, 114, 115, 116, 117, 118, 121, 122, 123,
-       124, 125, 126, 127, 128, 131, 132, 133, 134, 135, 136, 137, 138,
-       141, 142, 143, 144, 145, 146, 147, 148, 151, 152, 153, 154, 155,
-       156, 157, 158, 161, 162, 163, 164, 165, 166, 167, 168]
 
 class Test_Cal():
 	def test__init__(self):
@@ -28,20 +18,20 @@ class Test_Cal():
 	def test_read_data(self):
 		cal = rs.Cal(calfile, metafits)
 		data = cal.read_data()
-		nt.assert_equal(data.shape, (128, 768, 4))
+		nt.assert_equal(data.shape, (3, 768, 4))
 		nt.assert_equal(data.dtype, np.complex64)
 
 	def test_normalize_data(self):
 		cal = rs.Cal(calfile, metafits)
 		data_norm = cal.normalize_data()
-		nt.assert_equal(data_norm.shape, (128, 768, 4))
+		nt.assert_equal(data_norm.shape, (3, 768, 4))
 		nt.assert_equal(data_norm.dtype, np.complex64)
-		np.testing.assert_almost_equal(data_norm[0][10], np.array([ 0.7314371-6.4764827e-01j, -0.09676012-5.9422664e-04j, 0.04099014+9.1381989e-02j, -0.61782414-1.0156155e+00j]))
+		np.testing.assert_almost_equal(data_norm[0][10], np.array([-0.62358   +9.6666819e-01j,  0.04937318+7.2630122e-04j, -0.05393033-8.6201683e-02j, -0.13457748+1.1978822e+00j]))
 
 	def test_read_metadata(self):
 		cal = rs.Cal(calfile, metafits)
 		mdata = cal.read_metadata()
-		nt.assert_equal(mdata.shape, (256,))
+		nt.assert_equal(mdata.shape, (6,))
 		nt.assert_equal(type(mdata[0][3]), str)
 
 	def test_read_metaheader(self):
@@ -68,19 +58,23 @@ class Test_Cal():
 	def test_extract_tiles(self):
 		cal = rs.Cal(calfile, metafits)
 		tiles = cal.extract_tiles()
-		tiles_exp = ['Tile{:03d}'.format(tl) for tl in tile_nums]
-		nt.assert_equal(list(tiles.keys()), tiles_exp)
-		nt.assert_equal(list(tiles.values()), list(np.arange(0, len(tile_nums))))
+		nt.assert_equal(list(tiles.keys()), ['Tile102', 'Tile103', 'Tile104'])
+		nt.assert_equal(list(tiles.values()), [0, 1, 2])
+
+	def test_get_tile_numbers(self):
+		cal = rs.Cal(calfile, metafits)
+		tile_nums = cal.get_tile_numbers()
+		nt.assert_equal(tile_nums, [102, 103, 104])
 
 	def test_get_amps_phases(self):
 		cal = rs.Cal(calfile, metafits)
 		amps, phs = cal.get_amps_phases()
 		nt.assert_true(amps.dtype, np.float32)
 		nt.assert_true(phs.dtype, np.float32)
-		nt.assert_equal(amps.shape, (128, 768, 4))
-		nt.assert_equal(phs.shape, (128, 768, 4))
-		np.testing.assert_almost_equal(amps[0][10], np.array([0.9769588 , 0.09676195, 0.10015418, 1.188773]))
-		np.testing.assert_almost_equal(phs[0][10], np.array([-0.72471595, -3.1354516 ,  1.149142  , -2.1173146 ]))
+		nt.assert_equal(amps.shape, (3, 768, 4))
+		nt.assert_equal(phs.shape, (3, 768, 4))
+		np.testing.assert_almost_equal(amps[0][10], np.array([1.1503475, 0.0493785, 0.1016819, 1.2054181]))
+		np.testing.assert_almost_equal(phs[0][10], np.array([ 2.1437063 ,  0.01470938, -2.1298482 ,  1.6826733]))
 
 	def test_plot_amps(self):
 		pass
