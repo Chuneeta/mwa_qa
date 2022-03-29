@@ -30,7 +30,7 @@ setup_args = {
     'packages':     ['mwa_clysis'],
     'package_dir':  {'mwa_clysis': 'mwa_clysis'},
     'package_data': {'mwa_clysis': data_files},
-    'install_requires': ['numpy>=1.14', 'scipy', 'matplotlib>=2.2', 'python_dateutil>=2.6.0', 'pytest'],
+    'install_requires': ['numpy>=1.14', 'scipy', 'astropy>3.0.0', 'matplotlib>=2.2', 'python_dateutil>=2.6.0', 'pytest'],
     'include_package_data': True,
     #'scripts': ['scripts/pspec_run.py', 'scripts/pspec_red.py',
     #            'scripts/bootstrap_run.py'],
