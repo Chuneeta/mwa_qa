@@ -1,4 +1,6 @@
-name: mwa_clysis
-dependencies:
-- astropy>=3.2.3
-- numpy>=1.10ß
+orbs:
+  python: circleci/python@2.0.3
+	workflows:
+    example-workflow:
+      jobs:
+        - node/test
