@@ -1,7 +1,10 @@
 from collections import OrderedDict
 import numpy as np
 from mwa_clysis import read_csoln as rs
+import collections
+import pandas as pd
 import pylab
+import seaborn as sns
 
 pols = ['XX', 'XY', 'YX', 'YY']
 
@@ -79,8 +82,10 @@ class Stats(object):
 			try:
 				poly = self.fit_polynomial(pol, tiles[i], deg)
 				fit_err = np.sqrt(np.nansum((np.polyval(poly, freqs) - amps[i, :, rs.pol_dict[pol]]) ** 2))
+				chisq = np.nansum(((np.polyval(poly, freqs) - amps[i, :, rs.pol_dict[pol]]) ** 2) / amps[i, :, rs.pol_dict[pol]])  
 				# the last parameter is the error in the polynomial fitting
 				fit_params['Tile{0:03d}'.format(tiles[i])] = np.append(poly, fit_err)
+				fit_params['Tile{0:03d}'.format(tiles[i])] = np.append(poly, chisq)
 			except TypeError:
 				print ('WARNING: Data for tile{} seems to be flagged'.format(tiles[i]))
 		return fit_params
@@ -121,11 +126,19 @@ class Stats(object):
 		fit_params = self.get_fit_params(pol=pol, deg=deg)
 		tiles = [int(tl.strip('Tile')) for tl in fit_params.keys()] 
 		fig = pylab.figure()
-		pylab.plot(tiles, np.array([*fit_params.values()])[:, -1], '.-', color='olive')
-		pylab.xlabel('Tile Number')
-		pylab.ylabel('Fit error')
-		pylab.title('Amplitude -- {}'.format(pol))
-		pylab.grid(ls='dotted')
+		ax1 = pylab.subplot(211)		
+		ax1.plot(tiles, np.array([*fit_params.values()])[:, -2], '.-', color='blue', linewidth=2, alpha=0.7)
+		ax1.set_ylabel('Fit error')
+		ax1.set_title('Amplitude -- {}'.format(pol))
+		ax1.grid(ls='dotted')
+		ax2 = pylab.subplot(212)
+		ax2.plot(tiles, np.array([*fit_params.values()])[:, -1], '.-', color='blue', linewidth=2, alpha=0.7)
+		ax2.set_xlabel('Tile Number')
+		ax2.set_ylabel('Chi square error')
+		ax2.grid(ls='dotted')
+
+		pylab.subplots_adjust(hspace=0.3)
+
 		if save:
 			figname = self.calfile.replace('.fits', '_{}_fit_err.png'.format(pol))
 			pylab.savefig(figname)
@@ -133,21 +146,42 @@ class Stats(object):
 		else:
 			pylab.show()
 
-	def calc_fit_chisq(self, pol, deg=3):
-		# Calculating chi square with respect to reference tile (last tile)
+	def calc_fit_chisq_wrt_tiles(self, pol, deg=3):
+		# Calcuting chi square with respect to a reference antenna
+		# chi^2 = np.sum (O_I - E_i)^2
 		fit_params = self.get_fit_params(pol=pol, deg=deg)
-		amps, _ = self.cal.get_amps_phases()
+		keys = list(fit_params.keys())
+		tiles = [int(tl.strip('Tile')) for tl in keys]
 		freqs = self.cal.get_freqs()
-		tiles = self.cal.get_tile_numbers()
-		ref_fit = np.polyval(fit_params['Tile168'][:-1], freqs)
+		polyfits = collections.OrderedDict()
+		# constructing polyfit
+		for key in keys:
+			polyfits[key] = np.polyval(fit_params[key], freqs)
+		# calculating chi square
 		chi_sqs = {}
-		for tl in tiles:
-			try:
-				diff = (np.polyval(fit_params['Tile{:03d}'.format(tl)][:-1], freqs) - ref_fit) ** 2
-				chisq = np.nansum(diff / ref_fit) 
-				chi_sqs[tl] = chisq
-			except KeyError:
-				print ('WARNING: Omitting Tile{:03d}'.format(tl))
-		del chi_sqs[168]
-		return chi_sqs
+		for i, k1 in enumerate (keys):
+			chis = np.ones((len(tiles)))
+			for j, k2 in enumerate(keys):
+				# skip diagonals				
+				if i != j:
+					chis[j] = np.nansum(((polyfits[k2] - polyfits[k1]) ** 2) / polyfits[k1])
+			chi_sqs[tiles[i]] = chis
+		# Creating panda dataframe
+		df = pd.DataFrame(data = chi_sqs)
+		df.index = tiles
+		return df
+
+	def plot_fit_chisq_wrt_tiles(self, pol, deg=3):
+		# Plotting chisq fit
+		pylab.figure(figsize = (8, 6))
+		chi_df = self.calc_fit_chisq_wrt_tiles(pol=pol, deg=deg)
+		heatmap = sns.heatmap(chi_df, cmap='coolwarm', annot=True, fmt='.2f')
+		heatmap.set_title('Chi Square', fontdict={'fontsize':14}, pad=12)
+		heatmap.set_xlabel('Tile Number', fontdict={'fontsize':12}, labelpad=12)
+		heatmap.set_ylabel('Tile Number', fontdict={'fontsize':12}, labelpad=12)
+		if save:
+			figname= self.calfile.replace('.fits', '_{}_chisq.png'.format(pol))
+			pylab.savefig(figname, dpi=300)
+		else:
+			pylab.show()
 
