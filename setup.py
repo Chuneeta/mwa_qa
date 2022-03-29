@@ -22,15 +22,15 @@ data_files = package_files('mwa_clysis', 'data')
 
 setup_args = {
     'name':         'mwa_clysis',
-    'author':       'HERA Team',
-    'url':          'https://github.com/Chuneeta/beam_solver',
+    'author':       'Chuneeta Nunhokee',
+    'url':          'https://github.com/Chuneeta/mwa_clysis',
     'license':      'BSD',
     'version':      version.version,
     'description':  'MWA Calibration Solutions Analyzer.',
     'packages':     ['mwa_clysis'],
     'package_dir':  {'mwa_clysis': 'mwa_clysis'},
     'package_data': {'mwa_clysis': data_files},
-    'install_requires': ['numpy>=1.14', 'scipy', 'matplotlib>=2.2'],
+    'install_requires': ['numpy>=1.14', 'scipy', 'matplotlib>=2.2', 'python_dateutil>=2.6.0', 'pytest'],
     'include_package_data': True,
     #'scripts': ['scripts/pspec_run.py', 'scripts/pspec_red.py',
     #            'scripts/bootstrap_run.py'],
