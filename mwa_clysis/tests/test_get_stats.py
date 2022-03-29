@@ -74,5 +74,14 @@ class Test_Stats():
 	def test_plot_fit_err(self):
 		pass
 
-	def test_cal_fit_chisq(self):
-		pass 
+	def test_calc_fit_chisq_wrt_tiles(self):
+		stats = gs.Stats(calfile, metafits)
+		pol, tile, deg = 'XX', 103, 3
+		chisqs = stats.calc_fit_chisq_wrt_tiles(pol)
+		nt.assert_equal(chisqs.shape, (3,3))
+		nt.assert_true(np.all(chisqs > 0))
+		np.testing.assert_almost_equal(np.diag(chisqs), np.ones((3)))
+		nt.assert_equal(chisqs[102][103], 92.72031038594244)
+
+	def test_plot_fit_chisq_wrt_tiles(self):
+		pass
