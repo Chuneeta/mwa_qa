@@ -73,6 +73,7 @@ class Stats(object):
 		return poly
 
 	def get_fit_params(self, pol, deg=3):
+		pol = pol.upper()
 		fit_params = OrderedDict()
 		tiles = self.cal.get_tile_numbers()
 		amps, _ = self.cal.get_amps_phases()
@@ -90,7 +91,45 @@ class Stats(object):
 				print ('WARNING: Data for tile{} seems to be flagged'.format(tiles[i]))
 		return fit_params
 
+	
+	def plot_fit_soln_tile(self, pol, tile, deg=3, save=None):
+		# enusring pol in in upper casse letter
+		pol = pol.upper()
+		fit_params = self.get_fit_params(pol=pol, deg=deg)
+		amps, _ = self.cal.get_amps_phases()
+		freqs = self.cal.get_freqs()
+		tiles = self.cal.extract_tiles()
+		tile_ind = tiles['Tile{:03d}'.format(tile)]
+		min_val = np.nanmin(amps[tile_ind, :, rs.pol_dict[pol]].flatten())
+		max_val = np.nanmax(amps[tile_ind, :, rs.pol_dict[pol]].flatten())
+		fig = pylab.figure(figsize=(8, 6))
+		ax = pylab.subplot(111)
+		try:
+			ax.plot(freqs, np.polyval(fit_params['Tile{:03d}'.format(tile)][:-1], freqs), 'k-', linewidth=2)
+			ax.text(170, max_val + 0.05, '{:.4f}'.format(fit_params['Tile{:03d}'.format(tile)][-2]), color='black', fontsize=10, bbox={
+        'facecolor': 'grey', 'alpha': 0.5, 'pad': 10})
+			ax.text(175, max_val + 0.05, '{:.4f}'.format(fit_params['Tile{:03d}'.format(tile)][-1]), color='black', fontsize=10, bbox={
+        'facecolor': 'grey', 'alpha': 0.5, 'pad': 10})
+		except KeyError:
+			print ('WARNING: Omitting Tile{:03d}'.format(tl))
+		ax.scatter(freqs, amps[tile_ind, :, rs.pol_dict[pol]].flatten(), s=10, c='red', alpha=0.9, marker='.')
+		ax.set_aspect('auto')
+		ax.grid(ls='dashed')
+		ax.set_ylim(min_val - 0.1, max_val + 0.1)
+		ax.tick_params(labelsize=5)
+		ax.set_ylabel('Amplitude', fontsize=12)
+		ax.set_xlabel('Frequency (MHz)', fontsize=12)
+		ax.set_title('Tile {}'.format(tile), size=15)
+		ax.tick_params(labelsize=10)
+		if save:
+			figname = self.calfile.replace('.fits', '_{}_fit_{0:03d}.png'.replace(pol, tile))
+			pylab.savefig(figname)
+		else:
+			pylab.show()
+
 	def plot_fit_soln(self, pol, deg=3, save=None):
+		# enusring pol in in upper case letter
+		pol = pol.upper()
 		fit_params = self.get_fit_params(pol=pol, deg=deg)
 		amps, _ = self.cal.get_amps_phases()
 		freqs = self.cal.get_freqs()
@@ -98,17 +137,17 @@ class Stats(object):
 		fig = pylab.figure(figsize=(16, 16))
 		ax = fig.subplots(8, 16)
 		for i, tl in enumerate(tiles):
+			min_val = np.nanmin(amps[i, :, rs.pol_dict[pol]].flatten())
+			max_val = np.nanmax(amps[i, :, rs.pol_dict[pol]].flatten())
 			try:
 				ax[i // 16, i % 16].plot(freqs, np.polyval(fit_params['Tile{:03d}'.format(tl)][:-1], freqs), 'k-', linewidth=1)
-				ax[i // 16, i % 16].text(170, 1.3, '{:.4f}'.format(fit_params['Tile{:03d}'.format(tl)][-1]), color='green', fontsize=6)
+				#ax[i // 16, i % 16].text(170, max_val + 0.05, '{:.4f}'.format(fit_params['Tile{:03d}'.format(tl)][-1]), color='green', fontsize=6)
 			except KeyError:
 				print ('WARNING: Omitting Tile{:03d}'.format(tl))
 			ax[i // 16, i % 16].scatter(freqs, amps[i, :, rs.pol_dict[pol]].flatten(), s=0.5, c='red', alpha=0.7, marker='.')
 			ax[i // 16, i % 16].set_aspect('auto')
 			ax[i // 16, i % 16].grid(ls='dashed')
-			ax[i // 16, i % 16].set_ylim(0.6, 1.5)
-			#ax[i // 16, i % 16].xaxis.tick_top()
-			ax[i // 16, i % 16]
+			ax[i // 16, i % 16].set_ylim(min_val - 0.2, max_val + 0.2)
 			ax[i // 16, i % 16].tick_params(labelsize=5)
 			if i%16 != 0:
 				ax[i // 16, i % 16].tick_params(left=False, right=False , labelleft=False ,labelbottom=False, bottom=False)
@@ -123,7 +162,7 @@ class Stats(object):
 			pylab.show()
 
 	def plot_fit_err(self, pol, deg=3, save=None):
-		fit_params = self.get_fit_params(pol=pol, deg=deg)
+		fit_params = self.get_fit_params(pol=pol.upper(), deg=deg)
 		tiles = [int(tl.strip('Tile')) for tl in fit_params.keys()] 
 		fig = pylab.figure()
 		ax1 = pylab.subplot(211)		
