@@ -43,7 +43,7 @@ class Stats(object):
 		rms = self.eval_rms()
 		freqs = self.cal.get_freqs()
 		modes = [mean, median, var, rms]
-		modes_str = ['mean', 'median', 'rms', 'var']
+		modes_str = ['mean', 'median', 'var', 'rms']
 		plot_colors = ['cornflowerblue', 'indianred', 'mediumorchid', 'olive']
 		for i in range(4):
 			for j, p in enumerate(pols):
@@ -54,10 +54,11 @@ class Stats(object):
 				ax[i // 2, i % 2].set_xlabel('Frequency(MHz)', fontsize=12)
 			if i == 1:
 				ax[i // 2, i % 2].legend(bbox_to_anchor=(0.9,1.2), loc="upper right", fancybox=True, ncol=2)
+			ax[i // 2, i % 2].tick_params(labelsize=12)
 		pylab.suptitle('Gain Amplitude', size=15)
 		if save:
 			figname = self.calfile.replace('.fits', '_stats.png')
-			pylab.savefig(figname)
+			pylab.savefig(figname, dpi=300)
 			pylab.close()
 		else:
 			pylab.show()
@@ -69,7 +70,7 @@ class Stats(object):
 		tiles_dict = self.cal.extract_tiles()
 		ydata = amps[tiles_dict['Tile{0:03d}'.format(tile)], :, rs.pol_dict[pol.upper()]]	
 		nn_inds = np.where(~np.isnan(ydata))
-		poly = np.polyfit(freqs[nn_inds], ydata[nn_inds], deg=deg)
+		poly  = np.polyfit(freqs[nn_inds], ydata[nn_inds], deg=deg)
 		return poly
 
 	def get_fit_params(self, pol, deg=3):
@@ -86,7 +87,7 @@ class Stats(object):
 				chisq = np.nansum(((np.polyval(poly, freqs) - amps[i, :, rs.pol_dict[pol]]) ** 2) / amps[i, :, rs.pol_dict[pol]])  
 				# the last parameter is the error in the polynomial fitting
 				fit_params['Tile{0:03d}'.format(tiles[i])] = np.append(poly, fit_err)
-				fit_params['Tile{0:03d}'.format(tiles[i])] = np.append(poly, chisq)
+				fit_params['Tile{0:03d}'.format(tiles[i])] = np.append(fit_params['Tile{0:03d}'.format(tiles[i])], chisq)
 			except TypeError:
 				print ('WARNING: Data for tile{} seems to be flagged'.format(tiles[i]))
 		return fit_params
@@ -100,29 +101,31 @@ class Stats(object):
 		freqs = self.cal.get_freqs()
 		tiles = self.cal.extract_tiles()
 		tile_ind = tiles['Tile{:03d}'.format(tile)]
-		min_val = np.nanmin(amps[tile_ind, :, rs.pol_dict[pol]].flatten())
-		max_val = np.nanmax(amps[tile_ind, :, rs.pol_dict[pol]].flatten())
+		mn_mx_dict = self.cal.get_amp_min_max()
+		min_val = mn_mx_dict[pol.upper()][0]
+		max_val = mn_mx_dict[pol.upper()][1]
 		fig = pylab.figure(figsize=(8, 6))
 		ax = pylab.subplot(111)
 		try:
-			ax.plot(freqs, np.polyval(fit_params['Tile{:03d}'.format(tile)][:-1], freqs), 'k-', linewidth=2)
+			ax.plot(freqs, np.polyval(fit_params['Tile{:03d}'.format(tile)][:-2], freqs), 'k-', linewidth=2)
 			ax.text(170, max_val + 0.05, '{:.4f}'.format(fit_params['Tile{:03d}'.format(tile)][-2]), color='black', fontsize=10, bbox={
         'facecolor': 'grey', 'alpha': 0.5, 'pad': 10})
 			ax.text(175, max_val + 0.05, '{:.4f}'.format(fit_params['Tile{:03d}'.format(tile)][-1]), color='black', fontsize=10, bbox={
         'facecolor': 'grey', 'alpha': 0.5, 'pad': 10})
-		except KeyError:
-			print ('WARNING: Omitting Tile{:03d}'.format(tl))
+			ax.set_ylim(min_val + 0.5, max_val + 0.15)
+		except (KeyError, ValueError):
+			print ('WARNING: Omitting Tile{:03d}'.format(tile))
 		ax.scatter(freqs, amps[tile_ind, :, rs.pol_dict[pol]].flatten(), s=10, c='red', alpha=0.9, marker='.')
 		ax.set_aspect('auto')
 		ax.grid(ls='dashed')
-		ax.set_ylim(min_val - 0.1, max_val + 0.1)
 		ax.tick_params(labelsize=5)
 		ax.set_ylabel('Amplitude', fontsize=12)
 		ax.set_xlabel('Frequency (MHz)', fontsize=12)
 		ax.set_title('Tile {}'.format(tile), size=15)
 		ax.tick_params(labelsize=10)
 		if save:
-			figname = self.calfile.replace('.fits', '_{}_fit_{0:03d}.png'.replace(pol, tile))
+			figname = self.calfile.replace('.fits', '_{}_fit.png'.format(pol))
+			figname = figname.replace('.png', '_{0:03d}.png'.format(tile))
 			pylab.savefig(figname)
 		else:
 			pylab.show()
@@ -134,23 +137,24 @@ class Stats(object):
 		amps, _ = self.cal.get_amps_phases()
 		freqs = self.cal.get_freqs()
 		tiles = self.cal.get_tile_numbers()
+		mn_mx_dict = self.cal.get_amp_min_max()
+		min_val = mn_mx_dict[pol.upper()][0]
+		max_val = mn_mx_dict[pol.upper()][1]
 		fig = pylab.figure(figsize=(16, 16))
 		ax = fig.subplots(8, 16)
 		for i, tl in enumerate(tiles):
-			min_val = np.nanmin(amps[i, :, rs.pol_dict[pol]].flatten())
-			max_val = np.nanmax(amps[i, :, rs.pol_dict[pol]].flatten())
 			try:
-				ax[i // 16, i % 16].plot(freqs, np.polyval(fit_params['Tile{:03d}'.format(tl)][:-1], freqs), 'k-', linewidth=1)
-				#ax[i // 16, i % 16].text(170, max_val + 0.05, '{:.4f}'.format(fit_params['Tile{:03d}'.format(tl)][-1]), color='green', fontsize=6)
-			except KeyError:
+				ax[i // 16, i % 16].plot(freqs, np.polyval(fit_params['Tile{:03d}'.format(tl)][:-2], freqs), 'k-', linewidth=1)
+				ax[i // 16, i % 16].set_ylim(min_val + 0.5, max_val + 0.2)
+			except (KeyError, ValueError):
 				print ('WARNING: Omitting Tile{:03d}'.format(tl))
 			ax[i // 16, i % 16].scatter(freqs, amps[i, :, rs.pol_dict[pol]].flatten(), s=0.5, c='red', alpha=0.7, marker='.')
 			ax[i // 16, i % 16].set_aspect('auto')
 			ax[i // 16, i % 16].grid(ls='dashed')
-			ax[i // 16, i % 16].set_ylim(min_val - 0.2, max_val + 0.2)
-			ax[i // 16, i % 16].tick_params(labelsize=5)
+			ax[i // 16, i % 16].tick_params(labelsize=10)
+			ax[i // 16, i % 16].set_title('Tile {}'.format(tl))
 			if i%16 != 0:
-				ax[i // 16, i % 16].tick_params(left=False, right=False , labelleft=False ,labelbottom=False, bottom=False)
+				ax[i // 16, i % 16].tick_params(left=False, right=False , labelleft=False ,labelbottom=True, bottom=True)
 			pylab.subplots_adjust(right=0.99, left=0.02, top=0.95, bottom=0.05, wspace=0, hspace=0.5)
 
 		pylab.suptitle('Polynomial Fitting (n = {}) to {}'.format(deg, pol))
@@ -163,6 +167,8 @@ class Stats(object):
 
 	def plot_fit_err(self, pol, deg=3, save=None):
 		fit_params = self.get_fit_params(pol=pol.upper(), deg=deg)
+		print (np.array([*fit_params.values()])[:, -2])
+		print (np.array([*fit_params.values()])[:, -1])
 		tiles = [int(tl.strip('Tile')) for tl in fit_params.keys()] 
 		fig = pylab.figure()
 		ax1 = pylab.subplot(211)		
@@ -210,17 +216,60 @@ class Stats(object):
 		df.index = tiles
 		return df
 
-	def plot_fit_chisq_wrt_tiles(self, pol, deg=3):
+	def plot_fit_chisq_wrt_tiles(self, pol, deg=3, save=None):
 		# Plotting chisq fit
-		pylab.figure(figsize = (8, 6))
+		pylab.figure(figsize = (10, 10))
 		chi_df = self.calc_fit_chisq_wrt_tiles(pol=pol, deg=deg)
-		heatmap = sns.heatmap(chi_df, cmap='coolwarm', annot=True, fmt='.2f')
+		heatmap = sns.heatmap(chi_df, cmap='coolwarm', annot=True, fmt='.1f')
 		heatmap.set_title('Chi Square', fontdict={'fontsize':14}, pad=12)
-		heatmap.set_xlabel('Tile Number', fontdict={'fontsize':12}, labelpad=12)
-		heatmap.set_ylabel('Tile Number', fontdict={'fontsize':12}, labelpad=12)
+		heatmap.set_xlabel('Tile Number', fontdict={'fontsize':6}, labelpad=12)
+		heatmap.set_ylabel('Tile Number', fontdict={'fontsize':6}, labelpad=12)
 		if save:
 			figname= self.calfile.replace('.fits', '_{}_chisq.png'.format(pol))
 			pylab.savefig(figname, dpi=300)
 		else:
 			pylab.show()
+
+	def f2etas(self, freqs):
+    	#Evaluates geometric delay (fourier conjugate of frequency)
+   		#freqs: Frequencies in GHz; type:numpy.ndarray 
+		df = freqs[1] - freqs[0]
+		etas = np.fft.fftshift(np.fft.fftfreq(freqs.size, df))
+		return etas
+
+	def filter_nans(self, data, freqs):
+		inds = np.where(~np.isnan(data))
+		data_filtered = data[inds[0]]
+		freqs_filtered = freqs[inds[0]]
+		return data_filtered, freqs_filtered
+
+	def fft_data(self):
+		data = self.cal.get_normalized_data()
+		tile_dict = self.cal.extract_tiles()
+		tiles = list(tile_dict.keys())
+		tile_inds = list(tile_dict.values())
+		freqs = self.cal.get_freqs()
+		fft_data_dict = OrderedDict()
+		for i in range(len(tile_inds)):
+			fft_data_dict[tiles[i]] = OrderedDict()
+			fft_data_dict[tiles[i]] = OrderedDict()
+			fft_data_dict[tiles[i]]['xx'] = []
+			fft_data_dict[tiles[i]]['yy'] = []
+			data_xx = data[tile_inds[i], :, 0]
+			data_yy = data[tile_inds[i], :, 3]
+			filtered_data_xx, filtered_freqs_xx = self.filter_nans(data_xx, freqs * 1e-3) 
+			filtered_data_yy, filtered_freqs_yy = self.filter_nans(data_yy, freqs * 1e-3)
+			# xx polarization
+			try:
+				fft_data_xx = np.fft.fftshift(np.fft.fft(filtered_data_xx))
+				etas_xx = self.f2etas(filtered_freqs_xx)
+				fft_data_dict[tiles[i]]['xx'] = [etas_xx, fft_data_xx]			
+				# yy polarization
+				fft_data_yy = np.fft.fft(filtered_data_yy)
+				etas_yy = self.f2etas(filtered_freqs_yy)
+				fft_data_dict[tiles[i]]['yy'] = [etas_yy, fft_data_yy]		
+			except ValueError:
+				pass
+
+		return fft_data_dict
 
