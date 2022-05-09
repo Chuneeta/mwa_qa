@@ -1,4 +1,5 @@
 from astropy.io import fits
+from collections import OrderedDict
 import numpy as np
 import pylab
 
@@ -19,7 +20,7 @@ class Cal(object):
 		data = data[i_timeblock, :, :, ::2] + data[i_timeblock, :, :, 1::2] * 1j
 		return data
 
-	def normalize_data(self):
+	def get_normalized_data(self):
 		data = self.read_data()
 		# the last antenna/tile is usually taken as refernce antenna
 		i_tile_ref = -1
@@ -76,12 +77,64 @@ class Cal(object):
 		tnums = [int(tl.strip('Tile')) for tl in tiles]
 		return tnums
 
+	def get_tile_pos(self):
+		mdata = self.read_metadata()
+		npos = len(mdata) // 2
+		pos = np.ndarray((3, npos))
+		for i in range(0, npos):
+			pos[0, i], pos[1, i], pos[2, i] = mdata[i * 2][9], mdata[i * 2][10], mdata[i * 2][11]
+		return pos
+	
+	def get_baselines(self):
+		tile_pos = self.get_tile_pos()
+		npos = tile_pos.shape[1]
+		bls = OrderedDict()
+		for i in range(npos):
+			for j in range(1, npos):
+				bl_length = np.sqrt((tile_pos[0, i] - tile_pos[0, j]) ** 2 + (tile_pos[1, i] - tile_pos[1, j]) ** 2)
+				bls[(i, j)] = bl_length  
+		return bls 
+
+	def get_bls_greater_than(self, cut_bl):
+		bls_dict = self.get_baselines()
+		bls = {key: value for key, value in bls_dict.items() if value > cut_bl}
+		return bls
+
+	def get_bls_less_than(self, cut_bl):
+		bls_dict = self.get_baselines()
+		bls = {key: value for key, value in bls_dict.items() if value < cut_bl}
+		return bls
+
 	def get_amps_phases(self):
-		data = self.read_data()
-		data = self.normalize_data()
+		data = self.get_normalized_data()
 		amps = np.abs(data)
 		phases = np.angle(data)
 		return amps, phases
+
+	def _get_max(self, data):
+		return np.nanmax(data)
+
+	def _get_min(self, data):
+		return np.nanmin(data)
+
+	def get_amp_min_max(self):
+		amps, _ = self.get_amps_phases()
+		pols = list(pol_dict.keys())
+		min_max = 	OrderedDict()
+		for i in range(len(pols)):
+			min_max[pols[i]] = (self._get_min(amps), self._get_max(amps))
+		return min_max
+
+	def generate_flags(self, tiles=[], fq_chans=[], pols=''):
+		amps, phs = self.get_amps_phases()
+		flags = np.zeros((amps.shape), dtype=bool)
+		tile_nums = np.array(self.get_tile_numbers())
+		for tl in tiles:
+			ind = np.where(tile_nums == tl)[0][0]
+			for ch in fq_chans:
+				if pols == "":
+					flags[ind, ch, :] = 1
+		return flags
 
 	def plot_soln_amps(self, ant='', pols='', save=None, figname=None):
 		amps, _ = self.get_amps_phases()
