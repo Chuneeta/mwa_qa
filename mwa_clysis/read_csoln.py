@@ -79,20 +79,22 @@ class Cal(object):
 
 	def get_tile_pos(self):
 		mdata = self.read_metadata()
-		npos = len(mdata) // 2
-		pos = np.ndarray((3, npos))
+		tnums = self.get_tile_numbers()
+		npos = len(tnums)
+		pos = OrderedDict()
 		for i in range(0, npos):
-			pos[0, i], pos[1, i], pos[2, i] = mdata[i * 2][9], mdata[i * 2][10], mdata[i * 2][11]
+			pos[tnums[i]] = [mdata[i * 2][9], mdata[i * 2][10], mdata[i * 2][11]]
 		return pos
 	
 	def get_baselines(self):
-		tile_pos = self.get_tile_pos()
-		npos = tile_pos.shape[1]
+		tile_pos_dict = self.get_tile_pos()
+		tile_pos = np.array(list(tile_pos_dict.values()))
+		tnums = list(tile_pos_dict.keys())
+		npos = len(tnums)
 		bls = OrderedDict()
 		for i in range(npos):
-			for j in range(1, npos):
-				bl_length = np.sqrt((tile_pos[0, i] - tile_pos[0, j]) ** 2 + (tile_pos[1, i] - tile_pos[1, j]) ** 2)
-				bls[(i, j)] = bl_length  
+			for j in range(i+1, npos):
+				bls[(tnums[i], tnums[j])] = np.sqrt((tile_pos[i, 0] - tile_pos[j, 0]) ** 2 + (tile_pos[i, 1] - tile_pos[j, 1]) ** 2)
 		return bls 
 
 	def get_bls_greater_than(self, cut_bl):
@@ -104,6 +106,15 @@ class Cal(object):
 		bls_dict = self.get_baselines()
 		bls = {key: value for key, value in bls_dict.items() if value < cut_bl}
 		return bls
+
+	def get_tile_pos_fromdict(self, bls_dict):
+		bls = list(bls_dict.keys())
+		tiles = [tile for blt in bls for tile in blt]
+		tiles = np.unique(np.array(tiles))
+		tile_pos_dict = self.get_tile_pos()
+		print (tile_pos_dict)
+		tile_pos = {key: value for key, value in tile_pos_dict.items() if key in tiles}
+		return tile_pos
 
 	def get_amps_phases(self):
 		data = self.get_normalized_data()
