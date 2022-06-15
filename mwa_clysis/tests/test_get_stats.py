@@ -65,7 +65,7 @@ class Test_Stats():
 		nt.assert_equal(type(fit_params), collections.OrderedDict)
 		nt.assert_equal(len(list(fit_params.keys())), 3)
 		nt.assert_equal(list(fit_params.keys()), ['Tile102', 'Tile103', 'Tile104'])
-		nt.assert_equal(len(list(fit_params.values())[0]), deg + 2)
+		nt.assert_equal(len(list(fit_params.values())[0]), deg + 3)
 		np.testing.assert_almost_equal(list(fit_params.values())[0], np.array([1.07878090e-05, -5.88788389e-03,  1.06816955e+00, -6.33249086e+01, 2.06101671e+00]))
 
 	def test_plot_fit_soln(self):
