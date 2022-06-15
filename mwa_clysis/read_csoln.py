@@ -2,6 +2,7 @@ from astropy.io import fits
 from collections import OrderedDict
 import numpy as np
 import pylab
+import copy
 
 pol_dict = {'XX': 0, 'XY': 1, 'YX': 2, 'YY': 3}
 _pol_color = ['red', 'red', 'blue', 'blue']
@@ -12,28 +13,51 @@ class Cal(object):
 		self.calfile = calfile
 		self.metafits = metafits
 
-	def read_data(self):
+	def read_gains(self):
 		hdu = fits.open(self.calfile)
-		data = hdu[1].data
+		gains = hdu[1].data
 		# Only looking at the first timeblock.
-		i_timeblock = 0
-		data = data[i_timeblock, :, :, ::2] + data[i_timeblock, :, :, 1::2] * 1j
-		return data
+		gains = gains[:, :, :, ::2] + gains[:, :, :, 1::2] * 1j
+		return gains
 
-	def get_normalized_data(self):
-		data = self.read_data()
-		# the last antenna/tile is usually taken as refernce antenna
+	def _normalized_gains(self, gains):
+		# input gains should be 3D (tiles, freq, pol)
+		# the last antenna/tile is usually taken as reference antenna
+		# needs to check if last antenna is not flagged
 		i_tile_ref = -1
 		refs = []
-		for ref in data[i_tile_ref].reshape((-1, 2, 2)):
+		for ref in gains[i_tile_ref].reshape((-1, 2, 2)): 
 			refs.append(np.linalg.inv(ref))
 		refs = np.array(refs)
 		j_div_ref = []
-		for tile_j in data:
+		for tile_j in gains:
 			for (j, ref) in zip(tile_j, refs):
 				j_div_ref.append(j.reshape((2, 2)).dot(ref))
-		data = np.array(j_div_ref).reshape(data.shape)
-		return data
+		gains = np.array(j_div_ref).reshape(gains.shape)
+		return gains
+
+	def get_normalized_gains(self):
+		gains = self.read_gains()
+		ngains = copy.deepcopy(gains)
+		_sh = gains.shape 
+		for t in range(_sh[0]):
+			ngains[t, :, :, :] = self._normalized_gains(gains[t, :, :, :])	
+		return ngains
+
+	def get_gains_ant(self, tile):
+		gains = self.read_gains()
+		tiles_ind = self.extract_tiles()
+		ind = tiles_ind['Tile{:03d}'.format(tile)]
+		return gains[ind0, :, :]
+		
+	def get_data_antpair(self, tile0, tile1):
+		gains = self.read_gains()
+		tiles_ind = self.extract_tiles()
+		ind0 = tiles_ind['Tile{:03d}'.format(tile0)]
+		ind1 = tiles_ind['Tile{:03d}'.format(tile1)]
+		g0 = gains[ind0, :, :]
+		g1 = gains[ind1, :, :]
+		return g0 * np.conj(g1)
 
 	def read_metadata(self):
 		hdu = fits.open(self.metafits)
@@ -50,6 +74,24 @@ class Cal(object):
 		nchans = mhdr['NCHANS']
 		return nchans
 
+	def get_inttime(self):
+		mhdr = self.read_metaheader()
+		return mhdr['INTTIME']
+
+	def get_obstime(self):
+		mhdr = self.read_metaheader()
+		return mhdr['EXPOSURE']
+
+	def get_start_gpstime(self):
+		mhdr = self.read_metaheader()
+		return mhdr['GPSTIME']
+
+	def get_stop_gpstime(self):
+		start_time = self.get_start_gpstime()
+		obs_time = self.get_obstime()
+		stop_time = start_time + obs_time
+		return stop_time
+
 	def get_freqs(self):
 		mhdr = self.read_metaheader()
 		coarse_ch = mhdr['CHANNELS']
@@ -59,10 +101,70 @@ class Cal(object):
 		freqs = np.linspace(start, stop, nchans) 
 		return freqs		
 
+	def get_eorfield(self):
+		zenith = self.get_zenith()
+		if zenith == (0.0, -27.0):
+			eorfield = 'EoR0'
+		elif zenith == (60.0, -30.0):
+			eorfield = 'EoR1'
+		else:
+			print ('Zenith coordinates are not recognised within the EoR Field')
+
+	def get_az_alt(self):
+		mhdr = self.read_metaheader()
+		az = mhdr['AZIMUTH']
+		alt = mhdr['ALTITUDE']
+		return (az, alt)
+
+	def get_ha(self):
+		mhdr = self.read_metaheader()
+		return mhdr['HA']
+
+	def get_zenith(self):
+		mhdr = self.read_metaheader()
+		ra = mhdr['RAPHASE']
+		dec = mhdr['DECPHASE']
+		return (ra, dec)
+
+	def get_delays(self):
+		mhdr = self.read_metaheader()
+		return mhdr['DELAYS']
+
+	def get_lst(self):
+		mhdr = self.read_metaheader()
+		return mhdr['LST']
+
+	def get_pointing(self):
+		mhdr = self.read_metaheader()
+		ra = mhdr['RAPHASE']
+		dec = mhdr['DECPHASE']
+		return (ra, dec)
+
+	def get_gpstime(self):
+		mhdr = self.read_metaheader()
+		gpstime = mhdr['GPSTIME']
+		return gpstime
+
 	def get_obsdate(self):
 		mhdr = self.read_metaheader()
 		obsdate = mhdr['DATE-OBS']
 		return obsdate
+
+	def get_cable_flavors(self):
+		mdata = self.read_metadata()
+		ctypes, clengths = [], []
+		ctypes = [ctypes.append(mdata[i][16].split('_')[0]) for i in range(0, len(mdata), 2)]
+		clengths = [clengths.append(float(mdata[i][16].split('_')[1])) for i in range(0, len(mdata), 2)]
+		return ctypes, clengths
+
+	def get_receiver(self):
+		mdata = self.read_metadata()
+	
+	def get_btemps(self):
+		mdata = self.read_metadata() 
+		btemps = np.array([])
+		btemps = [np.append(btemps, mdata[i][13]) for i in range(0, len(mdata), 2)]
+		return btemps
 
 	def extract_tiles(self):
 		mdata = self.read_metadata()
@@ -112,21 +214,20 @@ class Cal(object):
 		tiles = [tile for blt in bls for tile in blt]
 		tiles = np.unique(np.array(tiles))
 		tile_pos_dict = self.get_tile_pos()
-		print (tile_pos_dict)
 		tile_pos = {key: value for key, value in tile_pos_dict.items() if key in tiles}
 		return tile_pos
 
 	def get_amps_phases(self):
-		data = self.get_normalized_data()
-		amps = np.abs(data)
-		phases = np.angle(data)
+		gains = self.get_normalized_gains()
+		amps = np.abs(gains)
+		phases = np.angle(gains)
 		return amps, phases
 
-	def _get_max(self, data):
-		return np.nanmax(data)
+	def _get_max(self, gains):
+		return np.nanmax(gains)
 
-	def _get_min(self, data):
-		return np.nanmin(data)
+	def _get_min(self, gains):
+		return np.nanmin(gains)
 
 	def get_amp_min_max(self):
 		amps, _ = self.get_amps_phases()
@@ -189,6 +290,7 @@ class Cal(object):
 			pylab.show()
 
 	def plot_soln_phs(self, ant='', pols='', save=None, figname=None):
+		# needs revisiting
 		_, phases = self.get_amps_phases()
 		phases = phases * 180 / np.pi
 		_sh1, _sh2, _sh3 = phases.shape
