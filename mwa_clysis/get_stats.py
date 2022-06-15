@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from scipy import signal
 import numpy as np
 from mwa_clysis import read_csoln as rs
 import collections
@@ -16,46 +17,47 @@ class Stats(object):
 
 	def eval_mean(self):
 		amps, _ = self.cal.get_amps_phases()
-		mean = np.nanmean(amps, axis=0)
+		mean = np.nanmean(amps, axis=1)
 		return mean
 
 	def eval_median(self):
 		amps, _ = self.cal.get_amps_phases()
-		median = np.nanmedian(amps, axis=0)
+		median = np.nanmedian(amps, axis=1)
 		return median
 	
 	def eval_rms(self):
 		amps, _ = self.cal.get_amps_phases()
-		rms = np.sqrt(np.nanmean(amps ** 2, axis=0))
+		rms = np.sqrt(np.nanmean(amps ** 2, axis=1))
 		return rms
 
 	def eval_var(self):
 		amps, _ = self.cal.get_amps_phases()
-		var = np.nanvar(amps, axis = 0)
+		var = np.nanvar(amps, axis=1)
 		return var
 
-	def plot_stats(self, pols=[], save=None):
+	def plot_stats(self, pol, save=None):
 		fig = pylab.figure(figsize=(12, 8))
 		ax = fig.subplots(2, 2)
 		mean = self.eval_mean()
 		median = self.eval_median()
 		var = self.eval_var()
 		rms = self.eval_rms()
+		timeblocks = mean.shape[0]
 		freqs = self.cal.get_freqs()
 		modes = [mean, median, var, rms]
 		modes_str = ['mean', 'median', 'var', 'rms']
 		plot_colors = ['cornflowerblue', 'indianred', 'mediumorchid', 'olive']
 		for i in range(4):
-			for j, p in enumerate(pols):
-				ax[i // 2, i % 2].plot(freqs, modes[i][:, rs.pol_dict[p.upper()]], '.-', color=plot_colors[j], label=p)
+			for j in range(timeblocks):
+				ax[i // 2, i % 2].plot(freqs, modes[i][j, :, rs.pol_dict[pol.upper()]], '.-', alpha=0.2, color='cornflowerblue')
 			ax[i //2, i % 2].grid(ls='dashed')
 			ax[i // 2, i % 2].set_ylabel(modes_str[i].upper(), fontsize=12)
 			if i == 2 or i == 3:
 				ax[i // 2, i % 2].set_xlabel('Frequency(MHz)', fontsize=12)
-			if i == 1:
-				ax[i // 2, i % 2].legend(bbox_to_anchor=(0.9,1.2), loc="upper right", fancybox=True, ncol=2)
+			#if i == 1:
+				#ax[i // 2, i % 2].legend(bbox_to_anchor=(0.9,1.2), loc="upper right", fancybox=True, ncol=2)
 			ax[i // 2, i % 2].tick_params(labelsize=12)
-		pylab.suptitle('Gain Amplitude', size=15)
+		pylab.suptitle('Gain Amplitude -- {}'.format(pol), size=15)
 		if save:
 			figname = self.calfile.replace('.fits', '_stats.png')
 			pylab.savefig(figname, dpi=300)
@@ -167,8 +169,6 @@ class Stats(object):
 
 	def plot_fit_err(self, pol, deg=3, save=None):
 		fit_params = self.get_fit_params(pol=pol.upper(), deg=deg)
-		print (np.array([*fit_params.values()])[:, -2])
-		print (np.array([*fit_params.values()])[:, -1])
 		tiles = [int(tl.strip('Tile')) for tl in fit_params.keys()] 
 		fig = pylab.figure()
 		ax1 = pylab.subplot(211)		
@@ -230,6 +230,9 @@ class Stats(object):
 		else:
 			pylab.show()
 
+	def generate_blackmanharris(self, n):
+		return signal.windows.blackmanharris(n)
+
 	def f2etas(self, freqs):
     	#Evaluates geometric delay (fourier conjugate of frequency)
    		#freqs: Frequencies in GHz; type:numpy.ndarray 
@@ -243,8 +246,9 @@ class Stats(object):
 		freqs_filtered = freqs[inds[0]]
 		return data_filtered, freqs_filtered
 
-	def fft_data(self):
-		data = self.cal.get_normalized_data()
+	def get_fft_data(self):
+		data = self.cal.get_normalized_gains()
+		timeblocks = data.shape[0]
 		tile_dict = self.cal.extract_tiles()
 		tiles = list(tile_dict.keys())
 		tile_inds = list(tile_dict.values())
@@ -253,23 +257,28 @@ class Stats(object):
 		for i in range(len(tile_inds)):
 			fft_data_dict[tiles[i]] = OrderedDict()
 			fft_data_dict[tiles[i]] = OrderedDict()
-			fft_data_dict[tiles[i]]['xx'] = []
-			fft_data_dict[tiles[i]]['yy'] = []
-			data_xx = data[tile_inds[i], :, 0]
-			data_yy = data[tile_inds[i], :, 3]
-			filtered_data_xx, filtered_freqs_xx = self.filter_nans(data_xx, freqs * 1e-3) 
-			filtered_data_yy, filtered_freqs_yy = self.filter_nans(data_yy, freqs * 1e-3)
-			# xx polarization
-			try:
-				fft_data_xx = np.fft.fftshift(np.fft.fft(filtered_data_xx))
-				etas_xx = self.f2etas(filtered_freqs_xx)
-				fft_data_dict[tiles[i]]['xx'] = [etas_xx, fft_data_xx]			
-				# yy polarization
-				fft_data_yy = np.fft.fft(filtered_data_yy)
-				etas_yy = self.f2etas(filtered_freqs_yy)
-				fft_data_dict[tiles[i]]['yy'] = [etas_yy, fft_data_yy]		
-			except ValueError:
-				pass
+			fft_data_dict[tiles[i]]['xx'] = OrderedDict({'etas': [], 'fft': []})
+			fft_data_dict[tiles[i]]['yy'] = OrderedDict({'etas': [], 'fft': []})
+			for t in range(timeblocks):
+				data_xx = data[t, tile_inds[i], :, 0]
+				data_yy = data[t, tile_inds[i], :, 3]
+				filtered_data_xx, filtered_freqs_xx = self.filter_nans(data_xx, freqs * 1e-3) 
+				filtered_data_yy, filtered_freqs_yy = self.filter_nans(data_yy, freqs * 1e-3)
+				try:
+					# xx polarization
+					window_xx = self.generate_blackmanharris(len(filtered_data_xx))
+					fft_data_xx = np.fft.fftshift(np.fft.fft(filtered_data_xx * window_xx))
+					etas_xx = self.f2etas(filtered_freqs_xx)
+					fft_data_dict[tiles[i]]['xx']['etas'].append(etas_xx)
+					fft_data_dict[tiles[i]]['xx']['fft'].append(fft_data_xx)
+					#fft_data_dict[tiles[i]]['xx'].append([etas_xx, fft_data_xx]			
+					# yy polarization
+					window_yy = self.generate_blackmanharris(len(filtered_data_yy))
+					fft_data_yy = np.fft.fftshift(np.fft.fft(filtered_data_yy * window_yy))
+					etas_yy = self.f2etas(filtered_freqs_yy)
+					fft_data_dict[tiles[i]]['yy']['etas'].append(etas_yy)
+					fft_data_dict[tiles[i]]['yy']['fft'].append(fft_data_yy)
+				except ValueError:
+					pass
 
 		return fft_data_dict
-
