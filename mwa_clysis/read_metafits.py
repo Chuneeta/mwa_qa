@@ -14,33 +14,46 @@ class Metafits(object):
 		self.metafits = metafits
 		self.pol = pol.upper()
 
+	def _read_data(self):
+		""" 
+        Reads in data stored in hdu[0] column
+        """
+		hdu = fits.open(self.metafits)
+		data = hdu[1].data
+		return data
+
 	def _check_data(self, data):
 		"""
 		Checking if the metafits file has the duplicates tiles containing different polarization (East-West and North-South)
-        """
+        - data : Array containing the calibration solutions and other related information
+		"""
 		data_length = len(data)
 		assert data_length % 2 == 0, "Metafits seems to missing or extra info, the length of objects does not evenly divide"
 		pols = [data[i][4] for i in range(data_length)]
-		pols_string = np.unique(pols)
-		assert pols_string == 2, "Two plorization should be specified, found only one or more than two"
-		pols_expected = pols_string * int(data_length / 2)
+		pols_str, pols_ind = np.unique(pols, return_index = True)
+		assert len(pols_str) == 2, "Two polarizations should be specified, found only one or more than two"
+		pols_expected = list(pols_str[np.array(pols_ind)]) * int(data_length / 2)
 		assert pols == pols_expected, "Metafits does not have polarization info distribution as per standard, should contain consecutive arrangement of the tile duplicates"
 	
-	def _read_mdata(self):
-		""" 
-		Reads in data stored in hdu[0] column
-		"""
-		hdu = fits.open(self.metafits)
-		data = hdu[1].data
-		self._check_data(data)
-		return data
+	def _pol_index(self, data, pol):
+		# checking the first two pols
+		pols_str = np.array([])
+		for i in range(2):
+			pols_str = np.append(pols_str, data[i][4])
+		assert len(np.unique(pols_str)) == 2, "the different polarization ('X', Y') should be alternate"
+		return np.where(pols_str == pol.upper())[0]
 
 	def mdata(self):
 		"""
 		Returns data for the specified polarization 
 		"""
-		data = self._read_mdata()
-		return [data[i] for i in range(0, len(data), 2)]
+		data = self._read_data()
+		self._check_data(data)
+		ind = self._pol_index(data, self.pol)
+		if ind % 2 == 0:
+			return data[0::2]
+		else:
+			return data[1::2]
 
 	def mhdr(self):
 		""" 
@@ -54,17 +67,17 @@ class Metafits(object):
 		"""
 		Returns the number of frequency channels
 		"""
-		hdr = self.mhdr()
+		mhdr = self.mhdr()
 		nchans = mhdr['NCHANS']
 		return nchans
 
-	def frequecies(self):
+	def frequencies(self):
 		"""
 		Returns the frequency array of the observation
 		"""
 		mhdr = self.mhdr()
 		coarse_ch = mhdr['CHANNELS']
-		nchans = self.get_nchans()
+		nchans = self.nchans()
 		start = float(coarse_ch.split(',')[0]) * 1.28
 		stop = float(coarse_ch.split(',')[-1]) * 1.28
 		freqs = np.linspace(start, stop, nchans)
@@ -99,7 +112,7 @@ class Metafits(object):
 		mhdr = self.mhdr()
 		return mhdr['GPSTIME']
 
-	def stop_gps_time(self):
+	def stop_gpstime(self):
 		"""
 		Return ending time of the observation
 		"""
@@ -119,6 +132,7 @@ class Metafits(object):
 			eorfield = 'EoR1'
 		else:
 			print ('Phase_centre coordinates are not recognised within the EoR Field')
+		return eorfield
 
 	def az_alt(self):
 		"""
@@ -143,7 +157,7 @@ class Metafits(object):
 		mhdr = self.mhdr()
 		return mhdr['LST']
 
-	def phase_center(self):
+	def phase_centre(self):
 		"""
 		Returns coordinates/angle of the ddesired target in degrees
 		"""
@@ -157,8 +171,8 @@ class Metafits(object):
 		Returns coordinates of the primary beam center in degrees
 		"""
 		mhdr = self.mhdr()
-		ra = mhdr['RAPHASE']
-		dec = mhdr['DECPHASE']
+		ra = mhdr['RA']
+		dec = mhdr['DEC']
 		return (ra, dec)
 
 	def delays(self):
@@ -168,31 +182,21 @@ class Metafits(object):
 		mhdr = self.mhdr()
 		return mhdr['DELAYS']
 
-	def actual_delays(self, tile_id):
-		"""
-		Returns actual delays used for the given tile during the observation
-		"""
-		
-	def _all_tile_ids(self):
-		"""
-		Returns all the tile ids including the dupplicates
-		"""
-		mdata = self.mhdr()
-		tile_ids = [mdata[i][3] for i in range(len(mdata))]
-
 	def tile_ids(self):
 		"""
 		Returns the tile/antenna ids
 		"""
-		tile_ids = self.all_tile_ids()
-		return np.unique(tile_ids)
+		data = self.mdata()
+		tile_ids = [data[i][3] for i in range(len(data))]
+		return tile_ids
 
-	def get_tile_ind(self, tile):
+	def get_tile_ind(self, tile_id):
 		"""
 		Returns index of the specified tile ids
+		- tile : Tile id e.g tile 104 
 		"""
 		tile_ids = np.array(self.tile_ids())
-		return np.where(tile_ids == tile)[0]
+		return np.where(tile_ids == tile_id)[0]
 
 	def tile_numbers(self):
 		"""
@@ -200,14 +204,75 @@ class Metafits(object):
 		"""
 		tile_ids = self.tile_ids()
 		return [int(tl.strip('Tile')) for tl in tile_ids]
+	
+	def tile_pos(self):
+		"""
+		Returns all the tile position (North, East, Heigth)
+		"""
+		data = self.mdata()
+		tile_pos = np.zeros((3, len(data)))
+		for i in range(len(data)):
+			tile_pos[i, 0], tile_pos[i, 1], tile_pos[i, 2] = data[i][9], data[i][10], data[i][11]
+		return tile_pos
+
+	def get_tile_pos(self, tile_id):
+		"""
+        Returns tile position (North, East, Heigth) for the given tile id
+        - tile_id : Tile id e.g Tile 103
+        """
+		tile_pos = self.tile_pos()
+		ind = self.get_tile_ind(tile_id)
+		return tile_pos[ind, :]
+
+	def _cable_flavors(self):
+		"""
+		Returns cable flavours for all the tiles
+		"""
+		data = self.mdata()
+		ctypes = [data[i][16].split('_')[0] for i in range(0, len(data))]
+		clengths = [float(data[i][16].split('_')[1]) for i in range(0, len(data))]
+		return ctypes, clengths
+
+	def get_cable_length(self, tile_id):
+		"""
+		Returns cable length for the given tile id
+		- tile_id : Tile id e.g Tile 103
+		"""
+		ind = self.get_tile_ind(tile_id)
+		ctype, clength = self._cable_flavors()
+		return np.array(clength)[ind]
+
+	def get_cable_type(self, tile_id):
+		"""
+        Returns cable length for the given tile id
+        - tile_id : Tile id e.g Tile 103
+        """
+		ind = self.get_tile_ind(tile_id)
+		ctype, clength = self._cable_flavors()
+		return np.array(ctype)[ind]
+
+	def receivers(self):
+		"""
+		Returns receiver numbers for all tiles
+		"""
+		data = self.mdata()
+		receivers = [data[i][5] for i in range(0, len(data))]
+		return receivers
+
+	def get_receiver_for(self, tile_id):
+		"""
+        Returns receiver number for the given tile id
+        - tile_id : Tile id e.g Tile 103
+        """
+		receivers = np.array(self.receivers())
+		ind = self.get_tile_ind(tile_id)
+		return receivers[ind]
 
 	def btemps(self):
 		"""
 		Returns beamformer temperature in degress
 		"""
-		mdata = self.mdata()
-		btemps = [mdata[i][13] for i in range(0, len(mdata))]
+		data = self.mdata()
+		btemps = [data[i][13] for i in range(0, len(data))]
 		return btemps
 
-	def actual_delays(self):
-		pass
