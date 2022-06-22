@@ -1,4 +1,5 @@
 from mwa_clysis import read_metafits as rm
+from collections import OrderedDict
 from astropy.io import fits
 import numpy as np
 import copy
@@ -93,24 +94,53 @@ class Csoln(object):
 			ngains[t] = self._normalized_data(gains[t], ref_tile_id)
 		return ngains
 
-	def amplitudes(self):
+	def _select_gains(self, norm):
+		"""
+		Return normalized if norm is True else unnomalized gains 
+		- norm : boolean, If True returns normalized gains else unormalized gains.
+		"""
+		if norm:
+			return self.normalized_gains()
+		else:
+			return self.gains()
+
+	def amplitudes(self, norm=True):
 		"""
 		Returns amplitude of the normalized gain solutions
+		- norm : boolean, If True returns normalized gains else unormalized gains.
+        		 Default is set to True.
 		"""
-		gains = self.normalized_gains()
+		gains = self._select_gains(norm = norm)
 		return np.abs(gains)
 
-	def phases(self):
+	def phases(self, norm=True):
 		"""
 		Returns phases in degrees of the normalized gain solutions
+		- norm : boolean, If True returns normalized gains else unormalized gains.
+				 Default is set to True.
 		"""
-		gains = self.normalized_gains()
+		gains = self._select_gains(norm = norm)
 		return np.angle(gains) * 180 / np.pi
 
-	def 
-	def gains_for_receiver(self, receiver):
+	def gains_for_tile(self, tile_id, norm=True):
 		"""
-		Returns the gains solutions for all the tiles (8 tiles) connected to the given reciver
+		Returns gain solutions for the given tile ID
+		- tile_id : Tile ID e.g Tile103
+		- norm : boolean, If True returns normalized gains else unormalized gains.
+                 Default is set to True.
 		"""
-		pass
-		
+		gains = self._select_gains(norm = norm)
+		ind = self.Metafits.get_tile_ind(tile_id)
+		return gains[:, ind, :, :] 
+	
+	def gains_for_receiver(self, receiver, norm=True):
+		"""
+		Returns the dictionary of gains solutions for all the tiles (8 tiles) connected to the given reciver
+		"""
+		tile_ids = self.Metafits.get_tiles_for_receiver(receiver)
+		gains_receiver = OrderedDict()
+		for tile_id in tile_ids:
+			gains_receiver[tile_id] = self.gains_for_tile(tile_id, norm = norm)
+		return gains_receiver
+
+	
