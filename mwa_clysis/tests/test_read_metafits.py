@@ -183,6 +183,12 @@ class TestMetafits(unittest.TestCase):
 		receiver = m.get_receiver_for('Tile103')
 		self.assertEqual(receiver, 10)
 	
+	def test_get_tiles_for_receiver(self):
+		m = rm.Metafits(metafits, 'X')
+		tiles = m.get_tiles_for_receiver(10)
+		expected = np.array(['Tile104', 'Tile103', 'Tile102'])
+		self.assertTrue((tiles == expected).all())
+	
 	def test_btemps(self):
 		m = rm.Metafits(metafits, 'X')
 		btemps = m.btemps()
