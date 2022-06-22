@@ -1,5 +1,4 @@
 from astropy.io import fits
-from collections import OrderedDict
 import numpy as np
 
 class Metafits(object):
@@ -267,6 +266,16 @@ class Metafits(object):
 		receivers = np.array(self.receivers())
 		ind = self.get_tile_ind(tile_id)
 		return receivers[ind]
+
+	def get_tiles_for_receiver(self, receiver):
+		"""
+		Returns tile IDs connected with the given receiver
+		- receiver : receiver number 1-16
+		"""
+		tile_ids = np.array(self.tile_ids())
+		receivers = np.array(self.receivers())
+		inds = np.where(receivers == receiver)
+		return tile_ids[inds]
 
 	def btemps(self):
 		"""
