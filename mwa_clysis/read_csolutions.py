@@ -45,6 +45,12 @@ class Csoln(object):
         """
 		return self.real() + self.imag() * 1j
 
+	def gains_shape(self):
+		"""
+		Returns shape of the array containing the gain soultions
+		"""
+		return self.gains().shape
+
 	def header(self):
 		"""
 		Reads and return the header column hdu[0]
@@ -143,4 +149,13 @@ class Csoln(object):
 			gains_receiver[tile_id] = self.gains_for_tile(tile_id, norm = norm)
 		return gains_receiver
 
-	
+	def gains_for_tilepair(self, tilepair, norm=True):
+		"""
+		Evaluates conjugation of the gain solutions for antenna pair (tile0, tile1)
+		- tile_pair : tuple of tile numbers such as (11, 13)
+		"""
+		tile0, tile1 = 'Tile{:03g}'.format(tilepair[0]), 'Tile{:03g}'.format(tilepair[1])
+		gains_t0 = self.gains_for_tile(tile0, norm = norm)
+		gains_t1 = self.gains_for_tile(tile1, norm = norm)
+		return gains_t0 * np.conj(gains_t1)
+
