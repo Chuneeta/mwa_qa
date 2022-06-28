@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from astropy.io import fits
 import numpy as np
 
@@ -209,7 +210,7 @@ class Metafits(object):
 		Returns all the tile position (North, East, Heigth)
 		"""
 		data = self.mdata()
-		tile_pos = np.zeros((3, len(data)))
+		tile_pos = np.zeros((len(data), 3))
 		for i in range(len(data)):
 			tile_pos[i, 0], tile_pos[i, 1], tile_pos[i, 2] = data[i][9], data[i][10], data[i][11]
 		return tile_pos
@@ -222,6 +223,37 @@ class Metafits(object):
 		tile_pos = self.tile_pos()
 		ind = self.get_tile_ind(tile_id)
 		return tile_pos[ind, :]
+
+	def baseline_lengths(self):
+		"""
+		Returns dictionary of tile pairs or baseline as keys and their corresponsing lengths as values
+		"""
+		tile_numbers = self.tile_numbers()
+		tile_pos = self.tile_pos()
+		baseline_dict = OrderedDict()
+		for i in range(len(tile_numbers)):
+			for j in range(i + 1, len(tile_numbers)):
+				baseline_dict[(tile_numbers[i], tile_numbers[j])] = np.sqrt((tile_pos[i, 0] - tile_pos[j, 0]) ** 2 + (tile_pos[i, 1] - tile_pos[j, 1]) ** 2)
+		return baseline_dict
+
+	def get_baselines_greater_than(self, baseline_cut):
+		"""
+		Returns tile pairs/ baselines greater than the given cut
+		- baseline_cut : Baseline length cut in metres
+		"""
+		bls_dict = self.baseline_lengths()
+		bls = {key: value for key, value in bls_dict.items() if value > baseline_cut}
+		print (bls)
+		return bls
+
+	def get_baselines_less_than(self, baseline_cut):
+		"""
+        Returns tile pairs/ baselines less than the given cut
+        - baseline_cut : Baseline length cut in metres
+        """
+		bls_dict = self.baseline_lengths()
+		bls = {key: value for key, value in bls_dict.items() if value < baseline_cut}
+		return bls
 
 	def _cable_flavors(self):
 		"""
