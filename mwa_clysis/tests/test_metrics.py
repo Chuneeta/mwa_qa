@@ -20,6 +20,45 @@ class TestMetric(unittest.TestCase):
 		self.assertEqual(mt.Metafits.metafits, metafits)
 		self.assertEqual(mt.Metafits.pol, 'X')
 
+	def test_variance(self):
+		mt = m.Metric(calfile, metafits = metafits)
+		variance = mt.variance()
+		self.assertEqual(variance.shape, (1, 3, 4))
+		np.testing.assert_almost_equal(variance[0, 0, :], np.array([0.00363333, 0.00079564, 0.00083943, 0.00451215]))
+
+	def test_variance_for_tilepair(self):
+		mt = m.Metric(calfile, metafits = metafits)
+		variance = mt.variance_for_tilepair((102, 104))
+		self.assertEqual(variance.shape, (1, 1, 4))
+		np.testing.assert_almost_equal(variance[0, 0, :], np.array([2.1214463e-02, 2.7344371e-20, 2.7173171e-20, 2.0473793e-02]))	
+
+	def test_variance_across_tiles(self):
+		mt = m.Metric(calfile, metafits = metafits)
+		variance = mt.variance_across_tiles()
+		self.assertEqual(variance.shape, (1, 768, 4))
+		np.testing.assert_almost_equal(variance[0, 100, :], np.array([0.00396506, 0.00106192, 0.00126686, 0.00946672]))
+
+	def test_variance_across_baselines(self):
+		mt = m.Metric(calfile, metafits = metafits)
+		var = mt.variance_across_baselines(250.)
+		self.assertEqual(var.shape, (1, 768, 4))
+		np.testing.assert_almost_equal(var[0, 100, :], np.array([0., 0., 0., 0.]))
+		var = mt.variance_across_baselines(600.)
+		np.testing.assert_almost_equal(var[0, 100, :], np.array([3.83073253e-03, 1.69371562e-07, 5.45765118e-06, 1.23210255e-01]))
+
+	def test_variance_for_baselines_less_than(self):
+		mt = m.Metric(calfile, metafits = metafits)
+		bls, variances = mt.variance_for_baselines_less_than(250)
+		self.assertEqual(bls, [(103, 102)])
+		self.assertEqual(variances.shape, (1, 1, 4))
+		np.testing.assert_almost_equal(variances, np.array([[[1.20606404e-02, 2.27002206e-20, 2.50099609e-20, 1.36930794e-02]]]))
+
+	def test_skewness_across_baselines(self):
+		mt = m.Metric(calfile, metafits = metafits)
+		skewness = mt.skewness_across_baselines(600)
+		self.assertEqual(skewness.shape, (1, 4))
+		np.testing.assert_almost_equal(skewness, np.array([[0., 0., 0., 0.]]))
+
 	def test_gains_for_receiver(self):
 		mt = m.Metric(calfile, metafits = metafits)
 		tile_ids, gains = mt.gains_for_receiver(10, norm = True)
