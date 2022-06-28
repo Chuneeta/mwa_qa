@@ -3,7 +3,6 @@ from mwa_clysis import read_metafits as rm
 from mwa_clysis.data import DATA_PATH
 import unittest
 import numpy as np
-import logging
 import astropy
 import os
 
@@ -47,6 +46,11 @@ class TestCsoln(unittest.TestCase):
 		expected = np.array([-0.03619801+0.8295782j ,  0.02484267+0.00862688j,
         					0.00525203+0.00732957j,  0.23554221+0.8980131j ])
 		np.testing.assert_almost_equal(gains[0, 0, 100, :], expected)
+
+	def test_gains_shape(self):
+		c = rc.Csoln(calfile)
+		gains_shape = c.gains_shape()
+		self.assertEqual(gains_shape, (1, 3, 768, 4))
 
 	def header(self):
 		c = rc.Csoln(calfile)
@@ -129,7 +133,13 @@ class TestCsoln(unittest.TestCase):
 		np.testing.assert_almost_equal(gains_dict['Tile104'][0, 0, 100, :], expected)
 		gains_dict = c.gains_for_receiver(10, norm = False)
 		expected = np.array([-0.03619801+0.8295782j ,  0.02484267+0.00862688j,
-                    0.00525203+0.00732957j,  0.23554221+0.8980131j ])
+                    		0.00525203+0.00732957j,  0.23554221+0.8980131j ])
 		np.testing.assert_almost_equal(gains_dict['Tile104'][0, 0, 100, :], expected)
 		
-
+	def test_gains_for_tilepair(self):
+		c = rc.Csoln(calfile, metafits=metafits)
+		gains_01 = c.gains_for_tilepair((102, 104))
+		self.assertEqual(gains_01.shape, (1, 1, 768, 4))
+		expected = np.array([-6.5445423e-01-9.3961477e-01j, -3.2572828e-10-9.1925689e-11j,
+                             3.9268040e-11+9.4926615e-11j, -2.4661255e-01-1.2017220e+00j])
+		np.testing.assert_almost_equal(gains_01[0, 0, 100, :], expected)
