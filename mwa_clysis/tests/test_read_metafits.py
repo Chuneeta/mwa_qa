@@ -155,6 +155,27 @@ class TestMetafits(unittest.TestCase):
 		expected = np.array([ 415.00799561, -575.55700684,  373.37399292]) 
 		np.testing.assert_almost_equal(tile_pos[0], expected)
 
+	def test_baseline_lengths(self):
+		m = rm.Metafits(metafits, 'X')
+		baseline_lengths = m.baseline_lengths()
+		self.assertEqual(len(list(baseline_lengths.keys())), 3)
+		self.assertEqual(list(baseline_lengths.keys()), [(104, 103), (104, 102), (103, 102)])
+		self.assertEqual(list(baseline_lengths.values()), [516.6370807265803, 712.5580601060333, 207.99700000582237])
+
+	def test_get_baselines_greater_than(self):
+		m = rm.Metafits(metafits, 'X')
+		bls = m.get_baselines_greater_than(250)
+		self.assertEqual(len(list(bls.keys())), 2)
+		self.assertEqual(list(bls.keys()), [(104, 103), (104, 102)])
+		self.assertEqual(list(bls.values()), [516.6370807265803, 712.5580601060333])
+
+	def test_get_baselines_less_than(self):
+		m = rm.Metafits(metafits, 'X')
+		bls = m.get_baselines_less_than(250)
+		self.assertEqual(len(list(bls.keys())), 1)
+		self.assertEqual(list(bls.keys()), [(103, 102)])
+		self.assertEqual(list(bls.values()), [207.99700000582237])
+
 	def test_cable_flavors(self):
 		m = rm.Metafits(metafits, 'X')
 		ctypes, clengths = m._cable_flavors()
@@ -194,7 +215,6 @@ class TestMetafits(unittest.TestCase):
 		btemps = m.btemps()
 		self.assertEqual(len(btemps), 3)
 		self.assertEqual(round(float(btemps[0]), 2), 17.84)
-
 
 if __name__=='__main__':
 	unittest.main()
