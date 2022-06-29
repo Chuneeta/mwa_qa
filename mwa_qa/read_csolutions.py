@@ -18,12 +18,18 @@ class Csoln(object):
 		self.calfile = calfile
 		self.Metafits = rm.Metafits(metafits, pol)
 
-	def _read_data(self):
+	def data(self, hdu):
 		"""
-		Reads the fits file and returns the data/ gains solutions.
-		Returns a 4D array (time, tiles, freq, pol)
+		Returns the data stored in the specified HDU column of the image
+		hdu : hdu column, ranges from 0 to 5
+			  0 - the calibration solution
+			  1 - tiles information (antenna, tilename, flag)
+			  2 - chanblocks (index, freq, flag)
+			  3 - calibration results (timeblock, chan, convergence)
+			  4 - weights used for each baseline
+			  for more details refer to https://mwatelescope.github.io/mwa_hyperdrive/defs/cal_sols_hyperdrive.html
 		"""
-		return fits.open(self.calfile)[1].data
+		return fits.open(self.calfile)[hdu].data
 
 	def real(self):
 		"""
@@ -51,9 +57,10 @@ class Csoln(object):
 		"""
 		return self.gains().shape
 
-	def header(self):
+	def header(self, hdu):
 		"""
-		Reads and return the header column hdu[0]
+		Returns the header of the specified HDU column
+		- hdu : hdu column, ranges from 0 to 5
         """
 		return fits.open(self.calfile)[0].header
 
