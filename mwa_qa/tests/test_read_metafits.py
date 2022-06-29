@@ -1,14 +1,22 @@
-from mwa_clysis import read_metafits as rm
-from mwa_clysis.data import DATA_PATH
+from mwa_qa import read_metafits as rm
+from mwa_qa.data import DATA_PATH
 import unittest
 import numpy as np
 import logging
 import astropy
 import os
 
-metafits = os.path.join(DATA_PATH, 'test.metafits')
+metafits = os.path.join(DATA_PATH, 'test_1061315688.metafits')
+#metafits = os.path.join(DATA_PATH, 'test.metafits')
 hdu = astropy.io.fits.open(metafits)[1].data
 hdr = astropy.io.fits.open(metafits)[0].header
+nants = int(len(hdu) / 2)
+tiles = [hdu[i][3] for i in range(1, len(hdu), 2)]
+tilenums = [int(hdu[i][3].strip('Tile')) for i in range(1, len(hdu), 2)]
+tilepairs = []
+for i in range(nants):
+	for j in range(i + 1, nants):
+		tilepairs.append((tilenums[i], tilenums[j]))
 
 class TestMetafits(unittest.TestCase):
 	def test_init__(self):
@@ -65,27 +73,27 @@ class TestMetafits(unittest.TestCase):
 	def test_obs_time(self):
 		m = rm.Metafits(metafits, 'X')
 		obs_time = m.obs_time()
-		self.assertEqual(obs_time, '2013-08-23T17:20:00')
+		self.assertEqual(obs_time, hdr['DATE-OBS'])
 
 	def test_int_time(self):
 		m = rm.Metafits(metafits, 'X')
 		int_time = m.int_time()
-		self.assertEqual(int_time, 0.5)
+		self.assertEqual(int_time, hdr['INTTIME'])
 
 	def test_exposure(self):
 		m = rm.Metafits(metafits, 'X')
 		exposure = m.exposure()
-		self.assertEqual(exposure, 112)
+		self.assertEqual(exposure, hdr['EXPOSURE'])
 
 	def test_start_gpstime(self):
 		m = rm.Metafits(metafits, 'X')
 		start_gpstime = m.start_gpstime()
-		self.assertEqual(start_gpstime, 1061313616)
+		self.assertEqual(start_gpstime, hdr['GPSTIME'])
 
 	def test_stop_gpstime(self):
 		m = rm.Metafits(metafits, 'X')
 		stop_gpstime = m.stop_gpstime()
-		self.assertEqual(stop_gpstime, 1061313728)
+		self.assertEqual(stop_gpstime, hdr['GPSTIME'] + hdr['EXPOSURE'])
 
 	def test_eor_field(self):
 		m = rm.Metafits(metafits, 'X')
@@ -95,47 +103,49 @@ class TestMetafits(unittest.TestCase):
 	def test_az_alt(self):
 		m = rm.Metafits(metafits, 'X')
 		az_alt = m.az_alt()
-		self.assertTrue(az_alt, (90.0, 83.19119999999999))
+		self.assertTrue(az_alt, (hdr['AZIMUTH'], hdr['ALTITUDE']))
 
 	def test_ha(self):
 		m = rm.Metafits(metafits, 'X')
 		ha = m.ha()
-		self.assertEqual(ha, ' 00:30:27.04')
+		self.assertEqual(ha, hdr['HA'])
 
 	def test_lst(self):
 		m = rm.Metafits(metafits, 'X')
 		lst = m.lst()
-		self.assertEqual(lst, 348.83449394268)
+		self.assertEqual(lst, hdr['LST'])
 
 	def test_phase_centre(self):
 		m = rm.Metafits(metafits, 'X')
 		phase_centre = m.phase_centre()
-		self.assertEqual(phase_centre, (0, -27.0))
+		self.assertEqual(phase_centre, (hdr['RAPHASE'], hdr['DECPHASE']))
 
 	def test_pointing(self):
 		m = rm.Metafits(metafits, 'X')
 		pointing = m.pointing()
-		self.assertEqual(pointing, (356.2677733102371, -26.57752518599214))
+		self.assertEqual(pointing, (hdr['RA'], hdr['DEC']))
 
 	def test_delays(self):
 		m = rm.Metafits(metafits, 'X')
 		delays = m.delays()
-		self.assertEqual(delays, '0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3')
+		self.assertEqual(delays, hdr['DELAYS'])
 
 	def test_tile_ids(self):
 		m = rm.Metafits(metafits, 'X')
 		tile_ids = m.tile_ids()
-		self.assertEqual(tile_ids, ['Tile104', 'Tile103', 'Tile102'])
+		self.assertEqual(tile_ids[0:3], [hdu[0][3], hdu[2][3], hdu[4][3]])
 
-	def test_get_tile_ind(self):
+	def test_tile_ind_for(self):
 		m = rm.Metafits(metafits, 'X')
-		tile_ind = m.get_tile_ind('Tile104')
+		tile_ind = m.tile_ind_for(hdu[0][3])
 		self.assertEqual(tile_ind, 0)
+		tile_ind = m.tile_ind_for(hdu[2][3])
+		self.assertEqual(tile_ind, 1)
 
 	def test_tile_number(self):
 		m = rm.Metafits(metafits, 'X')
 		tile_numbers = m.tile_numbers()
-		self.assertEqual(tile_numbers, [104, 103, 102])
+		self.assertEqual(tile_numbers, tilenums)
 
 	def test_tile_pos(self):
 		m = rm.Metafits(metafits, 'X')
@@ -143,77 +153,77 @@ class TestMetafits(unittest.TestCase):
 		expected = np.array([[-101.52999878, -585.67498779,  375.21200562],
        						[ 415.00799561, -575.55700684,  373.37399292],
        						[ 604.56799316, -489.94299316,  372.90701294]])
-		np.testing.assert_almost_equal(tile_pos, expected)
+		np.testing.assert_almost_equal(tile_pos[0:3, :], expected)
 
-	def test_get_tile_pos(self):
+	def test_tile_pos_for(self):
 		m = rm.Metafits(metafits, 'X')
-		tile_pos = m.get_tile_pos('Tile103')
-		self.assertTrue(len(tile_pos) == 1)
-		sh = tile_pos.shape
-		self.assertTrue(sh[1] == 3)
-		self.assertTrue(type(tile_pos) == np.ndarray)
-		expected = np.array([ 415.00799561, -575.55700684,  373.37399292]) 
-		np.testing.assert_almost_equal(tile_pos[0], expected)
+		tile_pos = m.tile_pos_for('Tile103')
+		self.assertTrue(len(tile_pos) == 3)
+		np.testing.assert_almost_equal(np.array(tile_pos), np.array([ 415.00799561, -575.55700684,  373.37399292]))
 
+	def baseline_length_for(self):
+		m = rm.Metafits(metafits, 'X')
+		baseline_length = m.baseline_length_for((104, 103))
+		self.assertEqual(baseline_length, 415.00799561)
+		
 	def test_baseline_lengths(self):
 		m = rm.Metafits(metafits, 'X')
 		baseline_lengths = m.baseline_lengths()
-		self.assertEqual(len(list(baseline_lengths.keys())), 3)
-		self.assertEqual(list(baseline_lengths.keys()), [(104, 103), (104, 102), (103, 102)])
-		self.assertEqual(list(baseline_lengths.values()), [516.6370807265803, 712.5580601060333, 207.99700000582237])
+		bls = nants * (nants - 1) / 2
+		self.assertEqual(len(list(baseline_lengths.keys())), int(bls))
+		self.assertEqual(list(baseline_lengths.keys()), tilepairs)
+		self.assertEqual(baseline_lengths[(104, 103)], 516.6370807265803)
 
 	def test_get_baselines_greater_than(self):
 		m = rm.Metafits(metafits, 'X')
-		bls = m.get_baselines_greater_than(250)
-		self.assertEqual(len(list(bls.keys())), 2)
-		self.assertEqual(list(bls.keys()), [(104, 103), (104, 102)])
-		self.assertEqual(list(bls.values()), [516.6370807265803, 712.5580601060333])
+		bls = m.get_baselines_greater_than(600)
+		self.assertEqual(list(bls.keys())[0:1], [(104, 102)])
+		self.assertEqual(list(bls.values())[0:1], [712.5580601060333])
 
 	def test_get_baselines_less_than(self):
 		m = rm.Metafits(metafits, 'X')
-		bls = m.get_baselines_less_than(250)
-		self.assertEqual(len(list(bls.keys())), 1)
-		self.assertEqual(list(bls.keys()), [(103, 102)])
-		self.assertEqual(list(bls.values()), [207.99700000582237])
+		bls = m.get_baselines_less_than(600)
+		self.assertEqual(list(bls.keys())[0:1], [(104, 103)])
+		self.assertEqual(list(bls.values())[0:1], [516.6370807265803])
 
 	def test_cable_flavors(self):
 		m = rm.Metafits(metafits, 'X')
 		ctypes, clengths = m._cable_flavors()
-		self.assertTrue(len(ctypes) == 3)
-		self.assertTrue(len(clengths) == 3)
-		self.assertEqual(ctypes, ['LMR400', 'RG6', 'LMR400'])
-		self.assertEqual(clengths, [524.0, 150.0, 400.0])
+		self.assertTrue(len(ctypes) == nants)
+		self.assertTrue(len(clengths) == nants)
+		self.assertEqual(ctypes[0:3], ['LMR400', 'RG6', 'LMR400'])
+		self.assertEqual(clengths[0:3], [524.0, 150.0, 400.0])
 
-	def test_get_cable_length(self):
+	def test_cable_length_for(self):
 		m = rm.Metafits(metafits, 'X')
-		clength = m.get_cable_length('Tile103')
+		clength = m.cable_length_for('Tile103')
 		self.assertEqual(clength, 150.0) 
 
-	def test_get_cable_type(self):
+	def test_cable_type_for(self):
 		m = rm.Metafits(metafits, 'X')
-		ctype = m.get_cable_type('Tile103')
+		ctype = m.cable_type_for('Tile103')
 		self.assertEqual(ctype, 'RG6')
 
 	def test_receivers(self):
 		m = rm.Metafits(metafits, 'X')
 		receivers = m.receivers()
-		self.assertEqual(receivers, [10, 10, 10])
+		self.assertEqual(receivers[0:3], [10, 10, 10])
 
-	def test_get_receiver_for(self):
+	def test_receiver_for(self):
 		m = rm.Metafits(metafits, 'X')  
-		receiver = m.get_receiver_for('Tile103')
+		receiver = m.receiver_for('Tile103')
 		self.assertEqual(receiver, 10)
 	
-	def test_get_tiles_for_receiver(self):
+	def test_tiles_for_receiver(self):
 		m = rm.Metafits(metafits, 'X')
-		tiles = m.get_tiles_for_receiver(10)
+		tiles = m.tiles_for_receiver(10)
 		expected = np.array(['Tile104', 'Tile103', 'Tile102'])
-		self.assertTrue((tiles == expected).all())
+		self.assertTrue((tiles[0:3] == expected).all())
 	
 	def test_btemps(self):
 		m = rm.Metafits(metafits, 'X')
 		btemps = m.btemps()
-		self.assertEqual(len(btemps), 3)
+		self.assertEqual(len(btemps), nants)
 		self.assertEqual(round(float(btemps[0]), 2), 17.84)
 
 if __name__=='__main__':
