@@ -1,5 +1,5 @@
-from mwa_clysis import read_metafits as rm
-from mwa_clysis import read_csolutions as rc
+from mwa_qa import read_metafits as rm
+from mwa_qa import read_csolutions as rc
 import numpy as np
 
 class Metric(object):

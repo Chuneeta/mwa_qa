@@ -1,4 +1,4 @@
-from mwa_clysis import read_metafits as rm
+from mwa_qa import read_metafits as rm
 from collections import OrderedDict
 from astropy.io import fits
 import numpy as np
