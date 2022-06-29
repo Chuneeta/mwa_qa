@@ -190,7 +190,7 @@ class Metafits(object):
 		tile_ids = [data[i][3] for i in range(len(data))]
 		return tile_ids
 
-	def get_tile_ind(self, tile_id):
+	def tile_ind_for(self, tile_id):
 		"""
 		Returns index of the specified tile ids
 		- tile : Tile id e.g tile 104 
@@ -215,14 +215,23 @@ class Metafits(object):
 			tile_pos[i, 0], tile_pos[i, 1], tile_pos[i, 2] = data[i][9], data[i][10], data[i][11]
 		return tile_pos
 
-	def get_tile_pos(self, tile_id):
+	def tile_pos_for(self, tile_id):
 		"""
         Returns tile position (North, East, Heigth) for the given tile id
         - tile_id : Tile id e.g Tile 103
         """
 		tile_pos = self.tile_pos()
-		ind = self.get_tile_ind(tile_id)
+		ind = self.tile_ind_for(tile_id)[0]
 		return tile_pos[ind, :]
+
+	def baseline_length_for(self, tilepair):
+		"""
+		Returns length of the given baseline or tilepair
+		- tilepair : Tuple of tile numbers
+		"""
+		pos0 = self.tile_pos_for('Tile{:03g}'.format(tilepair[0]))
+		pos1 = self.tile_pos_for('Tile{:03g}'.format(tilepair[1]))
+		return np.sqrt((pos0[0] - pos1[0]) ** 2 + (pos0[1] - pos1[1]) ** 2)
 
 	def baseline_lengths(self):
 		"""
@@ -233,7 +242,8 @@ class Metafits(object):
 		baseline_dict = OrderedDict()
 		for i in range(len(tile_numbers)):
 			for j in range(i + 1, len(tile_numbers)):
-				baseline_dict[(tile_numbers[i], tile_numbers[j])] = np.sqrt((tile_pos[i, 0] - tile_pos[j, 0]) ** 2 + (tile_pos[i, 1] - tile_pos[j, 1]) ** 2)
+				baseline_dict[(tile_numbers[i], tile_numbers[j])] = self.baseline_length_for((tile_numbers[i], tile_numbers[j]))
+		
 		return baseline_dict
 
 	def get_baselines_greater_than(self, baseline_cut):
@@ -264,21 +274,21 @@ class Metafits(object):
 		clengths = [float(data[i][16].split('_')[1]) for i in range(0, len(data))]
 		return ctypes, clengths
 
-	def get_cable_length(self, tile_id):
+	def cable_length_for(self, tile_id):
 		"""
 		Returns cable length for the given tile id
 		- tile_id : Tile id e.g Tile 103
 		"""
-		ind = self.get_tile_ind(tile_id)
+		ind = self.tile_ind_for(tile_id)
 		ctype, clength = self._cable_flavors()
 		return np.array(clength)[ind]
 
-	def get_cable_type(self, tile_id):
+	def cable_type_for(self, tile_id):
 		"""
         Returns cable length for the given tile id
         - tile_id : Tile id e.g Tile 103
         """
-		ind = self.get_tile_ind(tile_id)
+		ind = self.tile_ind_for(tile_id)
 		ctype, clength = self._cable_flavors()
 		return np.array(ctype)[ind]
 
@@ -290,16 +300,16 @@ class Metafits(object):
 		receivers = [data[i][5] for i in range(0, len(data))]
 		return receivers
 
-	def get_receiver_for(self, tile_id):
+	def receiver_for(self, tile_id):
 		"""
         Returns receiver number for the given tile id
         - tile_id : Tile id e.g Tile 103
         """
 		receivers = np.array(self.receivers())
-		ind = self.get_tile_ind(tile_id)
+		ind = self.tile_ind_for(tile_id)
 		return receivers[ind]
 
-	def get_tiles_for_receiver(self, receiver):
+	def tiles_for_receiver(self, receiver):
 		"""
 		Returns tile IDs connected with the given receiver
 		- receiver : receiver number 1-16
