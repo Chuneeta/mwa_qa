@@ -9,10 +9,9 @@ import os
 #calfile = os.path.join(DATA_PATH, 'test_1061313616.fits')
 calfile = os.path.join(DATA_PATH, 'test_1061315688.fits') 
 metafits = os.path.join(DATA_PATH, 'test.metafits')
-hdu = astropy.io.fits.open(calfile)[1].data
-hdr = astropy.io.fits.open(calfile)[0].header
-exp_gains = hdu[:, :, :, ::2] + hdu[:, :, :, 1::2] * 1j
-_sh = hdu.shape
+hdu = astropy.io.fits.open(calfile)
+exp_gains = hdu[1].data[:, :, :, ::2] + hdu[1].data[:, :, :, 1::2] * 1j
+_sh = hdu[1].data.shape
 
 class TestCsoln(unittest.TestCase):
 	def test_init__(self):
@@ -22,25 +21,80 @@ class TestCsoln(unittest.TestCase):
 		self.assertTrue(c.calfile == calfile)
 		self.assertTrue(isinstance(c.Metafits, rm.Metafits))
 
-	def test_read_data(self):
+	def test_data_hdu1(self):
 		c = rc.Csoln(calfile)
-		data = c._read_data()
-		np.testing.assert_almost_equal(data, hdu)
-		self.assertTrue(data.shape == hdu.shape)
+		data = c.data(1)
+		self.assertTrue(data.shape == hdu[1].data.shape)
+		np.testing.assert_almost_equal(data, hdu[1].data)
+		self.assertTrue(data.shape == hdu[1].data.shape)
+		
+	def test_data_hdu2(self):
+		c = rc.Csoln(calfile)
+		data = c.data(2)
+		self.assertTrue(data.shape == hdu[2].data.shape)
+		self.assertTrue((data == hdu[2].data).all())
+
+	def test_data_hdu3(self):
+		c = rc.Csoln(calfile)
+		data = c.data(3)
+		self.assertTrue(data.shape == hdu[3].data.shape)
+		self.assertTrue((data == hdu[3].data).all())
+
+	def test_data_hdu4(self):
+		c = rc.Csoln(calfile)
+		data = c.data(4)
+		self.assertTrue(data.shape == hdu[4].data.shape)
+		np.testing.assert_almost_equal(np.array(data), np.array(hdu[4].data))
+
+	def test_data_hdu5(self):
+		c = rc.Csoln(calfile)
+		data = c.data(5)
+		self.assertTrue(data.shape == hdu[5].data.shape)
+		np.testing.assert_almost_equal(np.array(data), np.array(hdu[5].data))
+
+	def header_hdu0(self):
+		c = rc.Csoln(calfile)
+		cal_hdr = c.header(0)
+		self.assertEqual(cal_hdr, hdu[0].header)
+
+	def header_hdu1(self):
+		c = rc.Csoln(calfile)
+		cal_hdr = c.header(1)
+		self.assertEqual(cal_hdr, hdu[1].header)
+
+	def header_hdu2(self):
+		c = rc.Csoln(calfile)
+		cal_hdr = c.header(2)
+		self.assertEqual(cal_hdr, hdu[2].header)
+
+	def header_hdu3(self):
+		c = rc.Csoln(calfile)
+		cal_hdr = c.header(3)
+		self.assertEqual(cal_hdr, hdu[3].header)
+
+	def header_hdu4(self):
+		c = rc.Csoln(calfile)
+		cal_hdr = c.header(4)
+		self.assertEqual(cal_hdr, hdu[4].header)
+
+	def header_hdu5(self):
+		c = rc.Csoln(calfile)
+		cal_hdr = c.header(5)
+		self.assertEqual(cal_hdr, hdu[5].header)
 
 	def test_real(self):
 		c = rc.Csoln(calfile)
-		real_part = c.real()
+		real_part = c.gains_real()
 		self.assertEqual(real_part.shape, (_sh[0], _sh[1], _sh[2], 4))
 		#expected = np.array([-0.03619801,  0.02484267,  0.00525203,  0.23554221])
-		np.testing.assert_almost_equal(real_part[0, 0, 100, :], hdu[:, :, :, ::2][0, 0, 100, :])
+		np.testing.assert_almost_equal(real_part[0, 0, 100, :], hdu[1].data[:, :, :, ::2][0, 0, 100, :])
 		
 	def test_imag(self):
 		c = rc.Csoln(calfile)
-		imag_part = c.imag()
+		imag_part = c.gains_imag()
 		self.assertEqual(imag_part.shape, (_sh[0], _sh[1], _sh[2], 4))
 		#expected = np.array([0.8295782 , 0.00862688, 0.00732957, 0.8980131 ])
-		np.testing.assert_almost_equal(hdu[0, 0, 100, 1::2], hdu[:, :, :, 1::2][0, 0, 100, :])
+		np.testing.assert_almost_equal(imag_part[0, 0, 100, :], hdu[1].data[:, :, :, 1::2][0, 0, 100, :])
 
 	def test_gains(self):
 		c = rc.Csoln(calfile)
@@ -55,13 +109,8 @@ class TestCsoln(unittest.TestCase):
 		gains_shape = c.gains_shape()
 		self.assertEqual(gains_shape, (_sh[0], _sh[1], _sh[2], 4))
 
-	def header(self):
-		c = rc.Csoln(calfile)
-		cal_hdr = c.header()
-		self.assertEqual(cal_hdr, hdr)
-
 """
-	def test_check_ref_tile_data(self):
+	def test_check_ref_tile_c = rc.Csoln(calfile)data(self):
 		c = rc.Csoln(calfile, metafits=metafits)
 		with self.assertRaises(Exception):
 			self_check_ref_tile_data(2)
