@@ -7,6 +7,7 @@ import astropy
 import os
 
 calfile = os.path.join(DATA_PATH, 'test_1061315688.fits') 
+calfile = '/Users/ridhima/Documents/mwa/calibration/testing/hypsols_1061315688.fits'
 metafits = os.path.join(DATA_PATH, 'test_1061315688.metafits')
 hdu = astropy.io.fits.open(calfile)
 exp_gains = hdu[1].data[:, :, :, ::2] + hdu[1].data[:, :, :, 1::2] * 1j
@@ -43,13 +44,19 @@ class TestCsoln(unittest.TestCase):
 		c = rc.Csoln(calfile)
 		data = c.data(4)
 		self.assertTrue(data.shape == hdu[4].data.shape)
-		np.testing.assert_almost_equal(np.array(data), np.array(hdu[4].data))
+		self.assertTrue((data == hdu[4].data).all())
 
 	def test_data_hdu5(self):
 		c = rc.Csoln(calfile)
 		data = c.data(5)
 		self.assertTrue(data.shape == hdu[5].data.shape)
 		np.testing.assert_almost_equal(np.array(data), np.array(hdu[5].data))
+
+	def test_data_hdu6(self):
+		c = rc.Csoln(calfile)
+		data = c.data(6)
+		self.assertTrue(data.shape == hdu[6].data.shape)
+		np.testing.assert_almost_equal(np.array(data), np.array(hdu[6].data))
 
 	def header_hdu0(self):
 		c = rc.Csoln(calfile)
@@ -81,6 +88,11 @@ class TestCsoln(unittest.TestCase):
 		cal_hdr = c.header(5)
 		self.assertEqual(cal_hdr, hdu[5].header)
 
+	def header_hdu6(self):
+		c = rc.Csoln(calfile)
+		cal_hdr = c.header(6)
+		self.assertEqual(cal_hdr, hdu[6].header)
+
 	def test_real(self):
 		c = rc.Csoln(calfile)
 		real_part = c.gains_real()
@@ -108,13 +120,13 @@ class TestCsoln(unittest.TestCase):
 		c = rc.Csoln(calfile)
 		tile_inds, tile_ids, tile_flags = c._tile_info()
 		np.testing.assert_almost_equal(tile_inds, np.arange(0, 128))
-		expected_tile_ids = [tl[1] for tl in hdu[2].data]
+		expected_tile_ids = [tl[1] for tl in hdu[3].data]
 		self.assertEqual(expected_tile_ids, tile_ids)
 		expected_tile_flags = np.zeros((128))
 		expected_tile_flags[76] = 1
 		np.testing.assert_almost_equal(tile_flags, expected_tile_flags)
 
-	def test_gaind_ind_for(self):
+	def test_gains_ind_for(self):
 		c = rc.Csoln(calfile)
 		ind = c.gains_ind_for('Tile011')
 		self.assertTrue(ind == 0)
