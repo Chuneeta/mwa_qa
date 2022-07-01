@@ -21,12 +21,13 @@ class Csoln(object):
 	def data(self, hdu):
 		"""
 		Returns the data stored in the specified HDU column of the image
-		hdu : hdu column, ranges from 1 to 5
+		hdu : hdu column, ranges from 1 to 6
 			  1 - the calibration solution
-			  2 - tiles information (antenna, tilename, flag)
-			  3 - chanblocks (index, freq, flag)
-			  4 - calibration results (timeblock, chan, convergence)
-			  5 - weights used for each baseline
+			  2 - the start time, end time and average time
+			  3 - tiles information (antenna, tilename, flag)
+			  4 - chanblocks (index, freq, flag)
+			  5 - calibration results (timeblock, chan, convergence)
+			  6 - weights used for each baseline
 			  for more details refer to https://mwatelescope.github.io/mwa_hyperdrive/defs/cal_sols_hyperdrive.html
 		"""
 		return fits.open(self.calfile)[hdu].data
@@ -34,13 +35,14 @@ class Csoln(object):
 	def header(self, hdu):
 		"""
 		Returns the header of the specified HDU column
-		hdu : hdu column, ranges from 0 to 5
+		hdu : hdu column, ranges from 0 to 6
 			  0 - header information on the paramters used for the calibration process
               1 - header information on the calibration solutions
-              2 - header information on the tiles (antenna, tilename, flag)
-              3 - header information on the chanblocks (index, freq, flag)
-              4 - header information on the calibration results (timeblock, chan, convergence)
-              5 - header information on the weights used for each baseline
+			  2 - header information on the timeblocks
+              3 - header information on the tiles (antenna, tilename, flag)
+              4 - header information on the chanblocks (index, freq, flag)
+              5 - header information on the calibration results (timeblock, chan, convergence)
+              6 - header information on the weights used for each baseline
               for more details refer to https://mwatelescope.github.io/mwa_hyperdrive/defs/cal_sols_hyperdrive.html
         """
 		return fits.open(self.calfile)[hdu].header
@@ -75,7 +77,7 @@ class Csoln(object):
 		"""
 		Returns the info on the tiles index, tile ID and flags
 		"""
-		tiles_info = self.data(2)
+		tiles_info = self.data(3)
 		tile_inds = [tl[0] for tl in tiles_info]
 		tile_ids = [tl[1] for tl in tiles_info]
 		tile_flags = [tl[2] for tl in tiles_info]
