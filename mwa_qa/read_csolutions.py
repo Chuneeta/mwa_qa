@@ -21,35 +21,49 @@ class Csoln(object):
 	def data(self, hdu):
 		"""
 		Returns the data stored in the specified HDU column of the image
-		hdu : hdu column, ranges from 0 to 5
-			  0 - the calibration solution
-			  1 - tiles information (antenna, tilename, flag)
-			  2 - chanblocks (index, freq, flag)
-			  3 - calibration results (timeblock, chan, convergence)
-			  4 - weights used for each baseline
+		hdu : hdu column, ranges from 1 to 5
+			  1 - the calibration solution
+			  2 - tiles information (antenna, tilename, flag)
+			  3 - chanblocks (index, freq, flag)
+			  4 - calibration results (timeblock, chan, convergence)
+			  5 - weights used for each baseline
 			  for more details refer to https://mwatelescope.github.io/mwa_hyperdrive/defs/cal_sols_hyperdrive.html
 		"""
 		return fits.open(self.calfile)[hdu].data
 
-	def real(self):
+	def header(self, hdu):
+		"""
+		Returns the header of the specified HDU column
+		hdu : hdu column, ranges from 0 to 5
+			  0 - header information on the paramters used for the calibration process
+              1 - header information on the calibration solutions
+              2 - header information on the tiles (antenna, tilename, flag)
+              3 - header information on the chanblocks (index, freq, flag)
+              4 - header information on the calibration results (timeblock, chan, convergence)
+              5 - header information on the weights used for each baseline
+              for more details refer to https://mwatelescope.github.io/mwa_hyperdrive/defs/cal_sols_hyperdrive.html
+        """
+		return fits.open(self.calfile)[hdu].header
+
+	def gains_real(self):
 		"""
 		Returns the real part of the calibration solutions
 		"""
-		data = self._read_data()
-		return data[:, :, :, ::2]
+		cal_solutions = self.data(1)
+		return cal_solutions[:, :, :, ::2]
 
-	def imag(self):
+	def gains_imag(self):
 		"""
 		Returns the imaginary part of the calibration solutions
 		"""
-		data = self._read_data()
-		return data[:, :, :, 1::2]
+		cal_solutions = self.data(1)
+		return cal_solutions[:, :, :, 1::2]
 	
 	def gains(self):
 		"""
         Combines the real and imaginary parts to form the 4 polarization (xx, xy, yx and yy)
         """
-		return self.real() + self.imag() * 1j
+		return self.gains_real() + self.gains_imag() * 1j
 
 	def gains_shape(self):
 		"""
@@ -57,21 +71,35 @@ class Csoln(object):
 		"""
 		return self.gains().shape
 
-	def header(self, hdu):
+	def _tile_info(self):
 		"""
-		Returns the header of the specified HDU column
-		- hdu : hdu column, ranges from 0 to 5
-        """
-		return fits.open(self.calfile)[0].header
+		Returns the info on the tiles index, tile ID and flags
+		"""
+		tiles_info = self.data(2)
+		tile_inds = [tl[0] for tl in tiles_info]
+		tile_ids = [tl[1] for tl in tiles_info]
+		tile_flags = [tl[2] for tl in tiles_info]
+		return tile_inds, tile_ids, tile_flags
 
-	def _check_ref_tile_data(self, tile_ind):
+	def gains_ind_for(self, tile_id):
+		"""
+		Returns index of the gain solutions fot the given tile ID
+		- tile_id : Tile ID e.g Tile 103
+		"""
+		tile_inds, tile_ids, _ = self._tile_info()
+		ind = np.where(np.array(tile_ids) == tile_id)
+		return np.array(tile_inds)[ind[0]]		
+
+	def _check_ref_tile(self, tile_id):
 		"""
 		Checks if the given reference antenna is flagged due to non-convergence or any 
 		malfunctioning reports
 		- tile_ind : Index of the reference tile
 		"""
-		gains = self.gains()
-		assert not np.isnan(gains[:, tile_ind, :, :]).all(), "The specified reference antenna seems to be flagged. Choose a different reference antenna"
+		tile_inds, tile_ids, tile_flags = self._tile_info()
+		ind = self.gains_ind_for(tile_id)
+		flag = np.array(tile_flags)[ind]
+		assert flag == 0,  "{} seems to be flagged, therefore does not have calibration solutions, choose a different tile"	
 
 	def _normalized_data(self, data, ref_tile_id=None):
 		"""
@@ -81,12 +109,14 @@ class Csoln(object):
 						For example for MWA128T, the reference antennat is Tile 168
 		"""
 		if ref_tile_id is None:
-			ref_tile_ind = -1
+			_, tile_ids, _ = self._tile_info()
+			ref_ind = -1
+			ref_tile_id = tile_ids[ref_ind]
 		else:
-			ref_tile_ind = self.Metafits.get_tile_ind(ref_tile_id)[0]
-		self._check_ref_tile_data(ref_tile_ind)
+			ref_ind = self.gains_ind_for(ref_tile_id)
+		self._check_ref_tile(ref_tile_id)
 		refs = []
-		for ref in data[ref_tile_ind].reshape((-1, 2, 2)):
+		for ref in data[ref_ind].reshape((-1, 2, 2)):
 			refs.append(np.linalg.inv(ref))
 		refs = np.array(refs)
 		div_ref = []
@@ -143,18 +173,8 @@ class Csoln(object):
                  Default is set to True.
 		"""
 		gains = self._select_gains(norm = norm)
-		ind = self.Metafits.get_tile_ind(tile_id)
+		ind = self.gains_ind_for(tile_id)
 		return gains[:, ind, :, :] 
-	
-	def gains_for_receiver(self, receiver, norm=True):
-		"""
-		Returns the dictionary of gains solutions for all the tiles (8 tiles) connected to the given reciver
-		"""
-		tile_ids = self.Metafits.get_tiles_for_receiver(receiver)
-		gains_receiver = OrderedDict()
-		for tile_id in tile_ids:
-			gains_receiver[tile_id] = self.gains_for_tile(tile_id, norm = norm)
-		return gains_receiver
 
 	def gains_for_tilepair(self, tilepair, norm=True):
 		"""
@@ -165,4 +185,15 @@ class Csoln(object):
 		gains_t0 = self.gains_for_tile(tile0, norm = norm)
 		gains_t1 = self.gains_for_tile(tile1, norm = norm)
 		return gains_t0 * np.conj(gains_t1)
+	
+	def gains_for_receiver(self, receiver, norm=True):
+		"""
+		Returns the dictionary of gains solutions for all the tiles (8 tiles) connected to the given reciver
+		"""
+		assert not self.Metafits.metafits is None, "metafits file associated with this observation is required to extract the receiver information"
+		tile_ids = self.Metafits.tiles_for_receiver(receiver)
+		gains_receiver = OrderedDict()
+		for tile_id in tile_ids:
+			gains_receiver[tile_id] = self.gains_for_tile(tile_id, norm = norm)
+		return gains_receiver
 
