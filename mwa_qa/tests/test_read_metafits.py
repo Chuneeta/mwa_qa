@@ -13,6 +13,7 @@ hdr = astropy.io.fits.open(metafits)[0].header
 nants = int(len(hdu) / 2)
 tiles = [hdu[i][3] for i in range(1, len(hdu), 2)]
 tilenums = [int(hdu[i][3].strip('Tile')) for i in range(1, len(hdu), 2)]
+expected_btemps = [hdu[i][13] for i in range(1, len(hdu), 2)]
 tilepairs = []
 for i in range(nants):
 	for j in range(i + 1, nants):
@@ -224,7 +225,7 @@ class TestMetafits(unittest.TestCase):
 		m = rm.Metafits(metafits, 'X')
 		btemps = m.btemps()
 		self.assertEqual(len(btemps), nants)
-		self.assertEqual(round(float(btemps[0]), 2), 17.84)
+		np.testing.assert_almost_equal(btemps, expected_btemps)
 
 if __name__=='__main__':
 	unittest.main()
