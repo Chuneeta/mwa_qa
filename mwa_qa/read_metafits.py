@@ -243,7 +243,6 @@ class Metafits(object):
 		for i in range(len(tile_numbers)):
 			for j in range(i + 1, len(tile_numbers)):
 				baseline_dict[(tile_numbers[i], tile_numbers[j])] = self.baseline_length_for((tile_numbers[i], tile_numbers[j]))
-		
 		return baseline_dict
 
 	def get_baselines_greater_than(self, baseline_cut):
