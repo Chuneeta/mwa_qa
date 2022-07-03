@@ -73,7 +73,7 @@ class Csoln(object):
 		"""
 		return self.gains().shape
 
-	def _tile_info(self):
+	def tile_info(self):
 		"""
 		Returns the info on the tiles index, tile ID and flags
 		"""
@@ -83,12 +83,22 @@ class Csoln(object):
 		tile_flags = [tl[2] for tl in tiles_info]
 		return tile_inds, tile_ids, tile_flags
 
+	def freqs_info(self):
+		"""
+		Returns the frequency index, frequency array and frequency flags 
+		"""
+		freqs_info = self.data(4)
+		freq_inds = [fq[0] for fq in freqs_info]
+		freqs = [fq[1] for fq in freqs_info]
+		freq_flags = [fq[2] for fq in freqs_info]
+		return freq_inds, freqs, freq_flags
+
 	def gains_ind_for(self, tile_id):
 		"""
 		Returns index of the gain solutions fot the given tile ID
 		- tile_id : Tile ID e.g Tile 103
 		"""
-		tile_inds, tile_ids, _ = self._tile_info()
+		tile_inds, tile_ids, _ = self.tile_info()
 		ind = np.where(np.array(tile_ids) == tile_id)
 		return np.array(tile_inds)[ind[0]]		
 
@@ -98,7 +108,7 @@ class Csoln(object):
 		malfunctioning reports
 		- tile_ind : Index of the reference tile
 		"""
-		tile_inds, tile_ids, tile_flags = self._tile_info()
+		tile_inds, tile_ids, tile_flags = self.tile_info()
 		ind = self.gains_ind_for(tile_id)
 		flag = np.array(tile_flags)[ind]
 		assert flag == 0,  "{} seems to be flagged, therefore does not have calibration solutions, choose a different tile"	
@@ -111,7 +121,7 @@ class Csoln(object):
 						For example for MWA128T, the reference antennat is Tile 168
 		"""
 		if ref_tile_id is None:
-			_, tile_ids, _ = self._tile_info()
+			_, tile_ids, _ = self.tile_info()
 			ref_ind = -1
 			ref_tile_id = tile_ids[ref_ind]
 		else:
