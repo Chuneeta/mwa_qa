@@ -7,7 +7,6 @@ import astropy
 import os
 
 calfile = os.path.join(DATA_PATH, 'test_1061315688.fits') 
-calfile = '/Users/ridhima/Documents/mwa/calibration/testing/hypsols_1061315688.fits'
 metafits = os.path.join(DATA_PATH, 'test_1061315688.metafits')
 hdu = astropy.io.fits.open(calfile)
 exp_gains = hdu[1].data[:, :, :, ::2] + hdu[1].data[:, :, :, 1::2] * 1j
@@ -116,9 +115,20 @@ class TestCsoln(unittest.TestCase):
 		gains_shape = c.gains_shape()
 		self.assertEqual(gains_shape, (_sh[0], _sh[1], _sh[2], 4))
 
+	def test_freq_info(self):
+		c = rc.Csoln(calfile, metafits)
+		freq_inds, freqs, freq_flags = c.freqs_info()
+		np.testing.assert_almost_equal(freq_inds, np.arange(0, 768))
+		self.assertEqual(freqs[0], 167055000.0)
+		self.assertEqual(freqs[-1], 197735000.0)
+		inds = np.where(np.array(freq_flags) == 0)
+		self.assertEqual(len(inds[0]), 648)
+		inds = np.where(np.array(freq_flags) == 1)
+		self.assertEqual(len(inds[0]), 768 - 648)
+
 	def test_tile_info(self):
 		c = rc.Csoln(calfile)
-		tile_inds, tile_ids, tile_flags = c._tile_info()
+		tile_inds, tile_ids, tile_flags = c.tile_info()
 		np.testing.assert_almost_equal(tile_inds, np.arange(0, 128))
 		expected_tile_ids = [tl[1] for tl in hdu[3].data]
 		self.assertEqual(expected_tile_ids, tile_ids)
