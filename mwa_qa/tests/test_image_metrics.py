@@ -1,16 +1,15 @@
 from mwa_qa import image_metrics as im
 from collections import OrderedDict
-from mwa_qa.data import DATA_PATH
 from astropy.io import fits
 import unittest
 import os
 import numpy as np
 
-image_xx = os.path.join(DATA_PATH, '1061315688_calibrated-XX-image.fits')
-image_xy = os.path.join(DATA_PATH, '1061315688_calibrated-XY-image.fits')
-image_yx = os.path.join(DATA_PATH, '1061315688_calibrated-XYi-image.fits')
-image_yy = os.path.join(DATA_PATH, '1061315688_calibrated-YY-image.fits')
-image_v = os.path.join(DATA_PATH, '1061315688_calibrated-V-image.fits')
+image_xx = '../../test_files/1061315688_calibrated-XX-image.fits'
+image_xy = '../../test_files/1061315688_calibrated-XY-image.fits'
+image_yx = '../../test_files/1061315688_calibrated-XYi-image.fits'
+image_yy = '../../test_files/1061315688_calibrated-YY-image.fits'
+image_v = '../../test_files/1061315688_calibrated-V-image.fits'
 images = [image_xx, image_xy, image_yx, image_yy, image_v]
 pols = ['XX', 'XY', 'YX', 'YY', 'V']
 hdu = fits.open(images[0])
@@ -98,7 +97,7 @@ class TestImgMetrics(unittest.TestCase):
 		m.write_to()
 		self.assertTrue(os.path.exists(outfile))
 		os.system('rm -rf {}'.format(outfile))
-		outfile = os.path.join(DATA_PATH, 'metrics.json')
+		outfile = 'metrics.json'
 		m.write_to(outfile = outfile)
 		self.assertTrue(os.path.exists(outfile))
 		os.system('rm -rf {}'.format(outfile))
