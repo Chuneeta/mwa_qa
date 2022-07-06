@@ -16,6 +16,7 @@ class TestUVfits(unittest.TestCase):
 		self.assertEqual(uvf.Ntiles, len(data1))
 		self.assertEqual(uvf.Nbls, 8128)
 		_sh = uvf._dgroup[0][5].shape
+		self.assertEqual(uvf.Ntimes, 27)
 		self.assertEqual(uvf.Nfreqs, _sh[2])
 		self.assertEqual(uvf.Npols, _sh[3])
 
