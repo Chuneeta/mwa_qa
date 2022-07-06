@@ -16,8 +16,8 @@ class VisMetrics(object):
 
 	def autos(self):
 		tile_numbers = self.uvf.tile_numbers()
-		auto_array = np.zeros((len(tile_numbers), self.uvf.Ntimes, self.uvf.Nfreqs, self.uvf.Npols), dtype=complex)
-		for i, tl in enumerate(tile_numbers[0:10]):
+		auto_array = np.zeros((len(tile_numbers), self.uvf.Ntimes, self.uvf.Nfreqs, self.uvf.Npols), dtype=np.complex64)
+		for i, tl in enumerate(tile_numbers):
 			auto_data = self.autos_for_tile(tl)
 			if len(auto_data) > 0:
 				auto_array[i, :, :, :] = auto_data
@@ -50,13 +50,13 @@ class VisMetrics(object):
 		pols = self.uvf.pols()
 		tile_numbers = self.uvf.tile_numbers()
 		for i, p in enumerate(pols):
-			for j, tn in enumerate(tile_numbers[0:10]):
-				self.metrics[p]['autos'][tn]['mean_amp_freq'] = np.nanmean(avg_autos[j, :, i])
-				self.metrics[p]['autos'][tn]['median_amp_freq'] = np.nanmedian(avg_autos[j, :, i]) 
-				self.metrics[p]['autos'][tn]['median_amp_freq'] = np.sqrt(np.nanmean(avg_autos[j, :, i] ** 2))
-				self.metrics[p]['autos'][tn]['median_amp_freq'] = np.nanmedian(avg_autos[j, :, i])
+			for j, tn in enumerate(tile_numbers):
+				self.metrics[p]['autos'][tn]['mean_amp_freq'] = np.nanmean(amps_avg_autos[j, :, i])
+				self.metrics[p]['autos'][tn]['median_amp_freq'] = np.nanmedian(amps_avg_autos[j, :, i]) 
+				self.metrics[p]['autos'][tn]['rms_amp_freq'] = np.sqrt(np.nanmean(amps_avg_autos[j, :, i] ** 2))
+				self.metrics[p]['autos'][tn]['var_amp_freq'] = np.nanvar(amps_avg_autos[j, :, i])
 
 	def write_to(self, outfile=None):
 		if outfile is None:
-			outfile = self.uvfits.replace('.uvfits', '_metrics.json')
+			outfile = self.uvfits.replace('.uvfits', '_vis_metrics.json')
 		ju.write_metrics(self.metrics, outfile)
