@@ -12,7 +12,9 @@ class UVfits(object):
 		self.Metafits = rm.Metafits(metafits = metafits, pol = pol)
 		self._dgroup = self._read_dgroup()
 		self.Ntiles = len(self._tile_info())
-		self.Nbls = len(np.unique(np.array(self.baselines())))
+		bls = self.baselines()
+		self.Nbls = len(np.unique(np.array(bls)))
+		self.Ntimes = int(len(bls) / self.Nbls)
 		self.Nfreqs = self._dgroup[0][5].shape[2]
 		self.Npols = self._dgroup[0][5].shape[3]
 
