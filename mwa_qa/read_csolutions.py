@@ -1,5 +1,6 @@
 from mwa_qa import read_metafits as rm
 from collections import OrderedDict
+from scipy import signal
 from astropy.io import fits
 import numpy as np
 import copy
@@ -209,3 +210,37 @@ class Csoln(object):
 			gains_receiver[tile_id] = self.gains_for_tile(tile_id, norm = norm)
 		return gains_receiver
 
+	def blackmanharris(self, n):
+		return signal.windows.blackmanharris(n)
+		
+	def delays(self):
+    	#Evaluates geometric delay (fourier conjugate of frequency)
+		_, freqs, _ = self.freqs_info()
+		freqs = np.array(freqs) * 1e-9
+		df = freqs[1] - freqs[0]
+		delays = np.fft.fftfreq(freqs.size, df)
+		return delays * 1e9
+
+	def _filter_nans(self, data):
+		nonans_inds = np.where(~np.isnan(data))[0]
+		nans_inds = np.where(np.isnan(data))[0]
+		return nonans_inds, nans_inds
+
+	def gains_fft(self):
+		gains = self.gains()
+		fft_data = np.zeros(gains.shape, dtype=gains.dtype)
+		_sh = gains.shape
+		_, freqs, _ = self.freqs_info()
+		window = self.blackmanharris(len(freqs))
+		for t in range(_sh[0]):
+			for i in range(_sh[1]):
+				for j in range(_sh[3]):
+					try:
+						nonans_inds, nans_inds = self._filter_nans(gains[t, i, :, j])
+						d_fft = np.fft.fft(gains[t, i, nonans_inds, j] * window[nonans_inds])
+						fft_data[t, i, nonans_inds, j] = d_fft
+						fft_data[t, i, nans_inds, j] = np.nan
+					except ValueError:
+						fft_data[t, i, :, j] = np.nan
+		return fft_data
+	
