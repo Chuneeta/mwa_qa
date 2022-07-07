@@ -202,3 +202,21 @@ class TestCsoln(unittest.TestCase):
 		self.assertEqual(list(gains_dict.keys()), ['Tile014', 'Tile013', 'Tile012', 'Tile011', 'Tile018', 'Tile017',
        'Tile016', 'Tile015'])
 		np.testing.assert_almost_equal(gains_dict['Tile014'][0, 0, 100, :], c.gains_for_tile('Tile014')[0, 0, 100, :])
+
+	def test_generate_blackmaneharris(self):
+		c = rc.Csoln(calfile)
+		n = 768
+		bm_filter = c.blackmanharris(n)
+		self.assertEqual(len(bm_filter), n)
+		expected = signal.windows.blackmanharris(n)
+		np.testing.assert_almost_equal(bm_filter, expected)
+
+	def test_delays(self):
+		c = rc.Csoln(calfile)
+		delays = c.delays()
+		self.assertEqual(len(delays), 768) 
+		self.assertEqual(np.max(delays), 12467.447916666668)
+		self.assertEqual(np.min(delays), 0.0)
+
+	def test_filter_nans(self):
+		pass
