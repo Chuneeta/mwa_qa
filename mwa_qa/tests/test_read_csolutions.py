@@ -1,6 +1,7 @@
 from mwa_qa import read_csolutions as rc
 from mwa_qa import read_metafits as rm
 from mwa_qa.data import DATA_PATH
+from scipy import signal
 import unittest
 import numpy as np
 import astropy
@@ -215,8 +216,29 @@ class TestCsoln(unittest.TestCase):
 		c = rc.Csoln(calfile)
 		delays = c.delays()
 		self.assertEqual(len(delays), 768) 
-		self.assertEqual(np.max(delays), 12467.447916666668)
-		self.assertEqual(np.min(delays), 0.0)
+		np.testing.assert_almost_equal(np.max(delays), 12467.447916666668)
+		self.assertEqual(delays[0], 0.0)
 
 	def test_filter_nans(self):
-		pass
+		c = rc.Csoln(calfile)
+		gains = c.gains()
+		nonans_inds, nans_inds = c._filter_nans(gains[0, 0, :, 0])
+		self.assertEqual(len(nonans_inds), 648)
+		self.assertEqual(len(nans_inds), 768 - 648)
+		np.testing.assert_almost_equal(nans_inds, np.array([  0,   1,  16,  30,  31,  32,  33,  48,  62,  63,  64,  65,  80,
+        													94,  95,  96,  97, 112, 126, 127, 128, 129, 144, 158, 159, 160,
+       														161, 176, 190, 191, 192, 193, 208, 222, 223, 224, 225, 240, 254,
+       														255, 256, 257, 272, 286, 287, 288, 289, 304, 318, 319, 320, 321,
+       														336, 350, 351, 352, 353, 368, 382, 383, 384, 385, 400, 414, 415,
+       														416, 417, 432, 446, 447, 448, 449, 464, 478, 479, 480, 481, 496,
+       														510, 511, 512, 513, 528, 542, 543, 544, 545, 560, 574, 575, 576,
+       														577, 592, 606, 607, 608, 609, 624, 638, 639, 640, 641, 656, 670,
+      														671, 672, 673, 688, 702, 703, 704, 705, 720, 734, 735, 736, 737,
+       														752, 766, 767]))
+
+	def test_gains_fft(self):
+		c = rc.Csoln(calfile)
+		fft_gains = c.gains_fft()
+		self.assertEqual(fft_gains.shape, (1, 128, 768, 4))
+		np.testing.assert_almost_equal(fft_gains[0, 0, 100, :], np.array([-0.56025554+0.46877677j, -0.13934061+0.03579963j,
+       															-0.02181193+0.17925411j,  0.04100561-0.41272809j]))		
