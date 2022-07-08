@@ -219,7 +219,7 @@ class Csoln(object):
 		freqs = np.array(freqs) * 1e-9
 		df = freqs[1] - freqs[0]
 		delays = np.fft.fftfreq(freqs.size, df)
-		return delays * 1e9
+		return delays
 
 	def _filter_nans(self, data):
 		nonans_inds = np.where(~np.isnan(data))[0]
