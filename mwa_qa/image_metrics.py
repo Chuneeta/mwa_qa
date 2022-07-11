@@ -4,7 +4,7 @@ from mwa_qa import image_utils as iu
 from mwa_qa import json_utils as ju
 import numpy as np
 
-pol_dict = {-5 : 'XX', -6 : 'YY', 4 : 'V'}
+pol_dict = {-5 : 'XX', -6 : 'YY', -7 : 'XY', 4 : 'V'}
 
 class ImgMetrics(object):
 	def __init__(self, images=[]):
@@ -22,8 +22,8 @@ class ImgMetrics(object):
 		self.metrics = OrderedDict()
 		self.metrics['noise_box'] = noise_box
 		pol_convs = self.pols_from_image()
-		for pc in pol_convs:
-			pol = pol_dict[pc]
+		for i, pc in enumerate(pol_convs):
+			pol = 'YX' if 'XYi' in self.images[i] else pol_dict[pc]
 			self.metrics[pol] = OrderedDict()
 		if -5 and -6 in pol_convs:
 			self.metrics['{}_{}'.format(pol_dict[-5], pol_dict[-6])] = OrderedDict()
@@ -38,7 +38,7 @@ class ImgMetrics(object):
 		pol_convs = self.pols_from_image()
 		for i , pc in enumerate(pol_convs):
 			imagename = self.images[i]
-			pol = pol_dict[pc]
+			pol = 'YX' if 'XYi' in imagename else pol_dict[pc]
 			self.metrics[pol]['imagename'] = imagename
 			self.metrics[pol]['obs-date'] = iu.header(imagename)['DATE-OBS']
 			self.metrics[pol]['mean_all'] = float(iu.mean(imagename))
