@@ -4,43 +4,48 @@ from mwa_qa import image_utils as iu
 from mwa_qa import json_utils as ju
 import numpy as np
 
+pol_dict = {-5 : 'XX', -6 : 'YY', 4 : 'V'}
+
 class ImgMetrics(object):
-	def __init__(self, images=[], pols=[]):
+	def __init__(self, images=[]):
 		self.images = images
-		self.pols = pols
 
 	def _check_object(self):
 		assert len(self.image) > 0, "At least one image should be specified"
-		assert len(self.images) == len(self.pols), "Number of pols should be the as the number of images"
-	
-	def _get_index(self, pol):
-		return np.where(np.array(self.pols) == pol)[0][0]
+		#assert len(self.images) == len(self.pols), "Number of pols should be the as the number of images"
+
+	def pols_from_image(self):
+		pol_convs = [iu.pol_convention(image) for image in self.images]
+		return pol_convs
 
 	def _initialize_metrics_dict(self, noise_box):
 		self.metrics = OrderedDict()
 		self.metrics['noise_box'] = noise_box
-		for p in self.pols:
-			self.metrics[p] = OrderedDict()
-		if ('XX' in self.pols) and ('YY' in self.pols):
-			self.metrics['XX_YY'] = OrderedDict()
-		if ('V' in self.pols) and ('XX' in self.pols):
-			self.metrics['V_XX'] = OrderedDict()
-		if ('V' in self.pols) and ('YY' in self.pols):
-			self.metrics['V_YY'] = OrderedDict()
+		pol_convs = self.pols_from_image()
+		for pc in pol_convs:
+			pol = pol_dict[pc]
+			self.metrics[pol] = OrderedDict()
+		if -5 and -6 in pol_convs:
+			self.metrics['{}_{}'.format(pol_dict[-5], pol_dict[-6])] = OrderedDict()
+		if 4 and -5 in pol_convs:
+			self.metrics['{}_{}'.format(pol_dict[4], pol_dict[-5])] = OrderedDict()
+		if 4 and -6 in pol_convs:
+			self.metrics['{}_{}'.format(pol_dict[4], pol_dict[-6])] = OrderedDict()
 
 	def run_metrics(self, noise_box=[100, 100]):
 		self._initialize_metrics_dict(noise_box)
 		keys = list(self.metrics.keys())
-		for p in self.pols:
-			ind = self._get_index(p)
-			imagename = self.images[ind]
-			self.metrics[p]['imagename'] = imagename
-			self.metrics[p]['obs-date'] = iu.header(imagename)['DATE-OBS']
-			self.metrics[p]['mean_all'] = float(iu.mean(imagename))
-			self.metrics[p]['rms_all'] = float(iu.rms(imagename))
-			self.metrics[p]['std_all'] = float(iu.std(imagename))
-			self.metrics[p]['rms_box'] = float(iu.rms_for(imagename, noise_box[0], noise_box[1]))
-			self.metrics[p]['std_box'] = float(iu.std_for(imagename, noise_box[0], noise_box[1]))
+		pol_convs = self.pols_from_image()
+		for i , pc in enumerate(pol_convs):
+			imagename = self.images[i]
+			pol = pol_dict[pc]
+			self.metrics[pol]['imagename'] = imagename
+			self.metrics[pol]['obs-date'] = iu.header(imagename)['DATE-OBS']
+			self.metrics[pol]['mean_all'] = float(iu.mean(imagename))
+			self.metrics[pol]['rms_all'] = float(iu.rms(imagename))
+			self.metrics[pol]['std_all'] = float(iu.std(imagename))
+			self.metrics[pol]['rms_box'] = float(iu.rms_for(imagename, noise_box[0], noise_box[1]))
+			self.metrics[pol]['std_box'] = float(iu.std_for(imagename, noise_box[0], noise_box[1]))
 
 		if 'XX_YY' in keys:
 			self.metrics['XX_YY']['rms_ratio_all'] = float(self.metrics['XX']['rms_all'] / self.metrics['YY']['rms_all'])
