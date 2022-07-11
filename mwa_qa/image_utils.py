@@ -12,6 +12,10 @@ def image_size(image):
 	hdr = header(image)
 	return (hdr['NAXIS1'], hdr['NAXIS2'])
 
+def pol_convention(image):
+	hdr = header(image)
+	return int(hdr['CRVAL4'])
+
 def mean(image):
 	return np.nanmean(data(image))
 
