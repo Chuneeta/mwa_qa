@@ -6,61 +6,53 @@ import os
 import numpy as np
 
 image_xx = '../../test_files/1061315688_calibrated-XX-image.fits'
-image_xy = '../../test_files/1061315688_calibrated-XY-image.fits'
-image_yx = '../../test_files/1061315688_calibrated-XYi-image.fits'
+#image_xy = '../../test_files/1061315688_calibrated-XY-image.fits'
+#image_yx = '../../test_files/1061315688_calibrated-XYi-image.fits'
 image_yy = '../../test_files/1061315688_calibrated-YY-image.fits'
 image_v = '../../test_files/1061315688_calibrated-V-image.fits'
-images = [image_xx, image_xy, image_yx, image_yy, image_v]
-pols = ['XX', 'XY', 'YX', 'YY', 'V']
+images = [image_xx, image_yy, image_v]
 hdu = fits.open(images[0])
 _d = hdu[0].data
 _sh = _d.shape
 
 class TestImgMetrics(unittest.TestCase):
 	def test_init__(self):
-		m = im.ImgMetrics(images = images, pols = pols)
+		m = im.ImgMetrics(images = images)
 		self.assertEqual(m.images, images)
-		self.assertEqual(m.pols, pols)
-		self.assertEqual(m.images[0], images[0])
 
 	def test_check_object(self):
-		m = im.ImgMetrics(images = [], pols = pols)
-		with self.assertRaises(Exception):
-			m._check_object()
-		m = im.ImgMetrics(images = images, pols = pols[0:3])
+		m = im.ImgMetrics(images = [])
 		with self.assertRaises(Exception):
 			m._check_object()
 
-	def test_get_index(self):
-		m = im.ImgMetrics(images = images, pols = pols)
-		ind = m._get_index('XX')
-		self.assertTrue(ind == 0)
+	def test_pols_from_image(self):
+		m = im.ImgMetrics(images = images)
+		pol_convs = m.pols_from_image()
+		self.assertEqual(pol_convs, [-5, -6, 4])
 
 	def test_initilaize_metrics_dict(self):
-		m = im.ImgMetrics(images = images, pols = pols)
+		m = im.ImgMetrics(images = images)
 		m._initialize_metrics_dict([40, 40])
 		self.assertTrue(m.metrics, OrderedDict)
 		keys = list(m.metrics.keys())
-		self.assertEqual(keys, ['noise_box', 'XX', 'XY', 'YX', 'YY', 'V', 'XX_YY', 'V_XX', 'V_YY']) 
+		self.assertEqual(keys, ['noise_box', 'XX', 'YY', 'V', 'XX_YY', 'V_XX', 'V_YY']) 
 
 	def test_metric_keys(self):
-		m = im.ImgMetrics(images = images, pols = pols)
+		m = im.ImgMetrics(images = images)
 		m._initialize_metrics_dict([40, 40])
 		self.assertEqual(m.metrics['noise_box'], [40, 40])
 		self.assertTrue(isinstance(m.metrics['XX'], OrderedDict))
-		self.assertTrue(isinstance(m.metrics['XY'], OrderedDict))
-		self.assertTrue(isinstance(m.metrics['YX'], OrderedDict))
 		self.assertTrue(isinstance(m.metrics['YY'], OrderedDict))
 		self.assertTrue(isinstance(m.metrics['XX_YY'], OrderedDict))
 		self.assertTrue(isinstance(m.metrics['V_XX'], OrderedDict))
 		self.assertTrue(isinstance(m.metrics['V_YY'], OrderedDict))
 
 	def test_run_metrics(self):
-		m = im.ImgMetrics(images = images, pols = pols)
+		m = im.ImgMetrics(images = images)
 		m.run_metrics()
 		dxx = fits.open(images[0])[0].data
-		dyy = fits.open(images[3])[0].data
-		dv = fits.open(images[4])[0].data
+		dyy = fits.open(images[1])[0].data
+		dv = fits.open(images[2])[0].data
 		rms_xx = np.sqrt(np.nansum(dxx[0, 0, :, :] ** 2) / (_sh[2] * _sh[3]))
 		rms_yy = np.sqrt(np.nansum(dyy[0, 0, :, :] ** 2) / (_sh[2] * _sh[3]))
 		rms_v = np.sqrt(np.nansum(dv[0, 0, :, :] ** 2) / (_sh[2] * _sh[3]))
@@ -91,7 +83,7 @@ class TestImgMetrics(unittest.TestCase):
 		np.testing.assert_almost_equal(m.metrics['V_YY']['std_ratio_box'], std_v_box / std_yy_box, decimal = 2)
 
 	def test_write_to(self):
-		m = im.ImgMetrics(images = images, pols = pols)
+		m = im.ImgMetrics(images = images)
 		m.run_metrics()
 		outfile = images[0].replace('.fits', '_metrics.json')
 		m.write_to()
