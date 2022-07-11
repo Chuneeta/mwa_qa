@@ -51,10 +51,10 @@ class VisMetrics(object):
 		tile_numbers = self.uvf.tile_numbers()
 		for i, p in enumerate(pols):
 			for j, tn in enumerate(tile_numbers):
-				self.metrics[p]['autos'][tn]['mean_amp_freq'] = np.nanmean(amps_avg_autos[j, :, i])
-				self.metrics[p]['autos'][tn]['median_amp_freq'] = np.nanmedian(amps_avg_autos[j, :, i]) 
-				self.metrics[p]['autos'][tn]['rms_amp_freq'] = np.sqrt(np.nanmean(amps_avg_autos[j, :, i] ** 2))
-				self.metrics[p]['autos'][tn]['var_amp_freq'] = np.nanvar(amps_avg_autos[j, :, i])
+				self.metrics[p]['autos'][tn]['mean_amp_freq'] = np.nanmean(amps_avg_autos[j, :, i]).tolist()
+				self.metrics[p]['autos'][tn]['median_amp_freq'] = np.nanmedian(amps_avg_autos[j, :, i]).tolist()
+				self.metrics[p]['autos'][tn]['rms_amp_freq'] = np.sqrt(np.nanmean(amps_avg_autos[j, :, i] ** 2)).tolist()
+				self.metrics[p]['autos'][tn]['var_amp_freq'] = np.nanvar(amps_avg_autos[j, :, i]).tolist()
 
 	def write_to(self, outfile=None):
 		if outfile is None:
