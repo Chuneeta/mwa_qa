@@ -107,7 +107,7 @@ class CalMetrics(object):
 				self.metrics[p][tn]['var_amp_freq'] = np.nanvar(gain_amplitudes, axis = 1).tolist() 
 				self.metrics[p][tn]['rms_amp_freq'] = np.sqrt(np.nanmean(gain_amplitudes ** 2, axis = 1)).tolist()
 			# skewness of the variance across frequency avergaed over short baselines 
-			#self.metrics[p]['var_skewness_uvcut'] = self.skewness_across_uvcut(self.metrics['uvcut'])
+			self.metrics[p]['var_skewness_uvcut'] = self.skewness_across_uvcut(self.metrics['uvcut'])
 		for r in receivers:
 				gains_rcv = self.Csoln.gains_for_receiver(r)
 				gains_rcv_amplitudes = np.abs(gains_rcv[:, :, :, i])
