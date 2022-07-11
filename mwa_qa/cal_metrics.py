@@ -1,3 +1,5 @@
+from lib2to3.pgen2.token import AMPER
+from sys import api_version
 from mwa_qa import read_metafits as rm
 from mwa_qa import read_csolutions as rc
 from mwa_qa import json_utils as ju
@@ -79,6 +81,7 @@ class CalMetrics(object):
 		tile_numbers = [int(tid.strip('Tile')) for tid in tile_ids]
 		hdr = self.Csoln.header(0)
 		pols = ['XX', 'XY', 'YX', 'YY']
+		receivers = self.get_receivers()
 		self.metrics['pols'] = pols
 		self.metrics['uvcut'] = hdr['UVW_MIN']
 		self.metrics['niter'] = hdr['MAXITER']
@@ -86,20 +89,31 @@ class CalMetrics(object):
 			self.metrics[p] = OrderedDict()
 			for j, tn in enumerate(tile_numbers):
 				self.metrics[p][tn] = OrderedDict()
-
+			for r in receivers:
+				self.metrics[p]['R{}'.format(r)] = OrderedDict()
+				self.metrics[p]['R{}'.format(r)]['Tiles'] = [int(tid.strip('Tile')) for tid in self.Metafits.tiles_for_receiver(r)]
+	
 	def run_metrics(self):
 		self._initialize_metrics_dict()
 		pols = self.metrics['pols']
-		tile_keys = list(self.metrics[pols[0]].keys())
+		_, tile_ids, tile_flags = self.Csoln.tile_info()
+		tile_numbers = [int(tid.strip('Tile')) for tid in tile_ids]
+		receivers = self.get_receivers()
 		for i, p in enumerate(pols):
-			for j, tn in enumerate(tile_keys):
+			for j, tn in enumerate(tile_numbers):
 				gain_amplitudes = self.Csoln.amplitudes()[:, j, :, i]
 				self.metrics[p][tn]['mean_amp_freq'] = np.nanmean(gain_amplitudes, axis = 1).tolist()  
 				self.metrics[p][tn]['median_amp_freq'] = np.nanmedian(gain_amplitudes, axis = 1).tolist()
 				self.metrics[p][tn]['var_amp_freq'] = np.nanvar(gain_amplitudes, axis = 1).tolist() 
 				self.metrics[p][tn]['rms_amp_freq'] = np.sqrt(np.nanmean(gain_amplitudes ** 2, axis = 1)).tolist()
 			# skewness of the variance across frequency avergaed over short baselines 
-			self.metrics[p]['var_skewness_uvcut'] = self.skewness_across_uvcut(self.metrics['uvcut'])
+			#self.metrics[p]['var_skewness_uvcut'] = self.skewness_across_uvcut(self.metrics['uvcut'])
+		for r in receivers:
+				gains_rcv = self.Csoln.gains_for_receiver(r)
+				gains_rcv_amplitudes = np.abs(gains_rcv[:, :, :, i])
+				chi_sq = np.nansum(gains_rcv_amplitudes - np.nanmean(gains_rcv_amplitudes, axis = 1)) ** 2 / np.nanmean(gains_rcv_amplitudes, axis = 0)
+				self.metrics[p]['R{}'.format(r)]['mean_chi_sq'] = np.nanmean(chi_sq, axis = 1).tolist()
+				self.metrics[p]['R{}'.format(r)]['var_chi_sq'] = np.nanvar(chi_sq, axis = 1).tolist()
 	
 	def write_to(self, outfile=None):
 		if outfile is None:
