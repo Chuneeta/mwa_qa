@@ -199,10 +199,10 @@ class TestCsoln(unittest.TestCase):
 		with self.assertRaises(Exception):
 			c.gains_for_receiver(1)
 		c = rc.Csoln(calfile, metafits = metafits)
-		gains_dict = c.gains_for_receiver(1)
-		self.assertEqual(list(gains_dict.keys()), ['Tile014', 'Tile013', 'Tile012', 'Tile011', 'Tile018', 'Tile017',
-       'Tile016', 'Tile015'])
-		np.testing.assert_almost_equal(gains_dict['Tile014'][0, 0, 100, :], c.gains_for_tile('Tile014')[0, 0, 100, :])
+		gains_array = c.gains_for_receiver(1)
+		tile_ids = c.Metafits.tiles_for_receiver(1)
+		self.assertEqual(gains_array.shape, (1, 8, 768, 4))
+		np.testing.assert_almost_equal(gains_array[0, 0, 100, :], c.gains_for_tile(tile_ids[0])[0, 0, 100, :])
 
 	def test_generate_blackmaneharris(self):
 		c = rc.Csoln(calfile)
