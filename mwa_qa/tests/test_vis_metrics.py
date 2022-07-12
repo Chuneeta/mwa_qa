@@ -44,10 +44,10 @@ class TestVisMetrics(unittest.TestCase):
 		vis = vm.VisMetrics(uvfits)
 		vis.run_metrics()
 		self.assertEqual(list(vis.metrics['XX']['autos'][11].keys()), ['mean_amp_freq', 'median_amp_freq', 'rms_amp_freq', 'var_amp_freq'])
-		self.assertEqual(vis.metrics['XX']['autos'][11]['mean_amp_freq'], 943.5318914370374)
-		self.assertEqual(vis.metrics['XX']['autos'][11]['median_amp_freq'], 885.4816159565241)
-		self.assertEqual(vis.metrics['XX']['autos'][11]['rms_amp_freq'], 967.5731931584965)
-		self.assertEqual(vis.metrics['XX']['autos'][11]['var_amp_freq'], 45945.45396017565)
+		np.testing.assert_almost_equal(vis.metrics['XX']['autos'][11]['mean_amp_freq'], 943.5318914370374, decimal = 2)
+		np.testing.assert_almost_equal(vis.metrics['XX']['autos'][11]['median_amp_freq'], 885.4816159565241, decimal = 2)
+		np.testing.assert_almost_equal(vis.metrics['XX']['autos'][11]['rms_amp_freq'], 967.5731931584965, decimal = 2)
+		np.testing.assert_almost_equal(vis.metrics['XX']['autos'][11]['var_amp_freq'], 45945.45396017565, decimal = 2)
 
 	def test_write_to(self):
 		vis = vm.VisMetrics(uvfits)
