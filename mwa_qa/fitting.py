@@ -44,4 +44,3 @@ class Fit(object):
 		
 	def polynomial_fit(self):
 		pass
-
