@@ -64,8 +64,8 @@ class Csoln(object):
 	
 	def gains(self):
 		"""
-        Combines the real and imaginary parts to form the 4 polarization (xx, xy, yx and yy)
-        """
+		Combines the real and imaginary parts to form the 4 polarization (xx, xy, yx and yy)
+		"""
 		return self.gains_real() + self.gains_imag() * 1j
 
 	def gains_shape(self):
