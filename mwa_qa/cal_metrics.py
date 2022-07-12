@@ -75,7 +75,7 @@ class CalMetrics(object):
 		cal_precisions = self.Csoln.data(5)
 		_, freqs, _ = self.Csoln.freqs_info()
 		inds = np.where(np.isnan(cal_precisions))
-		sm_cal_precisions = f.SG_filter(cal_precisions[inds[0], inds[1]], window_length, polyorder)
+		sm_cal_precisions = savgol_filter(cal_precisions[inds[0], inds[1]], window_length, polyorder)
 		return freqs[inds[1]], sm_cal_precisions
 
 	def apply_gaussian_filter1D_fft(self, data, sigma):
