@@ -1,6 +1,5 @@
 from mwa_qa import read_metafits as rm
 from mwa_qa import read_csolutions as rc
-from mwa_qa import fitting_utils as f
 from mwa_qa import json_utils as ju
 from collections import OrderedDict
 from scipy.ndimage import gaussian_filter1d
@@ -127,9 +126,9 @@ class CalMetrics(object):
 				self.metrics[p][tn]['var_amp_freq'] = np.nanvar(gain_amplitudes, axis = 1).tolist() 
 				self.metrics[p][tn]['rms_amp_freq'] = np.sqrt(np.nanmean(gain_amplitudes ** 2, axis = 1)).tolist()
 				# filtering the high-frequency component/spikes using a Gausian filter
-				sm_fft_data = self.apply_gaussian_filter1D_fft(gain_amplitudes)
+				#sm_fft_data = self.apply_gaussian_filter1D_fft(gain_amplitudes)
 			# skewness of the variance across frequency avergaed over short baselines 
-			self.metrics[p]['var_skewness_uvcut'] = self.skewness_across_uvcut(self.metrics['uvcut'])
+			#self.metrics[p]['var_skewness_uvcut'] = self.skewness_across_uvcut(self.metrics['uvcut'])
 		for r in receivers:
 				gains_rcv = self.Csoln.gains_for_receiver(r)
 				gains_rcv_amplitudes = np.abs(gains_rcv[:, :, :, i])
