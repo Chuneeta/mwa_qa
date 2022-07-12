@@ -88,7 +88,7 @@ class UVfits(object):
 		for bl in baselines:
 			tile_labels = self._decode_baseline(bl)
 			tilepairs.append((self._label_to_tile(tile_labels[0]), self._label_to_tile(tile_labels[1])))
-		return antpairs
+		return tilepairs
 
 	def uvw(self):
 		gcount = self.group_count()
@@ -113,7 +113,7 @@ class UVfits(object):
 		inds = self._indices_for_tilepair(tilepair)
 		pols = self.pols()
 		# data shape (times, freqs, pol)
-		data = np.zeros((len(inds), self.Nfreqs, self.Npols), dtype=complex)
+		data = np.zeros((len(inds), self.Nfreqs, self.Npols), dtype=np.complex128)
 		for i, ind in enumerate(inds):
 			for j, p in enumerate(pols):
 				data[i, :, j] = self._dgroup[i][5][0, 0, :, pol_dict[p], 0] + self._dgroup[i][5][0, 0, :, pol_dict[p], 1] * 1j 
