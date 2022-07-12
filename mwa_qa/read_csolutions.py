@@ -205,10 +205,12 @@ class Csoln(object):
 		"""
 		assert not self.Metafits.metafits is None, "metafits file associated with this observation is required to extract the receiver information"
 		tile_ids = self.Metafits.tiles_for_receiver(receiver)
-		gains_receiver = OrderedDict()
-		for tile_id in tile_ids:
-			gains_receiver[tile_id] = self.gains_for_tile(tile_id, norm = norm)
-		return gains_receiver
+		gains0 = self.gains_for_tile(tile_ids[0])
+		_sh = gains0.shape
+		gains_array = np.zeros((_sh[0], len(tile_ids), _sh[2], _sh[3]), dtype = gains0.dtype)
+		for i, tid in enumerate(tile_ids):
+			gains_array[:, i, :, :] = self.gains_for_tile(tid)
+		return gains_array
 
 	def blackmanharris(self, n):
 		return signal.windows.blackmanharris(n)
