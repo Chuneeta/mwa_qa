@@ -1,9 +1,10 @@
-from lib2to3.pgen2.token import AMPER
-from sys import api_version
 from mwa_qa import read_metafits as rm
 from mwa_qa import read_csolutions as rc
+from mwa_qa import fitting_utils as f
 from mwa_qa import json_utils as ju
 from collections import OrderedDict
+from scipy.ndimage import gaussian_filter1d
+from scipy.signal import savgol_filter
 import numpy as np
 
 class CalMetrics(object):
@@ -71,6 +72,23 @@ class CalMetrics(object):
 			receivers = self.Metafits.receivers()
 		return receivers
 
+	def smooth_calibration_precisions(self, window_length, polyorder):
+		cal_precisions = self.Csoln.data(5)
+		_, freqs, _ = self.Csoln.freqs_info()
+		inds = np.where(np.isnan(cal_precisions))
+		sm_cal_precisions = f.SG_filter(cal_precisions[inds[0], inds[1]], window_length, polyorder)
+		return freqs[inds[1]], sm_cal_precisions
+
+	def apply_gaussian_filter1D_fft(self, data, sigma):
+		filtered_data = np.copy(data)
+		_sh = filtered_data.shape
+		for t in range(_sh[0]):
+			inds_nnans = np.where(~np.isnan(data))[0]
+			inds_nans = np.where(np.isnan(data))[0]
+			filtered_data[t, inds_nnans] =  gaussian_filter1d(data[t, inds_nnans], sigma)
+			filtered_data[t, inds_nans] = np.nan
+		return filtered_data
+		
 	def _initialize_metrics_dict(self):
 		"""
 		Initializes the metric dictionary with some of the default parameters
@@ -83,8 +101,10 @@ class CalMetrics(object):
 		pols = ['XX', 'XY', 'YX', 'YY']
 		receivers = self.get_receivers()
 		self.metrics['pols'] = pols
+		self.metrics['obsid'] = hdr['OBSID']
 		self.metrics['uvcut'] = hdr['UVW_MIN']
 		self.metrics['niter'] = hdr['MAXITER']
+		self.metrics['freqs'] = freqs
 		for i, p in enumerate(pols):
 			self.metrics[p] = OrderedDict()
 			for j, tn in enumerate(tile_numbers):
@@ -93,7 +113,7 @@ class CalMetrics(object):
 				self.metrics[p]['R{}'.format(r)] = OrderedDict()
 				self.metrics[p]['R{}'.format(r)]['Tiles'] = [int(tid.strip('Tile')) for tid in self.Metafits.tiles_for_receiver(r)]
 	
-	def run_metrics(self):
+	def run_metrics(self, window_length=5, polyorder=4, sigma=1):
 		self._initialize_metrics_dict()
 		pols = self.metrics['pols']
 		_, tile_ids, tile_flags = self.Csoln.tile_info()
@@ -106,6 +126,8 @@ class CalMetrics(object):
 				self.metrics[p][tn]['median_amp_freq'] = np.nanmedian(gain_amplitudes, axis = 1).tolist()
 				self.metrics[p][tn]['var_amp_freq'] = np.nanvar(gain_amplitudes, axis = 1).tolist() 
 				self.metrics[p][tn]['rms_amp_freq'] = np.sqrt(np.nanmean(gain_amplitudes ** 2, axis = 1)).tolist()
+				# filtering the high-frequency component/spikes using a Gausian filter
+				sm_fft_data = self.apply_gaussian_filter1D_fft(gain_amplitudes)
 			# skewness of the variance across frequency avergaed over short baselines 
 			self.metrics[p]['var_skewness_uvcut'] = self.skewness_across_uvcut(self.metrics['uvcut'])
 		for r in receivers:
