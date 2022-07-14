@@ -10,7 +10,7 @@ image_xy = '../../test_files/1061315688_calibrated-XY-image.fits'
 image_yx = '../../test_files/1061315688_calibrated-XYi-image.fits'
 image_yy = '../../test_files/1061315688_calibrated-YY-image.fits'
 image_v = '../../test_files/1061315688_calibrated-V-image.fits'
-images = [image_xx, image_yy, image_xy, image_yx, image_v]
+images = [image_xx, image_yy, image_v]
 hdu = fits.open(images[0])
 _d = hdu[0].data
 _sh = _d.shape
@@ -28,14 +28,14 @@ class TestImgMetrics(unittest.TestCase):
 	def test_pols_from_image(self):
 		m = im.ImgMetrics(images = images)
 		pol_convs = m.pols_from_image()
-		self.assertEqual(pol_convs, [-5, -6, -7, -7, 4])
+		self.assertEqual(pol_convs, [-5, -6, 4])
 
 	def test_initilaize_metrics_dict(self):
 		m = im.ImgMetrics(images = images)
 		m._initialize_metrics_dict([40, 40])
 		self.assertTrue(m.metrics, OrderedDict)
 		keys = list(m.metrics.keys())
-		self.assertEqual(keys, ['noise_box', 'XX', 'YY', 'XY', 'YX', 'V', 'XX_YY', 'V_XX', 'V_YY']) 
+		self.assertEqual(keys, ['noise_box', 'XX', 'YY', 'V', 'XX_YY', 'V_XX', 'V_YY']) 
 
 	def test_metric_keys(self):
 		m = im.ImgMetrics(images = images)
@@ -43,8 +43,6 @@ class TestImgMetrics(unittest.TestCase):
 		self.assertEqual(m.metrics['noise_box'], [40, 40])
 		self.assertTrue(isinstance(m.metrics['XX'], OrderedDict))
 		self.assertTrue(isinstance(m.metrics['YY'], OrderedDict))
-		self.assertTrue(isinstance(m.metrics['XY'], OrderedDict))
-		self.assertTrue(isinstance(m.metrics['YX'], OrderedDict))
 		self.assertTrue(isinstance(m.metrics['XX_YY'], OrderedDict))
 		self.assertTrue(isinstance(m.metrics['V_XX'], OrderedDict))
 		self.assertTrue(isinstance(m.metrics['V_YY'], OrderedDict))
@@ -54,7 +52,7 @@ class TestImgMetrics(unittest.TestCase):
 		m.run_metrics()
 		dxx = fits.open(images[0])[0].data
 		dyy = fits.open(images[1])[0].data
-		dv = fits.open(images[4])[0].data
+		dv = fits.open(images[2])[0].data
 		rms_xx = np.sqrt(np.nansum(dxx[0, 0, :, :] ** 2) / (_sh[2] * _sh[3]))
 		rms_yy = np.sqrt(np.nansum(dyy[0, 0, :, :] ** 2) / (_sh[2] * _sh[3]))
 		rms_v = np.sqrt(np.nansum(dv[0, 0, :, :] ** 2) / (_sh[2] * _sh[3]))
