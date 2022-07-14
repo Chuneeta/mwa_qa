@@ -14,7 +14,7 @@ class Csoln(object):
 		- metafits : Metafits with extension *.metafits containing information corresponding to the observation
 					 for which the calibration solutions is derived
 		- pol : Polarization, can be either 'X' or 'Y'. It should be specified so that information associated 
-                with the given pol is provided. Default is 'X'
+				with the given pol is provided. Default is 'X'
 		"""
 		self.calfile = calfile
 		self.Metafits = rm.Metafits(metafits, pol)
@@ -38,14 +38,14 @@ class Csoln(object):
 		Returns the header of the specified HDU column
 		hdu : hdu column, ranges from 0 to 6
 			  0 - header information on the paramters used for the calibration process
-              1 - header information on the calibration solutions
+			  1 - header information on the calibration solutions
 			  2 - header information on the timeblocks
-              3 - header information on the tiles (antenna, tilename, flag)
-              4 - header information on the chanblocks (index, freq, flag)
-              5 - header information on the calibration results (timeblock, chan, convergence)
-              6 - header information on the weights used for each baseline
-              for more details refer to https://mwatelescope.github.io/mwa_hyperdrive/defs/cal_sols_hyperdrive.html
-        """
+			  3 - header information on the tiles (antenna, tilename, flag)
+			  4 - header information on the chanblocks (index, freq, flag)
+			  5 - header information on the calibration results (timeblock, chan, convergence)
+			  6 - header information on the weights used for each baseline
+			  for more details refer to https://mwatelescope.github.io/mwa_hyperdrive/defs/cal_sols_hyperdrive.html
+		"""
 		return fits.open(self.calfile)[hdu].header
 
 	def gains_real(self):
@@ -74,15 +74,24 @@ class Csoln(object):
 		"""
 		return self.gains().shape
 
-	def tile_info(self):
+	def ant_info(self):
 		"""
-		Returns the info on the tiles index, tile ID and flags
+		Returns the info on the ant induces, tile ID and flags.
+		The ant indices/ numbers start from 0 and the ant numbers start from 1 in uvfits
 		"""
-		tiles_info = self.data(3)
-		tile_inds = [tl[0] for tl in tiles_info]
-		tile_ids = [tl[1] for tl in tiles_info]
-		tile_flags = [tl[2] for tl in tiles_info]
-		return tile_inds, tile_ids, tile_flags
+		ant_info = self.data(3)
+		# added 1 to the antenna number to match those in uvfits
+		annumbers = [ant[0] for ant in ant_info]
+		annames = [ant[1] for ant in ant_info]
+		anflags = [ant[2] for ant in ant_info]
+		return annumbers, annames, anflags
+
+	def ntimeblocks(self):
+		"""
+		Returns the timeblocks of the calibration solutions
+		"""
+		d_header = self.header(1)
+		return d_header['NAXIS4']
 
 	def freqs_info(self):
 		"""
@@ -94,40 +103,39 @@ class Csoln(object):
 		freq_flags = [fq[2] for fq in freqs_info]
 		return freq_inds, freqs, freq_flags
 
-	def gains_ind_for(self, tile_id):
+	def gains_ind_for(self, antnum):
 		"""
-		Returns index of the gain solutions fot the given tile ID
-		- tile_id : Tile ID e.g Tile 103
+		Returns index of the gain solutions fot the given antenna number, indices matches the
+		antenna number in this case
+		- antnum : Antenna Number
 		"""
-		tile_inds, tile_ids, _ = self.tile_info()
-		ind = np.where(np.array(tile_ids) == tile_id)
-		return np.array(tile_inds)[ind[0]]		
+		return antnum	
 
-	def _check_ref_tile(self, tile_id):
+	def _check_refant(self, antnum):
 		"""
 		Checks if the given reference antenna is flagged due to non-convergence or any 
 		malfunctioning reports
-		- tile_ind : Index of the reference tile
+		- antnum : Antenna Number, starts from 0
 		"""
-		tile_inds, tile_ids, tile_flags = self.tile_info()
-		ind = self.gains_ind_for(tile_id)
-		flag = np.array(tile_flags)[ind]
+		annumbers, annames, anflags = self.ant_info()
+		ind = self.gains_ind_for(antnum)
+		flag = np.array(anflags)[ind]
 		assert flag == 0,  "{} seems to be flagged, therefore does not have calibration solutions, choose a different tile"	
 
-	def _normalized_data(self, data, ref_tile_id=None):
+	def _normalized_data(self, data, ref_antnum=None):
 		"""
 		Normalizes the gain solutions for each timeblock given a reference tile
 		- data : the input array of shape( tiles, freq, pols) containing the solutions
-		- ref_tile_id: Tile ID of the reference tile e.g Tile 103. Default is set to the last antenna of the telescope.
-						For example for MWA128T, the reference antennat is Tile 168
+		- ref_antnum: Antenna number for the reference antenna (starts from 1). Default is set to the last antenna of the telescope.
+						For example for MWA128T, the reference antenna is Antenna 128
 		"""
-		if ref_tile_id is None:
-			_, tile_ids, _ = self.tile_info()
+		if ref_antnum is None:
+			annumbers, annames, _ = self.ant_info()
 			ref_ind = -1
-			ref_tile_id = tile_ids[ref_ind]
+			ref_antnum = np.array(annumbers)[ref_ind]
 		else:
-			ref_ind = self.gains_ind_for(ref_tile_id)
-		self._check_ref_tile(ref_tile_id)
+			ref_ind = self.gains_ind_for(ref_antnum)
+		self._check_refant(ref_antnum)
 		refs = []
 		for ref in data[ref_ind].reshape((-1, 2, 2)):
 			refs.append(np.linalg.inv(ref))
@@ -142,7 +150,7 @@ class Csoln(object):
 		"""
 		Returns the normalized gain solutions using the given reference antenna
 		- ref_tile_id: Tile ID of the reference tile e.g Tile 103. Default is set to the last antenna of the telescope.
-                       For example for MWA128T, the reference antennat is Tile 168
+					   For example for MWA128T, the reference antennat is Tile 168
 		"""
 		gains = self.gains()
 		ngains = copy.deepcopy(gains)
@@ -164,7 +172,7 @@ class Csoln(object):
 		"""
 		Returns amplitude of the normalized gain solutions
 		- norm : boolean, If True returns normalized gains else unormalized gains.
-        		 Default is set to True.
+				 Default is set to True.
 		"""
 		gains = self._select_gains(norm = norm)
 		return np.abs(gains)
@@ -178,45 +186,44 @@ class Csoln(object):
 		gains = self._select_gains(norm = norm)
 		return np.angle(gains) * 180 / np.pi
 
-	def gains_for_tile(self, tile_id, norm=True):
+	def gains_for_antnum(self, antnum, norm=True):
 		"""
 		Returns gain solutions for the given tile ID
-		- tile_id : Tile ID e.g Tile103
+		- antnum : Antenna Number, starts from 1
 		- norm : boolean, If True returns normalized gains else unormalized gains.
-                 Default is set to True.
+				 Default is set to True.
 		"""
 		gains = self._select_gains(norm = norm)
-		ind = self.gains_ind_for(tile_id)
+		ind = self.gains_ind_for(antnum)
 		return gains[:, ind, :, :] 
 
-	def gains_for_tilepair(self, tilepair, norm=True):
+	def gains_for_antpair(self, antpair, norm=True):
 		"""
 		Evaluates conjugation of the gain solutions for antenna pair (tile0, tile1)
-		- tile_pair : tuple of tile numbers such as (11, 13)
+		- antpair : tuple of antenna numbers such as (1, 2)
 		"""
-		tile0, tile1 = 'Tile{:03g}'.format(tilepair[0]), 'Tile{:03g}'.format(tilepair[1])
-		gains_t0 = self.gains_for_tile(tile0, norm = norm)
-		gains_t1 = self.gains_for_tile(tile1, norm = norm)
+		gains_t0 = self.gains_for_antnum(antpair[0], norm = norm)
+		gains_t1 = self.gains_for_antnum(antpair[1], norm = norm)
 		return gains_t0 * np.conj(gains_t1)
 	
 	def gains_for_receiver(self, receiver, norm=True):
 		"""
-		Returns the dictionary of gains solutions for all the tiles (8 tiles) connected to the given reciver
+		Returns the dictionary of gains solutions for all the antennas (8 antennas in principles=) connected to the given reciver
 		"""
 		assert not self.Metafits.metafits is None, "metafits file associated with this observation is required to extract the receiver information"
-		tile_ids = self.Metafits.tiles_for_receiver(receiver)
-		gains0 = self.gains_for_tile(tile_ids[0])
+		annumbers = self.Metafits.annumbers_for_receiver(receiver)
+		gains0 = self.gains_for_antnum(annumbers[0])
 		_sh = gains0.shape
-		gains_array = np.zeros((_sh[0], len(tile_ids), _sh[2], _sh[3]), dtype = gains0.dtype)
-		for i, tid in enumerate(tile_ids):
-			gains_array[:, i, :, :] = self.gains_for_tile(tid)
+		gains_array = np.zeros((_sh[0], len(annumbers), _sh[1], _sh[2]), dtype = gains0.dtype)
+		for i, an in enumerate(annumbers):
+			gains_array[:, i, :, :] = self.gains_for_antnum(an)
 		return gains_array
 
 	def blackmanharris(self, n):
 		return signal.windows.blackmanharris(n)
 		
 	def delays(self):
-    	#Evaluates geometric delay (fourier conjugate of frequency)
+		#Evaluates geometric delay (fourier conjugate of frequency)
 		_, freqs, _ = self.freqs_info()
 		freqs = np.array(freqs) * 1e-9
 		df = freqs[1] - freqs[0]
