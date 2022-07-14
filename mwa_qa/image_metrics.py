@@ -38,7 +38,7 @@ class ImgMetrics(object):
 		pol_convs = self.pols_from_image()
 		for i , pc in enumerate(pol_convs):
 			imagename = self.images[i]
-			pol = 'YX' if 'XYi' in imagename else pol_dict[pc]
+			pol = pol_dict[pc]
 			self.metrics[pol]['imagename'] = imagename
 			self.metrics[pol]['obs-date'] = iu.header(imagename)['DATE-OBS']
 			self.metrics[pol]['mean_all'] = float(iu.mean(imagename))
