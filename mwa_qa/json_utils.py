@@ -1,4 +1,15 @@
 import json
+import numpy as np
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
 
 def write_metrics(metrics, filename):
 	"""
@@ -9,7 +20,7 @@ def write_metrics(metrics, filename):
 	if filename.split('.')[-1] != 'json':
 		filename += '.json'		
 	with open(filename, 'w') as outfile:
-		json.dump(metrics, outfile, indent = 4)
+		json.dump(metrics, outfile, indent=4, cls=NpEncoder)
 
 def load_metrics(filename, filetype='json'):
 	pass
