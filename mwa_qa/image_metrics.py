@@ -3,6 +3,9 @@ from mwa_qa import image_utils as iu
 from mwa_qa import json_utils as ju
 
 pol_dict = {-5: 'XX', -6: 'YY', -7: 'XY', 4: 'V'}
+# coordinates of PKS0023-26
+ra = 6.4549166666666675
+dec = -26.04
 
 
 class ImgMetrics(object):
@@ -33,7 +36,7 @@ class ImgMetrics(object):
             self.metrics['{}_{}'.format(
                 pol_dict[4], pol_dict[-6])] = OrderedDict()
 
-    def run_metrics(self, noise_box=[100, 100]):
+    def run_metrics(self, noise_box=[100, 100], constant=1.):
         self._initialize_metrics_dict(noise_box)
         keys = list(self.metrics.keys())
         pol_convs = self.pols_from_image()
@@ -42,45 +45,49 @@ class ImgMetrics(object):
             imagename = self.images[i]
             pol = pol_dict[pc]
             pols.append(pols)
-            self.metrics[pol]['imagename'] = imagename
-            self.metrics[pol]['obs-date'] = iu.header(imagename)['DATE-OBS']
-            self.metrics[pol]['mean_all'] = float(iu.mean(imagename))
-            self.metrics[pol]['rms_all'] = float(iu.rms(imagename))
-            self.metrics[pol]['std_all'] = float(iu.std(imagename))
-            self.metrics[pol]['rms_box'] = float(
+            self.metrics[pol]['IMAGENAME'] = imagename
+            self.metrics[pol]['OBSDATE'] = iu.header(imagename)['DATE-OBS']
+            self.metrics[pol]['MEAN_ALL'] = float(iu.mean(imagename))
+            self.metrics[pol]['RMS_ALL'] = float(iu.rms(imagename))
+            self.metrics[pol]['STD_ALL'] = float(iu.std(imagename))
+            self.metrics[pol]['RMS_BOX'] = float(
                 iu.rms_for(imagename, noise_box[0], noise_box[1]))
-            self.metrics[pol]['std_box'] = float(
+            self.metrics[pol]['STD_BOX'] = float(
                 iu.std_for(imagename, noise_box[0], noise_box[1]))
+            # flux density of PKS0023-26
+            pks_tflux = iu.pix_flux(imagename, ra, dec, constant)[
+                'GAUSS_TFLUX']
+            self.metrics[pol]['PKS0023_026'] = pks_tflux
 
         if 'XX_YY' in keys:
-            self.metrics['XX_YY']['rms_ratio_all'] = float(
-                self.metrics['XX']['rms_all'] / self.metrics['YY']['rms_all'])
-            self.metrics['XX_YY']['std_ratio_all'] = float(
-                self.metrics['XX']['std_all'] / self.metrics['YY']['std_all'])
-            self.metrics['XX_YY']['rms_ratio_box'] = float(
-                self.metrics['XX']['rms_box'] / self.metrics['YY']['rms_box'])
-            self.metrics['XX_YY']['std_ratio_box'] = float(
-                self.metrics['XX']['std_box'] / self.metrics['YY']['std_box'])
+            self.metrics['XX_YY']['RMS_RATIO_ALL'] = float(
+                self.metrics['XX']['RMS_ALL'] / self.metrics['YY']['RMS_ALL'])
+            self.metrics['XX_YY']['STD_RATIO_ALL'] = float(
+                self.metrics['XX']['STD_ALL'] / self.metrics['YY']['STD_ALL'])
+            self.metrics['XX_YY']['RMS_RATIO_BOX'] = float(
+                self.metrics['XX']['RMS_BOX'] / self.metrics['YY']['RMS_BOX'])
+            self.metrics['XX_YY']['STD_RATIO_BOX'] = float(
+                self.metrics['XX']['STD_BOX'] / self.metrics['YY']['STD_BOX'])
 
         if 'V_XX' in keys:
-            self.metrics['V_XX']['rms_ratio_all'] = float(
-                self.metrics['V']['rms_all'] / self.metrics['XX']['rms_all'])
-            self.metrics['V_XX']['std_ratio_all'] = float(
-                self.metrics['V']['std_all'] / self.metrics['XX']['std_all'])
-            self.metrics['V_XX']['rms_ratio_box'] = float(
-                self.metrics['V']['rms_box'] / self.metrics['XX']['rms_box'])
-            self.metrics['V_XX']['std_ratio_box'] = float(
-                self.metrics['V']['std_box'] / self.metrics['XX']['std_box'])
+            self.metrics['V_XX']['RMS_RATIO_ALL'] = float(
+                self.metrics['V']['RMS_ALL'] / self.metrics['XX']['RMS_ALL'])
+            self.metrics['V_XX']['STD_RATIO_ALL'] = float(
+                self.metrics['V']['STD_ALL'] / self.metrics['XX']['STD_ALL'])
+            self.metrics['V_XX']['RMS_RATIO_BOX'] = float(
+                self.metrics['V']['RMS_BOX'] / self.metrics['XX']['RMS_BOX'])
+            self.metrics['V_XX']['STD_RATIO_BOX'] = float(
+                self.metrics['V']['STD_BOX'] / self.metrics['XX']['STD_BOX'])
 
         if 'V_YY' in keys:
-            self.metrics['V_YY']['rms_ratio_all'] = float(
-                self.metrics['V']['rms_all'] / self.metrics['YY']['rms_all'])
-            self.metrics['V_YY']['std_ratio_all'] = float(
-                self.metrics['V']['std_all'] / self.metrics['YY']['std_all'])
-            self.metrics['V_YY']['rms_ratio_box'] = float(
-                self.metrics['V']['rms_box'] / self.metrics['YY']['rms_box'])
-            self.metrics['V_YY']['std_ratio_box'] = float(
-                self.metrics['V']['std_box'] / self.metrics['YY']['std_box'])
+            self.metrics['V_YY']['RMS_RATIO_ALL'] = float(
+                self.metrics['V']['RMS_ALL'] / self.metrics['YY']['RMS_ALL'])
+            self.metrics['V_YY']['STD_RATIO_ALL'] = float(
+                self.metrics['V']['STD_ALL'] / self.metrics['YY']['STD_ALL'])
+            self.metrics['V_YY']['RMS_RATIO_BOX'] = float(
+                self.metrics['V']['RMS_BOX'] / self.metrics['YY']['RMS_BOX'])
+            self.metrics['V_YY']['STD_RATIO_BOX'] = float(
+                self.metrics['V']['STD_BOX'] / self.metrics['YY']['STD_BOX'])
 
     def write_to(self, outfile=None):
         if outfile is None:
