@@ -108,7 +108,6 @@ def pix_flux(image, ra, dec, constant, plot=None):
     dy_px = np.abs(w.wcs.cdelt[1])
     bmaj_px = bmaj / dx_px
     bmin_px = bmin / dy_px
-    bm_radius = np.sqrt(bmaj ** 2 + bmin ** 2)
     bm_radius_px = np.sqrt(bmaj_px ** 2 + bmin_px ** 2)
     bm_area = bmaj * bmin * np.pi / 4 / np.log(2)
     px_area = dx_px * dy_px
@@ -134,19 +133,22 @@ def pix_flux(image, ra, dec, constant, plot=None):
         gauss_data[~select] = 0
         gauss_data = gauss_data.reshape((nxaxis, nyaxis))
         inds = np.where(gauss_data == peakval)
-        mod = models.Gaussian2D(
-            peakval, inds[1], inds[0], bmaj_px/2, bmin_px/2, theta=bpa * np.pi/180)
+        mod = models.Gaussian2D(peakval, inds[1], inds[0],
+                                bmaj_px/2, bmin_px/2,
+                                theta=bpa * np.pi/180)
         fit_p = fitting.LevMarLSQFitter()
         with warnings.catch_warnings():
             # Ignore model linearity warning from the fitter
             warnings.simplefilter('ignore')
             try:
-                mod = models.Gaussian2D(
-                    peakval, inds[1], inds[0], bmaj_px/2, bmin_px/2, theta=bpa * np.pi/180)
+                mod = models.Gaussian2D(peakval, inds[1], inds[0],
+                                        bmaj_px/2, bmin_px/2,
+                                        theta=bpa * np.pi/180)
                 gauss_mod = fit_p(mod, ll, mm, gauss_data)
             except ValueError:
-                mod = models.Gaussian2D(
-                    peakval, inds[0][1], inds[0][0], bmaj_px/2, bmin_px/2, theta=bpa * np.pi/180)
+                mod = models.Gaussian2D(peakval, inds[0][1], inds[0][0],
+                                        bmaj_px/2, bmin_px/2,
+                                        theta=bpa * np.pi/180)
                 gauss_mod = fit_p(mod, ll, mm, gauss_data)
         gauss_peak = gauss_mod.amplitude.value
         fitted_data = gauss_mod(ll, mm)
@@ -155,13 +157,13 @@ def pix_flux(image, ra, dec, constant, plot=None):
         gauss_int = np.sum(fitted_data) / bm_npx
         gauss_err = np.std(residual[select_err])
     else:
-        warnings.warn(
-            'WARNING: Right ascension or declination outside image field, therefore values are set to nan', Warning)
+        warnings.warn('WARNING: Right ascension or declination outside \
+            image field, therefore values are set to nan', Warning)
         gauss_peak, gauss_int, peakval = np.nan, np.nan, np.nan
         # plotting selected area
     if plot:
         print(ra_pix, dec_pix)
-        fig = pylab.figure()
+        pylab.figure()
         pylab.imshow(np.flipud(gauss_data))
         pylab.xlim(ra_pix - 200, ra_pix + 200)
         pylab.ylim(dec_pix - 200, dec_pix + 200)
