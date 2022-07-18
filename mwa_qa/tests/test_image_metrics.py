@@ -85,36 +85,38 @@ class TestImgMetrics(unittest.TestCase):
         std_v_box = np.sqrt(np.nansum(
             (dv[0, 0, 0:100, 0:100] - np.nanmean(_d[0, 0, 0:100, 0:100])
              ) ** 2) / (100 * 100))
-        np.testing.assert_almost_equal(m.metrics['XX']['std_all'], std_xx)
-        np.testing.assert_almost_equal(m.metrics['XX']['rms_all'], rms_xx)
-        np.testing.assert_almost_equal(m.metrics['XX']['rms_box'], rms_xx_box)
-        np.testing.assert_almost_equal(m.metrics['XX']['std_box'], std_xx_box)
+        np.testing.assert_almost_equal(m.metrics['XX']['STD_ALL'], std_xx)
+        np.testing.assert_almost_equal(m.metrics['XX']['RMS_ALL'], rms_xx)
+        np.testing.assert_almost_equal(m.metrics['XX']['RMS_BOX'], rms_xx_box)
+        np.testing.assert_almost_equal(m.metrics['XX']['STD_BOX'], std_xx_box)
         np.testing.assert_almost_equal(
-            m.metrics['XX_YY']['rms_ratio_all'], rms_xx / rms_yy)
+            m.metrics['XX']['PKS0023_026'], 10.507473433991805)
         np.testing.assert_almost_equal(
-            m.metrics['XX_YY']['std_ratio_all'], std_xx / std_yy)
+            m.metrics['XX_YY']['RMS_RATIO_ALL'], rms_xx / rms_yy)
         np.testing.assert_almost_equal(
-            m.metrics['XX_YY']['rms_ratio_box'], rms_xx_box / rms_yy_box)
+            m.metrics['XX_YY']['STD_RATIO_ALL'], std_xx / std_yy)
         np.testing.assert_almost_equal(
-            m.metrics['XX_YY']['std_ratio_box'], std_xx_box / std_yy_box,
+            m.metrics['XX_YY']['RMS_RATIO_BOX'], rms_xx_box / rms_yy_box)
+        np.testing.assert_almost_equal(
+            m.metrics['XX_YY']['STD_RATIO_BOX'], std_xx_box / std_yy_box,
             decimal=2)
         np.testing.assert_almost_equal(
-            m.metrics['V_XX']['rms_ratio_all'], rms_v / rms_xx)
+            m.metrics['V_XX']['RMS_RATIO_ALL'], rms_v / rms_xx)
         np.testing.assert_almost_equal(
-            m.metrics['V_XX']['std_ratio_all'], std_v / std_xx)
+            m.metrics['V_XX']['STD_RATIO_ALL'], std_v / std_xx)
         np.testing.assert_almost_equal(
-            m.metrics['V_XX']['rms_ratio_box'], rms_v_box / rms_xx_box)
+            m.metrics['V_XX']['RMS_RATIO_BOX'], rms_v_box / rms_xx_box)
         np.testing.assert_almost_equal(
-            m.metrics['V_XX']['std_ratio_box'], std_v_box / std_xx_box,
+            m.metrics['V_XX']['STD_RATIO_BOX'], std_v_box / std_xx_box,
             decimal=2)
         np.testing.assert_almost_equal(
-            m.metrics['V_YY']['rms_ratio_all'], rms_v / rms_yy)
+            m.metrics['V_YY']['RMS_RATIO_ALL'], rms_v / rms_yy)
         np.testing.assert_almost_equal(
-            m.metrics['V_YY']['std_ratio_all'], std_v / std_yy)
+            m.metrics['V_YY']['STD_RATIO_ALL'], std_v / std_yy)
         np.testing.assert_almost_equal(
-            m.metrics['V_YY']['rms_ratio_box'], rms_v_box / rms_yy_box)
+            m.metrics['V_YY']['RMS_RATIO_BOX'], rms_v_box / rms_yy_box)
         np.testing.assert_almost_equal(
-            m.metrics['V_YY']['std_ratio_box'], std_v_box / std_yy_box,
+            m.metrics['V_YY']['STD_RATIO_BOX'], std_v_box / std_yy_box,
             decimal=2)
         m1 = im.ImgMetrics(images=[image_v, image_xx, image_yy])
         m1.run_metrics()
