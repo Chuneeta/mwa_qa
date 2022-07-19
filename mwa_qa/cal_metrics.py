@@ -170,7 +170,7 @@ class CalMetrics(object):
         error = var - mvar
         return error, stdvar
 
-    def variance_antenna_outlier(self, pol, dev=3):
+    def variance_antenna_outliers(self, pol, dev=3):
         error, std = self._variance_antenna_stats()
         _sh = error.shape
         pol_ind = pol_dict[pol.upper()]
