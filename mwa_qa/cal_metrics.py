@@ -15,11 +15,11 @@ class CalMetrics(object):
         varaibles
         - calfile:	.fits file containing the calibration solutions
         - metafits:	Metafits with extension *.metafits or _ppds.fits
-                    containing information
+                                containing information
         - pol: 	Polarization, can be either 'X' or 'Y'. It should be
-                specified so that information associated on an
-                observation done with MWA with the given pol is provided.
-                Default is X.
+                        specified so that information associated on an
+                        observation done with MWA with the given pol is provided.
+                        Default is X.
         """
         self.calfile = calfile
         self.Csoln = rc.Csoln(calfile, metafits=metafits, pol=pol)
@@ -30,7 +30,7 @@ class CalMetrics(object):
         Returns variance across frequency for the given tile pair
         - antpair : Antenna pair or tuple of antenna numbers e.g (102, 103)
         - norm : boolean, If True returns normalized gains else unormalized
-                         gains. Default is set to True.
+                                         gains. Default is set to True.
         """
         gain_pairs = self.Csoln.gains_for_antpair(antpair, norm=norm)
         return np.nanvar(gain_pairs, axis=1)
@@ -40,9 +40,9 @@ class CalMetrics(object):
         Returns bls shorter than the specified cut and the variances calculated
         across frequency for each of the antenna pair
         - baseline_cut : Baseline cut in metres, will use only baselines
-                                         shorter than the given value
+                                                                         shorter than the given value
         - norm : boolean, If True returns normalized gains else unormalized
-                         gains. Default is set to True.
+                                         gains. Default is set to True.
         """
         baseline_dict = self.Metafits.baselines_less_than(uv_cut)
         bls = list(baseline_dict.keys())
@@ -58,9 +58,9 @@ class CalMetrics(object):
         variances averaged over baseliness shorter than the given
         uv length
         - uv_cut : Baseline cut in metres, will use only baselines shorter
-                           than the given value
+                                           than the given value
         - norm : boolean, If True returns normalized gains else unormalized
-                         gains. Default is set to True.
+                                         gains. Default is set to True.
         """
         _, variances = self.variance_for_baselines_less_than(uv_cut, norm=norm)
         vmean = np.nanmean(variances, axis=1)
@@ -73,7 +73,7 @@ class CalMetrics(object):
         """
         Returns the receivers connected to the various tiles in the array
         - n : Number of receivers in the array. Optional, enabled if
-                  metafits is not provided. Default is 16.
+                          metafits is not provided. Default is 16.
         """
         if self.Metafits.metafits is None:
             receivers = list(np.arange(1, n + 1))
@@ -115,10 +115,34 @@ class CalMetrics(object):
                 gains_fft_sm[t, i, inds_nans_yy, 1] = np.nan
         return gains_fft_sm
 
+    def flagged_baselines_percent(self):
+        bls_weights = self.Csoln.data(6)
+        inds = np.where(np.isnan(bls_weights))[0]
+        return len(inds) / len(bls_weights) * 100
+
+    def flagged_channels_percent(self):
+        _, _, ch_flags = self.Csoln.freqs_info()
+        inds = np.where(np.array(ch_flags) == 1)[0]
+        return len(inds) / len(ch_flags) * 100
+
+    def flagged_antennas_percent(self):
+        _, _, ant_flags = self.Csoln.ant_info()
+        inds = np.where(np.array(ant_flags) == 1)[0]
+        return len(inds) / len(ant_flags) * 100
+
+    def non_converging_percent(self):
+        convergence = self.Csoln.data(5)
+        _sh = convergence.shape
+        count = 0
+        for t in range(_sh[0]):
+            inds = np.where(np.isnan(convergence[t, :]))[0]
+            count += len(inds)
+        return count / (_sh[0] * _sh[1]) * 100
+
     def _initialize_metrics_dict(self):
         """
         Initializes the metric dictionary with some of the default
-                        parameters
+                                        parameters
         """
         self.metrics = OrderedDict()
         _, freqs, _ = self.Csoln.freqs_info()
@@ -140,7 +164,7 @@ class CalMetrics(object):
         self.metrics['CONVERGENCE'] = OrderedDict()
         self.metrics['DELAY_SPECTRUM'] = OrderedDict()
 
-    def run_metrics(self, window_length=11, polyorder=4, sigma=2):
+    def run_metrics(self, window_length=19, polyorder=4, sigma=2):
         self._initialize_metrics_dict()
         pols = self.metrics['POLS']
         receivers = self.metrics['RECEIVERS']
@@ -174,6 +198,10 @@ class CalMetrics(object):
         # metric from delay spectrum
         fft_spectrum = self.apply_gaussian_filter1D_fft(sigma)
         # writing metrics to json file
+        self.metrics['FLAGGED_BLS'] = self.flagged_baselines_percent()
+        self.metrics['FLAGGED_CHS'] = self.flagged_channels_percent()
+        self.metrics['FLAGGED_ANTS'] = self.flagged_antennas_percent()
+        self.metrics['NON_CONVERGED_CHS'] = self.non_converging_percent()
         self.metrics['MEAN_AMP_ANT'] = mean_amp_ant
         self.metrics['MEDIAN_AMP_ANT'] = median_amp_ant
         self.metrics['VAR_AMP_ANT'] = var_amp_ant
