@@ -6,7 +6,7 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
 import pandas as pd
 import numpy as np
-import os
+import itertools
 
 pol_dict = {'XX': 0, 'XY': 1, 'YX': 2, 'YY':	3}
 
@@ -21,9 +21,9 @@ class CalMetrics(object):
         - metafits:	Metafits with extension *.metafits or _ppds.fits
                                 containing information
         - pol: 	Polarization, can be either 'X' or 'Y'. It should be
-                        specified so that information associated on an
-                        observation done with MWA with the given pol is provided.
-                        Default is X.
+                specified so that information associated on an
+                observation done with MWA with the given pol is
+                provided. Default is X.
         """
         self.calfile = calfile
         self.Csoln = rc.Csoln(calfile, metafits=metafits, pol=pol)
@@ -32,21 +32,21 @@ class CalMetrics(object):
     def variance_for_antpair(self, antpair, norm=True):
         """
         Returns variance across frequency for the given tile pair
-        - antpair : Antenna pair or tuple of antenna numbers e.g (102, 103)
-        - norm : boolean, If True returns normalized gains else unormalized
-                                                                                                                                                                                                                                                                         gains. Default is set to True.
+        - antpair:	Antenna pair or tuple of antenna numbers
+                    e.g (102, 103)
+        - norm:		Boolean, If True returns normalized gains
+                    else unormalized gains. Default is set to True.
         """
         gain_pairs = self.Csoln.gains_for_antpair(antpair, norm=norm)
         return np.nanvar(gain_pairs, axis=1)
 
     def variance_for_baselines_less_than(self, uv_cut, norm=True):
         """
-        Returns bls shorter than the specified cut and the variances calculated
-        across frequency for each of the antenna pair
-        - baseline_cut : Baseline cut in metres, will use only baselines
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         shorter than the given value
-        - norm : boolean, If True returns normalized gains else unormalized
-                                                                                                                                                                                                                                                                         gains. Default is set to True.
+        Returns bls shorter than the specified cut and the variances
+                calculated across frequency for each of the antenna pair
+        - baseline_cut:	Baseline cut in metres, will use only baselines
+                        shorter than the given value- norm : boolean,
+                        If True returns normalized gains else unormalized
         """
         baseline_dict = self.Metafits.baselines_less_than(uv_cut)
         bls = list(baseline_dict.keys())
@@ -61,10 +61,10 @@ class CalMetrics(object):
         Evaluates the Pearson skewness 3 * (mean - median) / std across the
         variances averaged over baseliness shorter than the given
         uv length
-        - uv_cut : Baseline cut in metres, will use only baselines shorter
-                                                                                                                                                                                                                                                                           than the given value
-        - norm : boolean, If True returns normalized gains else unormalized
-                                                                                                                                                                                                                                                                         gains. Default is set to True.
+        - uv_cut:	Baseline cut in metres, will use only baselines shorter
+                    than the given value
+        - norm:		Boolean, If True returns normalized gains else unormalized
+                    gains. Default is set to True.
         """
         _, variances = self.variance_for_baselines_less_than(uv_cut, norm=norm)
         vmean = np.nanmean(variances, axis=1)
@@ -76,8 +76,8 @@ class CalMetrics(object):
     def get_receivers(self, n=16):
         """
         Returns the receivers connected to the various tiles in the array
-        - n : Number of receivers in the array. Optional, enabled if
-                                                                                                                                          metafits is not provided. Default is 16.
+        - n:	Number of receivers in the array. Optional, enabled if
+                If metafits is not provided. Default is 16.
         """
         if self.Metafits.metafits is None:
             receivers = list(np.arange(1, n + 1))
@@ -144,7 +144,6 @@ class CalMetrics(object):
         return count / (_sh[0] * _sh[1]) * 100
 
     def convergence_variance(self):
-        convergence = self.Csoln.data(5)
         return np.nanvar(self.Csoln.data(5), axis=1)
 
     def _flag_table(self):
@@ -184,10 +183,21 @@ class CalMetrics(object):
             poor_antennas.append(outliers.tolist())
             return poor_antennas
 
-    def _variance_table(self):
-        meanvar_amp_freq = np.nanmean(var_amp_freq, axis=1)
-        stdvar_amp_freq = np.nanstd(var_amp_freq, axis=1)
-        errorvar_amp_freq = var_amp_freq - meanvar_amp_freq
+    def _variance_table(self, pol):
+        var = self.metrics['VAR_AMP_FREQ']
+        error, std = self._variance_antenna_stats()
+        pol_ind = pol_dict[pol.upper()]
+        _sh = var.shape
+        _d = []
+        for i in range(_sh[1]):
+            dvar = [['ANTENNA {}'.format(
+                    i), var[t, i, pol_ind], error[t, i, pol_ind],
+                std[t, pol_ind]] for t in range(_sh[0])]
+            dvar = list(itertools.chain(*dvar))
+            _d.append(dvar)
+        columns = ['ANTENNA', 'VAR', 'ERROR', 'STD']
+        columns *= _sh[0]
+        return pd.DataFrame(data=_d, columns=columns)
 
     def _initialize_metrics_dict(self):
         """
@@ -239,7 +249,7 @@ class CalMetrics(object):
         rms_amp_freq = np.sqrt(np.nanmean(gain_amps ** 2, axis=2))
 
         # skewness across ucvut
-        skewness = self.skewness_across_uvcut(self.metrics['UVCUT'])
+        # skewness = self.skewness_across_uvcut(self.metrics['UVCUT'])
         # metrics based on antennas connected to receivers
         rcv_chisq = np.zeros((len(receivers), ntimes, 8, len(pols)))
         for i, r in enumerate(receivers):
@@ -283,9 +293,9 @@ class CalMetrics(object):
             self.metrics['HTML'] = html_link
             # create a HTML table for convergence
             df1 = self._flag_table()
-            df_html = df1.to_html(render_links=True, escape=False)
             df2 = self._convegence_table()
-
+            df3 = self._variance_table('XX')
+            df4 = self._variance_table('YY')
             with open(html_link, 'w') as f:
                 f.write('<center>'
                         + '<h1> {} </h1><br><hr>'.format(self.metrics['OBSID'])
@@ -294,6 +304,12 @@ class CalMetrics(object):
                                     justify="center") + '<be><hr>'
                         + '<h2> CALIBRAITON RESULTS </h2>' +
                         df2.to_html(index=False, border=2,
+                                    justify="center") + '<br><hr>'
+                        + '<h2> GAIN VARAIANCE - XX </h2>' +
+                        df3.to_html(index=False, border=2,
+                                    justify="center") + '<br><hr>'
+                        + '<h2> GAIN VARAIANCE - YY </h2>' +
+                        df4.to_html(index=False, border=2,
                                     justify="center") + '<br><hr>'
                         + '</center>')
 
