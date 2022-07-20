@@ -175,13 +175,13 @@ class CalMetrics(object):
         pol_ind = pol_dict[pol.upper()]
         d_error = error[:, :, pol_ind]
         d_std = std[:, pol_ind]
-        annumbers = self.Metafits.annumbers()
+        annames = self.Metafits.annames()
         poor_antennas = []
         for t in range(_sh[0]):
             inds = np.where(d_error[t, :] > dev * d_std[t])[0]
-            outliers = np.array(annumbers)[inds]
+            outliers = np.array(annames)[inds]
             poor_antennas.append(outliers.tolist())
-            return poor_antennas
+            return sorted(poor_antennas)
 
     def _variance_table(self, pol):
         var = self.metrics['VAR_AMP_FREQ']
