@@ -5,38 +5,42 @@ import numpy as np
 
 class Metafits(object):
     def __init__(self, metafits, pol):
-        """ 
-        Object takes in .metafits or metafits_pps.fits file readable by astropy 	
-        - metafits : Metafits with extension *.metafits or _ppds.fits containing information 
-                                 on an observation done with MWA,
-        - pol : Polarization, can be either 'X' or 'Y'. It should be specified so that information associated 
-                        with the given pol is provided. 
+        """
+        Object takes in .metafits or metafits_pps.fits file readable by astropy
+        - metafits: Metafits with extension *.metafits or _ppds.fits containing
+                    information on an observation done with MWA,
+        - pol:  Polarization, can be either 'X' or 'Y'. It should be specified
+                so that information associated with the given pol is provided.
         """
         self.metafits = metafits
         self.pol = pol.upper()
 
     def _read_data(self):
-        """ 
-Reads in data stored in hdu[0] column
-"""
+        """
+        Reads in data stored in hdu[0] column
+        """
         hdu = fits.open(self.metafits)
         data = hdu[1].data
         return data
 
     def _check_data(self, data):
         """
-        Checking if the metafits file has the duplicates tiles containing different polarization (East-West and North-South)
-- data : Array containing the calibration solutions and other related information
+        Checking if the metafits file has the duplicates tiles containing
+        different polarization (East-West and North-South)
         """
         data_length = len(data)
-        assert data_length % 2 == 0, "Metafits seems to missing or extra info, the length of objects does not evenly divide"
+        assert data_length % 2 == 0, "Metafits seems to missing some info, "\
+            "the length of objects does not evenly divide"
         pols = [data[i][4] for i in range(data_length)]
         pols_str, pols_ind = np.unique(pols, return_index=True)
         assert len(
-            pols_str) == 2, "Two polarizations should be specified, found only one or more than two"
+            pols_str) == 2, "Two polarizations should be specified, "\
+            "found only one or more than two"
         pols_expected = list(
             pols_str[np.array(pols_ind)]) * int(data_length / 2)
-        assert pols == pols_expected, "Metafits does not have polarization info distribution as per standard, should contain consecutive arrangement of the tile duplicates"
+        assert pols == pols_expected, "Metafits does not have polarization "\
+            "info distribution as per standard, should contain "\
+            "consecutive arrangement of the tile duplicates"
 
     def _pol_index(self, data, pol):
         # checking the first two pols
@@ -44,12 +48,13 @@ Reads in data stored in hdu[0] column
         for i in range(2):
             pols_str = np.append(pols_str, data[i][4])
         assert len(np.unique(
-            pols_str)) == 2, "the different polarization ('X', Y') should be alternate"
+            pols_str)) == 2, "the different polarization ('X', Y') should be "\
+            "alternate"
         return np.where(pols_str == pol.upper())[0]
 
     def mdata(self):
         """
-        Returns data for the specified polarization 
+        Returns data for the specified polarization
         """
         data = self._read_data()
         self._check_data(data)
@@ -60,7 +65,7 @@ Reads in data stored in hdu[0] column
             return data[1::2]
 
     def mhdr(self):
-        """ 
+        """
         Returns header stored in hdu[1] column
         """
         hdu = fits.open(self.metafits)
@@ -135,7 +140,9 @@ Reads in data stored in hdu[0] column
         elif phase_centre == (60.0, -30.0):
             eorfield = 'EoR1'
         else:
-            print('Phase_centre coordinates are not recognised within the EoR Field')
+            print(
+                'Phase_centre coordinates are not recognised within '
+                'the EoR Field')
         return eorfield
 
     def az_alt(self):
@@ -156,8 +163,9 @@ Reads in data stored in hdu[0] column
 
     def lst(self):
         """
-        Returns local sidereal time of the mid point time of the observation in hours
-        """
+        Returns local sidereal time of the mid point time of the
+                observation in hours
+                """
         mhdr = self.mhdr()
         return mhdr['LST']
 
@@ -225,15 +233,17 @@ Reads in data stored in hdu[0] column
         data = self.mdata()
         antpos = np.zeros((len(data), 3))
         for i in range(len(data)):
-            antpos[i, 0], antpos[i, 1], antpos[i,
-                                               2] = data[i][9], data[i][10], data[i][11]
+            antpos[i, 0] = data[i][9]
+            antpos[i, 1] = data[i][10]
+            antpos[i, 2] = data[i][11]
         return antpos
 
     def anpos_for(self, antnum):
         """
-Returns tile position (North, East, Heigth) for the given antenna number
-- antnum : Antenna Number, starts from 1
-"""
+        Returns tile position (North, East, Heigth) for the given antenna
+        number
+        - antnum:	Antenna Number, starts from 1
+        """
         antpos = self.anpos()
         ind = self.ind_for_annumber(antnum)
         return antpos[ind, :]
@@ -249,14 +259,15 @@ Returns tile position (North, East, Heigth) for the given antenna number
 
     def baseline_lengths(self):
         """
-        Returns dictionary of tile pairs or baseline as keys and their corresponsing lengths as values
+        Returns dictionary of tile pairs or baseline as keys and
+        their corresponding lengths as values
         """
         annumbers = self.annumbers()
-        antpos = self.anpos()
         baseline_dict = OrderedDict()
         for i in range(len(annumbers)):
             for j in range(i + 1, len(annumbers)):
-                baseline_dict[(annumbers[i], annumbers[j])] = self.baseline_length_for(
+                baseline_dict[(annumbers[i], annumbers[j])] = \
+                    self.baseline_length_for(
                     (annumbers[i], annumbers[j]))
         return baseline_dict
 
@@ -272,9 +283,9 @@ Returns tile position (North, East, Heigth) for the given antenna number
 
     def baselines_less_than(self, baseline_cut):
         """
-Returns tile pairs/ baselines less than the given cut
-- baseline_cut : Baseline length cut in metres
-"""
+        Returns tile pairs/ baselines less than the given cut
+        - baseline_cut : Baseline length cut in metres
+        """
         bls_dict = self.baseline_lengths()
         bls = {key: value for key, value in bls_dict.items() if value <
                baseline_cut}
@@ -318,9 +329,9 @@ Returns tile pairs/ baselines less than the given cut
 
     def receiver_for(self, antnum):
         """
-Returns receiver number for the given Antenna number
-- antnum : Antenna Number
-"""
+        Returns receiver number for the given Antenna number
+        - antnum : Antenna Number
+        """
         receivers = np.array(self.receivers())
         ind = self.ind_for_annumber(antnum)
         return receivers[ind]
