@@ -1,2 +1,2 @@
-# mwa_clysis
+# mwa_qa
 Analyzing MWA calibration solutions
