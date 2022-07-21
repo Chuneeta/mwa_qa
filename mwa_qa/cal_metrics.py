@@ -12,22 +12,34 @@ pol_dict = {'XX': 0, 'XY': 1, 'YX': 2, 'YY':	3}
 
 
 class CalMetrics(object):
-    def __init__(self, calfile, metafits=None, pol='X'):
+    def __init__(self, calfile, metafits=None, pol='X',
+                 norm=True, ref_antnum=None):
         """
         Object that takes in .fits containing the calibration solutions
         file readable by astropy and initializes them as global
         varaibles
         - calfile:	.fits file containing the calibration solutions
         - metafits:	Metafits with extension *.metafits or _ppds.fits
-                                containing information
+                    containing information
         - pol: 	Polarization, can be either 'X' or 'Y'. It should be
                 specified so that information associated on an
                 observation done with MWA with the given pol is
                 provided. Default is X.
+        - norm: Boolean, If True, the calibration solutions will be
+                normlaized else unnormlaized solutions will be used.
+                Default is set to True
+        - ref_antnum:   Reference antenna number. If norm is True,
+                        a reference antenna is require for normalization.
+                        By default it uses the last antenna in the array.
+                        If the last antenna is flagged, it will return
+                        an error.
         """
         self.calfile = calfile
-        self.Csoln = rc.Csoln(calfile, metafits=metafits, pol=pol)
+        self.Csoln = rc.Csoln(calfile, metafits=metafits,
+                              pol=pol, norm=norm, ref_antnum=ref_antnum)
         self.Metafits = rm.Metafits(metafits, pol)
+        self.norm = norm
+        self.ref_antnum = ref_antnum
 
     def variance_for_antpair(self, antpair, norm=True):
         """
@@ -215,6 +227,7 @@ class CalMetrics(object):
         self.metrics['OBSID'] = hdr['OBSID']
         self.metrics['UVCUT'] = hdr['UVW_MIN']
         self.metrics['NITER'] = hdr['MAXITER']
+        self.metrics['REF_ANTNUM'] = self.ref_antnum
         self.metrics['NTIMES'] = self.Csoln.ntimeblocks()
         self.metrics['FREQ_START'] = freqs[0]
         self.metrics['FREQ_WIDTH'] = freqs[1] - freqs[0]
