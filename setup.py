@@ -35,7 +35,7 @@ setup_args = {
     'package_data': {'mwa_qa': data_files},
     'install_requires': ['numpy>=1.14', 'scipy', 'astropy>3.0.0',
                          'matplotlib>=2.2', 'python_dateutil>=2.6.0',
-                         'pytest', 'itertools'],
+                         'pytest'],
     'include_package_data': True,
     'zip_safe':     False,
 }
