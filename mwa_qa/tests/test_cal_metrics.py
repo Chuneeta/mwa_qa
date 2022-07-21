@@ -65,6 +65,7 @@ class TestCalMetrics(unittest.TestCase):
         m = cm.CalMetrics(calfile)
         percent = m.non_converging_percent()
         self.assertEqual(percent, 15.625)
+
     # def test_initialize_metrics_dict(self):
     #    m = cm.CalMetrics(calfile)
     #    metrics = m._initialize_metrics_dict()
