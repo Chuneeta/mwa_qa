@@ -38,8 +38,6 @@ class CalMetrics(object):
         self.Csoln = rc.Csoln(calfile, metafits=metafits,
                               pol=pol, norm=norm, ref_antnum=ref_antnum)
         self.Metafits = rm.Metafits(metafits, pol)
-        self.norm = norm
-        self.ref_antnum = ref_antnum
 
     def variance_for_antpair(self, antpair, norm=True):
         """
@@ -227,7 +225,8 @@ class CalMetrics(object):
         self.metrics['OBSID'] = hdr['OBSID']
         self.metrics['UVCUT'] = hdr['UVW_MIN']
         self.metrics['NITER'] = hdr['MAXITER']
-        self.metrics['REF_ANTNUM'] = self.ref_antnum
+        if self.Csoln.norm:
+            self.metrics['REF_ANTNUM'] = self.Csoln.ref_antnum
         self.metrics['NTIMES'] = self.Csoln.ntimeblocks()
         self.metrics['FREQ_START'] = freqs[0]
         self.metrics['FREQ_WIDTH'] = freqs[1] - freqs[0]

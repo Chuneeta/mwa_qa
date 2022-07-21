@@ -37,7 +37,9 @@ class Csoln(object):
                 annumbers, _, _ = self.ant_info()
                 ref_antnum = annumbers[-1]
                 self.ref_antnum = ref_antnum
-                self._check_refant()
+            else:
+                self.ref_antnum = ref_antnum
+            self._check_refant()
 
     def _check_refant(self):
         """
