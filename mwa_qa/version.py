@@ -40,7 +40,8 @@ def _get_gitinfo_file(git_file=None):
         git_file = os.path.join(hera_pspec_dir, 'GIT_INFO')
 
     with open(git_file) as data_file:
-        data = [_unicode_to_str(x) for x in json.loads(data_file.read().strip())]
+        data = [_unicode_to_str(x)
+                for x in json.loads(data_file.read().strip())]
         git_origin = data[0]
         git_hash = data[1]
         git_description = data[2]
@@ -71,16 +72,16 @@ def construct_version_info():
 
     try:
         version_info['git_origin'] = _get_git_output(
-                                      ['config', '--get', 'remote.origin.url'], 
-                                      capture_stderr=True)
+            ['config', '--get', 'remote.origin.url'],
+            capture_stderr=True)
         version_info['git_hash'] = _get_git_output(
-                                      ['rev-parse', 'HEAD'], 
-                                      capture_stderr=True)
+            ['rev-parse', 'HEAD'],
+            capture_stderr=True)
         version_info['git_description'] = _get_git_output(
-                                   ['describe', '--dirty', '--tag', '--always'])
+            ['describe', '--dirty', '--tag', '--always'])
         version_info['git_branch'] = _get_git_output(
-                                      ['rev-parse', '--abbrev-ref', 'HEAD'], 
-                                      capture_stderr=True)
+            ['rev-parse', '--abbrev-ref', 'HEAD'],
+            capture_stderr=True)
     except subprocess.CalledProcessError:  # pragma: no cover
         try:
             # Check if a GIT_INFO file was created when installing package
@@ -93,25 +94,26 @@ def construct_version_info():
 
 def history_string(notes=''):
     """
-    Creates a standardized history string that all functions that write to 
+    Creates a standardized history string that all functions that write to
     disk can use. Optionally add notes.
     """
     history = '\n------------\nThis file was produced by the function ' \
-            + str(inspect.stack()[1][3]) + '()'
+        + str(inspect.stack()[1][3]) + '()'
     # inspect.stack()[1][3] is the name of the function that called this fn
-    
+
     history += ' in ' + os.path.basename(inspect.stack()[1][1]) + ' using: '
-    # inspect.stack()[1][1] is path to the file that contains the function 
+    # inspect.stack()[1][1] is path to the file that contains the function
     # that called this function
     version_info = construct_version_info()
-    
+
     for v in sorted(version_info.keys()):
         history += '\n    ' + v + ': ' + version_info[v]
-    
+
     if (notes is not None) and (notes != ''):
         history += '\n\nNotes:\n'
         history += notes
     return history + '\n------------\n'
+
 
 def print_version_info():
     """
@@ -121,6 +123,7 @@ def print_version_info():
     print('git origin = {0}'.format(git_origin))
     print('git branch = {0}'.format(git_branch))
     print('git description = {0}'.format(git_description))
+
 
 version_info = construct_version_info()
 version = version_info['version']
@@ -132,6 +135,7 @@ git_branch = version_info['git_branch']
 
 def main():
     print_version_info()
+
 
 if __name__ == '__main__':
     main()
