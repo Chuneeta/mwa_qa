@@ -112,8 +112,8 @@ class UVfits(object):
                         dtype=np.complex128)
         for i, ind in enumerate(inds):
             for j, p in enumerate(pols):
-                data[i, :, j] = self._dgroup[i][5][0, 0, :, pol_dict[p], 0]
-                + self._dgroup[i][5][0, 0, :, pol_dict[p], 1] * 1j
+                data[i, :, j] = self._dgroup[ind][5][0, 0, :, pol_dict[p], 0]
+                + self._dgroup[ind][5][0, 0, :, pol_dict[p], 1] * 1j
         return data
 
     def data_for_antpairpol(self, antpairpol):
