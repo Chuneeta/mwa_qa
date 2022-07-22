@@ -56,7 +56,7 @@ class ImgMetrics(object):
                 iu.std_for(imagename, noise_box[0], noise_box[1]))
             # flux density of PKS0023-26
             pks_tflux = iu.pix_flux(imagename, ra, dec, constant)[
-                'GAUSS_TFLUX']
+                'GAUSS_PFLUX']
             self.metrics[pol]['PKS0023_026'] = pks_tflux
 
         if 'XX_YY' in keys:
