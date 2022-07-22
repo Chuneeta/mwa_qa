@@ -135,14 +135,14 @@ class CalMetrics(object):
         return len(inds) / len(bls_weights) * 100
 
     def flagged_channels_percent(self):
-        _, _, ch_flags = self.Csoln.freqs_info()
-        inds = np.where(np.array(ch_flags) == 1)[0]
-        return len(inds) / len(ch_flags) * 100
+        chflags = self.Csoln.channel_info()['FLAG']
+        inds = np.where(np.array(chflags) == 1)[0]
+        return len(inds) / len(chflags) * 100
 
     def flagged_antennas_percent(self):
-        _, _, ant_flags = self.Csoln.ant_info()
-        inds = np.where(np.array(ant_flags) == 1)[0]
-        return len(inds) / len(ant_flags) * 100
+        anflags = self.Csoln.ant_info()['FLAG']
+        inds = np.where(np.array(anflags) == 1)[0]
+        return len(inds) / len(anflags) * 100
 
     def non_converging_percent(self):
         convergence = self.Csoln.data(5)
@@ -200,12 +200,19 @@ class CalMetrics(object):
         _sh = var.shape
         _d = []
         for i in range(_sh[1]):
+            ratios = []
+            for t in range(_sh[0]):
+                try:
+                    ratios.append(round(error[t, i, pol_ind]
+                                        / std[t, pol_ind], 2))
+                except ValueError:
+                    ratios.append(np.nan)
             dvar = [['ANTENNA {}'.format(
                     i), var[t, i, pol_ind], error[t, i, pol_ind],
-                std[t, pol_ind]] for t in range(_sh[0])]
+                std[t, pol_ind], ratios[t]] for t in range(_sh[0])]
             dvar = list(itertools.chain(*dvar))
             _d.append(dvar)
-        columns = ['ANTENNA', 'VAR', 'ERROR', 'STD']
+        columns = ['ANTENNA', 'VAR', 'ERROR', 'STD', 'RATIO']
         columns *= _sh[0]
         return pd.DataFrame(data=_d, columns=columns)
 
@@ -215,9 +222,8 @@ class CalMetrics(object):
         parameters
         """
         self.metrics = OrderedDict()
-        _, freqs, _ = self.Csoln.freqs_info()
-        annumbers, _, _ = self.Csoln.ant_info()
-        hdr = self.Csoln.header(0)
+        freqs = self.Csoln.channel_info()['FREQ']
+        hdr = self.Csoln.header('PRIMARY')
         # assuming hyperdrive outputs 4 polarizations
         pols = ['XX', 'XY', 'YX', 'YY']
         receivers = np.unique(sorted(self.get_receivers()))
@@ -231,10 +237,9 @@ class CalMetrics(object):
         self.metrics['FREQ_START'] = freqs[0]
         self.metrics['FREQ_WIDTH'] = freqs[1] - freqs[0]
         self.metrics['NFREQ'] = len(freqs)
-        self.metrics['ANNUMS'] = annumbers
         self.metrics['RECEIVERS'] = receivers.tolist()
-        self.metrics['M_THRESH'] = self.Csoln.header(0)['M_THRESH']
-        self.metrics['S_THRESH'] = self.Csoln.header(0)['S_THRESH']
+        self.metrics['M_THRESH'] = self.Csoln.header('PRIMARY')['M_THRESH']
+        self.metrics['S_THRESH'] = self.Csoln.header('PRIMARY')['S_THRESH']
         self.metrics['CONVERGENCE'] = OrderedDict()
         self.metrics['DELAY_SPECTRUM'] = OrderedDict()
         self.metrics['POOR_ANTS'] = OrderedDict()
@@ -308,6 +313,7 @@ class CalMetrics(object):
             df2 = self._convegence_table()
             df3 = self._variance_table('XX')
             df4 = self._variance_table('YY')
+            df5 = pd.concat([df3, df4], axis=1, keys=['XX', 'YY'])
             with open(html_link, 'w') as f:
                 f.write('<center>'
                         + '<h1> {} </h1><br><hr>'.format(self.metrics['OBSID'])
@@ -317,11 +323,8 @@ class CalMetrics(object):
                         + '<h2> CALIBRAITON RESULTS </h2>' +
                         df2.to_html(index=False, border=2,
                                     justify="center") + '<br><hr>'
-                        + '<h2> GAIN VARAIANCE - XX </h2>' +
-                        df3.to_html(index=False, border=2,
-                                    justify="center") + '<br><hr>'
-                        + '<h2> GAIN VARAIANCE - YY </h2>' +
-                        df4.to_html(index=False, border=2,
+                        + '<h2> GAIN VARAIANCE </h2>' +
+                        df5.to_html(index=False, border=2,
                                     justify="center") + '<br><hr>'
                         + '</center>')
 
