@@ -13,7 +13,7 @@ pol_dict = {'XX': 0, 'XY': 1, 'YX': 2, 'YY':	3}
 
 class CalMetrics(object):
     def __init__(self, calfile, metafits=None, pol='X',
-                 norm=True, ref_antnum=None):
+                 norm=False, ref_antnum=None):
         """
         Object that takes in .fits containing the calibration solutions
         file readable by astropy and initializes them as global
@@ -27,7 +27,7 @@ class CalMetrics(object):
                 provided. Default is X.
         - norm: Boolean, If True, the calibration solutions will be
                 normlaized else unnormlaized solutions will be used.
-                Default is set to True
+                Default is set to False
         - ref_antnum:   Reference antenna number. If norm is True,
                         a reference antenna is require for normalization.
                         By default it uses the last antenna in the array.
@@ -240,9 +240,8 @@ class CalMetrics(object):
         self.metrics['RECEIVERS'] = receivers.tolist()
         self.metrics['M_THRESH'] = self.Csoln.header('PRIMARY')['M_THRESH']
         self.metrics['S_THRESH'] = self.Csoln.header('PRIMARY')['S_THRESH']
-        self.metrics['CONVERGENCE'] = OrderedDict()
-        self.metrics['DELAY_SPECTRUM'] = OrderedDict()
-        self.metrics['POOR_ANTS'] = OrderedDict()
+        self.metrics['XX'] = OrderedDict()
+        self.metrics['YY'] = OrderedDict()
 
     def make_clickable(self, val):
         return f'<a target="_blank" href="{val}">{val}</a>'
@@ -255,18 +254,17 @@ class CalMetrics(object):
         ntimes = self.metrics['NTIMES']
         gain_amps = self.Csoln.amplitudes()
         # metrics across antennas
-        mean_amp_ant = np.nanmean(gain_amps, axis=1)
-        median_amp_ant = np.nanmedian(gain_amps, axis=1)
         var_amp_ant = np.nanvar(gain_amps, axis=1)
         rms_amp_ant = np.sqrt(np.nanmean(gain_amps ** 2, axis=1))
+        rmsvar_amp_ant = np.sqrt(np.nanmean(
+            np.nanmean(var_amp_ant, axis=0) ** 2, axis=0))
         # metrics amplitude across frequency
-        mean_amp_freq = np.nanmean(gain_amps, axis=2)
-        median_amp_freq = np.nanmedian(gain_amps, axis=2)
         var_amp_freq = np.nanvar(gain_amps, axis=2)
         rms_amp_freq = np.sqrt(np.nanmean(gain_amps ** 2, axis=2))
-
+        rmsvar_amp_freq = np.sqrt(np.nanmean(
+            np.nanmean(var_amp_freq, axis=0) ** 2, axis=0))
         # skewness across ucvut
-        # skewness = self.skewness_across_uvcut(self.metrics['UVCUT'])
+        skewness = self.skewness_across_uvcut(self.metrics['UVCUT'])
         # metrics based on antennas connected to receivers
         rcv_chisq = np.zeros((len(receivers), ntimes, 8, len(pols)))
         for i, r in enumerate(receivers):
@@ -275,34 +273,32 @@ class CalMetrics(object):
             rcv_amps_mean = np.nanmean(rcv_amps, axis=1)
             chisq = np.nansum(((rcv_amps - rcv_amps_mean) / rcv_amps), axis=2)
             rcv_chisq[i] = chisq
-        # metrics from convergence
-        sm_cal_precisions = self.smooth_calibration_precisions(
-            window_length=window_length, polyorder=polyorder)
-        sm_cal_error = (self.Csoln.data(5) - sm_cal_precisions) ** 2
+        mrcv_chisq = np.nanmean(np.nanmean(rcv_chisq, axis=1), axis=1)
+        vmrcv_chisq = np.nanvar(mrcv_chisq, axis=0)
         # metric from delay spectrum
-        fft_spectrum = self.apply_gaussian_filter1D_fft(sigma)
+        smfft_spectrum = self.apply_gaussian_filter1D_fft(sigma)
         # writing metrics to json file
         self.metrics['FLAGGED_BLS'] = self.flagged_baselines_percent()
         self.metrics['FLAGGED_CHS'] = self.flagged_channels_percent()
         self.metrics['FLAGGED_ANTS'] = self.flagged_antennas_percent()
         self.metrics['NON_CONVERGED_CHS'] = self.non_converging_percent()
         self.metrics['CONVERGENCE_VAR'] = self.convergence_variance()
-        self.metrics['MEAN_AMP_ANT'] = mean_amp_ant
-        self.metrics['MEDIAN_AMP_ANT'] = median_amp_ant
-        self.metrics['VAR_AMP_ANT'] = var_amp_ant
-        self.metrics['RMS_AMP_ANT'] = rms_amp_ant
-        self.metrics['MEAN_AMP_FREQ'] = mean_amp_freq
-        self.metrics['MEDIAN_AMP_FREQ'] = median_amp_freq
-        self.metrics['VAR_AMP_FREQ'] = var_amp_freq
-        self.metrics['RMS_AMP_FREQ'] = rms_amp_freq
         self.metrics['RECEIVER_CHISQ'] = rcv_chisq
-        # self.metrics['SKEWNESS_UCVUT'] = skewness
-        self.metrics['CONVERGENCE']['SM_PRECISIONS'] = sm_cal_precisions
-        self.metrics['CONVERGENCE']['SM_PRECISIONS_ERROR'] = sm_cal_error
-        self.metrics['DELAY_SPECTRUM']['DFFT'] = fft_spectrum
-        self.metrics['POOR_ANTS']['XX'] = self.variance_antenna_outliers('XX')
-        self.metrics['POOR_ANTS']['YY'] = self.variance_antenna_outliers(
-            'YY')
+        self.metrics['SKEWNESS_UCVUT'] = skewness
+        # metrics for each pols
+        for i, p in enumerate(['XX', 'YY']):
+            self.metrics[p]['AMPVAR_ANT'] = var_amp_ant[:, :, pol_dict[p]]
+            self.metrics[p]['AMPRMS_ANT'] = rms_amp_ant[:, :, pol_dict[p]]
+            self.metrics[p]['RMS_AMPVAR_ANT'] = rmsvar_amp_ant[pol_dict[p]]
+            self.metrics[p]['AMPVAR_FREQ'] = var_amp_freq[:, :, pol_dict[p]]
+            self.metrics[p]['AMPRMS_FREQ'] = rms_amp_freq[:, :, pol_dict[p]]
+            self.metrics[p]['RMS_AMPVAR_FREQ'] = rmsvar_amp_freq[pol_dict[p]]
+            # delay spectra
+            self.metrics[p]['DFFT'] = smfft_spectrum[:, :, :, i]
+            self.metrics[p]['DFFT_POWER'] = np.nansum(
+                np.abs(smfft_spectrum[:, :, :, i]))
+            # receiver variance
+            self.metrics[p]['RECEIVER_CHISQVAR'] = vmrcv_chisq[pol_dict[p]]
 
         if html:
             if html_link is None:
