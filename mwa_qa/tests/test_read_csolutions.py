@@ -21,6 +21,8 @@ class TestCsoln(unittest.TestCase):
         c = rc.Csoln(calfile, metafits=metafits)
         self.assertTrue(c.calfile == calfile)
         self.assertTrue(isinstance(c.Metafits, rm.Metafits))
+        self.assertFalse(c.norm)
+        c = rc.Csoln(calfile, norm=True)
         self.assertTrue(c.norm)
         self.assertTrue(127)
 
@@ -122,12 +124,13 @@ class TestCsoln(unittest.TestCase):
         gains_shape = c.gains_shape()
         self.assertEqual(gains_shape, (_sh[0], _sh[1], _sh[2], 4))
 
-    def test_freq_info(self):
+    def test_channel_info(self):
         c = rc.Csoln(calfile, metafits)
-        freq_inds, freqs, freq_flags = c.freqs_info()
-        np.testing.assert_almost_equal(freq_inds, np.arange(0, 768))
-        self.assertEqual(freqs[0], 167055000.0)
-        self.assertEqual(freqs[-1], 197735000.0)
+        ch_info = c.channel_info()
+        np.testing.assert_almost_equal(ch_info['INDEX'], np.arange(0, 768))
+        self.assertEqual(ch_info['FREQ'][0], 167055000.0)
+        self.assertEqual(ch_info['FREQ'][-1], 197735000.0)
+        freq_flags = ch_info['FLAG']
         inds = np.where(np.array(freq_flags) == 0)
         self.assertEqual(len(inds[0]), 648)
         inds = np.where(np.array(freq_flags) == 1)
@@ -135,10 +138,11 @@ class TestCsoln(unittest.TestCase):
 
     def test_ant_info(self):
         c = rc.Csoln(calfile)
-        annumbers, annames, anflags = c.ant_info()
-        np.testing.assert_almost_equal(annumbers, np.arange(0, 128))
+        ant_info = c.ant_info()
+        np.testing.assert_almost_equal(ant_info['ANTENNA'], np.arange(0, 128))
         expected_annames = [tl[1] for tl in hdu[3].data]
-        self.assertEqual(expected_annames, annames)
+        self.assertEqual(ant_info['TILENAME'], expected_annames)
+        anflags = ant_info['FLAG']
         expected_anflags = np.zeros((128))
         expected_anflags[76] = 1
         np.testing.assert_almost_equal(anflags, expected_anflags)
@@ -154,21 +158,21 @@ class TestCsoln(unittest.TestCase):
             self._check_refant()
 
     def test_normalized_data(self):
-        c = rc.Csoln(calfile)
+        c = rc.Csoln(calfile, norm=True)
         ngains = c._normalized_data(exp_gains[0, :, :, :])
         expected = np.array([0.71117848-0.70117164j, -0.03601556-0.02672433j,
                              0.03182042+0.02749634j, -0.72570327-1.00192601j])
         np.testing.assert_almost_equal(ngains[0, 100, :], expected)
 
     def test_normalized_gains(self):
-        c = rc.Csoln(calfile)
+        c = rc.Csoln(calfile, norm=True)
         ngains = c.normalized_gains()
         expected = np.array([0.71117848-0.70117164j, -0.03601556-0.02672433j,
                              0.03182042+0.02749634j, -0.72570327-1.00192601j])
         np.testing.assert_almost_equal(ngains[0, 0, 100, :], expected)
 
     def test_select_gains(self):
-        c = rc.Csoln(calfile)
+        c = rc.Csoln(calfile, norm=True)
         ngains = c._select_gains()
         expected = np.array([0.71117848-0.70117164j, -0.03601556-0.02672433j,
                              0.03182042+0.02749634j, -0.72570327-1.00192601j])
@@ -179,26 +183,26 @@ class TestCsoln(unittest.TestCase):
             ngains[0, 0, 100, :], exp_gains[0, 0, 100, :])
 
     def test_amplitudes(self):
-        c = rc.Csoln(calfile)
+        c = rc.Csoln(calfile, norm=True)
         amps = c.amplitudes()
         np.testing.assert_almost_equal(amps[0, 0, 100, :], np.array(
             [0.99870742, 0.04484763, 0.04205458, 1.23713418]))
 
     def test_phases(self):
-        c = rc.Csoln(calfile)
+        c = rc.Csoln(calfile, norm=True)
         phases = c.phases()
         np.testing.assert_almost_equal(phases[0, 0, 100, :], np.array(
             [-44.59405224, -143.42377521,   40.83062598, -125.91612395]))
 
     def test_gains_for_antnum(self):
-        c = rc.Csoln(calfile)
+        c = rc.Csoln(calfile, norm=True)
         gains = c.gains_for_antnum(0)
         expected = np.array([0.71117848-0.70117164j, -0.03601556-0.02672433j,
                              0.03182042+0.02749634j, -0.72570327-1.00192601j])
         np.testing.assert_almost_equal(gains[0, 100, :], expected)
 
     def test_gains_for_antpair(self):
-        c = rc.Csoln(calfile)
+        c = rc.Csoln(calfile, norm=True)
         gains_antpair = c.gains_for_antpair((0, 1))
         expected = np.array([3.48835869e-01+0.95405085j,
                              -1.12010126e-03+0.00262549j,

@@ -1,13 +1,17 @@
 from mwa_qa import read_metafits as rm
+from collections import OrderedDict
 from scipy import signal
 from astropy.io import fits
 import numpy as np
 import copy
 
+HDUlist = ['PRIMARY', 'SOLUTIONS', 'TIMEBLOCKS',
+           'TILES', 'CHANBLOCKS', 'RESULTS', 'BASELINES']
+
 
 class Csoln(object):
     def __init__(self, calfile, metafits=None, pol='X',
-                 norm=True, ref_antnum=None):
+                 norm=False, ref_antnum=None):
         """
         Object takes in a calfile in fits format and extracts
         bit and pieces of the required informations
@@ -16,13 +20,13 @@ class Csoln(object):
                     output only for now) and related information
         - metafits:	Metafits with extension *.metafits containing
                     information corresponding to the observation
-                    for which the calibration solutions is derived
+                        for which the calibration solutions is derived
         - pol:	Polarization, can be either 'X' or 'Y'. It should be
-                        specified so that information associated
-                        with the given pol is provided. Default is 'X'
+                specified so that information associated
+                with the given pol is provided. Default is 'X'
         - norm: Boolean, If True, the calibration solutions will be
                 normlaized else unnormlaized solutions will be used.
-                Default is set to True
+                Default is set to False
         - ref_antnum:   Reference antenna number. If norm is True,
                         a reference antenna is require for normalization.
                         By default it uses the last antenna in the array.
@@ -34,75 +38,99 @@ class Csoln(object):
         self.norm = norm
         if self.norm:
             if ref_antnum is None:
-                annumbers, _, _ = self.ant_info()
-                ref_antnum = annumbers[-1]
+                ref_antnum = self._iterate_refant()
                 self.ref_antnum = ref_antnum
             else:
                 self.ref_antnum = ref_antnum
-            self._check_refant()
+                self._check_refant()
+
+    def _iterate_refant(self):
+        annumbers = self.ant_info()['ANTENNA']
+        anflags = self.ant_info()['FLAG']
+        anindex = -1
+        while anindex < 0:
+            if anflags[anindex] == 0:
+                break
+            anindex -= 1
+        return annumbers[anindex]
 
     def _check_refant(self):
         """
         Checks if the given reference antenna is flagged due to non-convergence
         or any malfunctioning reports
         """
-        annumbers, annames, anflags = self.ant_info()
+        anflags = self.ant_info()['FLAG']
         ind = self.gains_ind_for(self.ref_antnum)
         flag = np.array(anflags)[ind]
         assert flag == 0,  "{} seems to be flagged."
         "calibration solutions found, choose a different tile"
 
-    def data(self, hdu):
+    def _hdu(self):
+        return fits.open(self.calfile)
+
+    def data(self, hdu_name):
         """
         Returns the data stored in the specified HDU column of the image
-        hdu:	HDU column, ranges from 1 to 6
-                1 - the calibration solution
-                2 - the start time, end time and average time
-                3 - tiles information (antenna, tilename, flag)
-                4 - chanblocks (index, freq, flag)
-                5 - calibration results (timeblock, chan, convergence)
-                6 - weights used for each baseline
+        hdu_name:	HDU Column Name. The names should be one from
+                    HDULIist.
         For more details refer to
         https://mwatelescope.github.io/mwa_hyperdrive/defs/cal_sols_hyperdrive.html
         """
-        return fits.open(self.calfile)[hdu].data
+        hdu = self._hdu()
+        index = hdu.index_of(hdu_name)
+        return hdu[index].data
 
-    def header(self, hdu):
+    def header(self, hdu_name):
         """
         Returns the header of the specified HDU column
-        hdu:	HDU column, ranges from 0 to 6
-                0 - header information on the paramters used for the
-                    calibration process
-                1 - header information on the calibration solutions
-                2 - header information on the timeblocks
-                3 - header information on the tiles (antenna, tilename, flag)
-                4 - header information on the chanblocks (index, freq, flag)
-                5 - header information on the calibration results
-                                        (timeblock, chan, convergence)
-                6 - header information on the weights used for each baseline
+        hdu_name:	HDU Column Name. The names should be one from
+                                        HDULIist.
         For more details refer to
         https://mwatelescope.github.io/mwa_hyperdrive/defs/cal_sols_hyperdrive.html
         """
-        return fits.open(self.calfile)[hdu].header
+        hdu = self._hdu()
+        index = hdu.index_of(hdu_name)
+        return hdu[index].header
+
+    def hdu_shape(self, hdu_name):
+        hdr = self.header(hdu_name)
+        naxis = hdr['NAXIS']
+        shape = []
+        for ax in range(1, naxis + 1):
+            shape.append(hdr['NAXIS{}'.format(ax)])
+        return tuple(shape)
+
+    def hdu_fields(self, hdu_name):
+        hdr = self.header(hdu_name)
+        fields = []
+        try:
+            nfield = hdr['TFIELDS']
+            for fd in range(1, nfield + 1):
+                fields.append(hdr['TTYPE{}'.format(fd)])
+        except KeyError:
+            print('WARNING: No fields is found for HDU '
+                  'Column "{}"'.format(hdu_name))
+            pass
+        return tuple(fields)
 
     def gains_real(self):
         """
         Returns the real part of the calibration solutions
         """
-        cal_solutions = self.data(1)
+        cal_solutions = self.data('SOLUTIONS')
         return cal_solutions[:, :, :, ::2]
 
     def gains_imag(self):
         """
         Returns the imaginary part of the calibration solutions
         """
-        cal_solutions = self.data(1)
+        cal_solutions = self.data('SOLUTIONS')
         return cal_solutions[:, :, :, 1::2]
 
     def gains(self):
         """
         Combines the real and imaginary parts to form the
-                4 polarization (xx, xy, yx and yy)
+                        4 polarization (xx, xy, yx and yy)
         """
         return self.gains_real() + self.gains_imag() * 1j
 
@@ -112,40 +140,42 @@ class Csoln(object):
         """
         return self.gains().shape
 
-    def ant_info(self):
-        """
-        Returns the info on the ant induces, tile ID and flags.
-        The ant indices/ numbers start from 0 and the ant numbers
-                Start from 1 in uvfits
-        """
-        ant_info = self.data(3)
-        # added 1 to the antenna number to match those in uvfits
-        annumbers = [ant[0] for ant in ant_info]
-        annames = [ant[1] for ant in ant_info]
-        anflags = [ant[2] for ant in ant_info]
-        return annumbers, annames, anflags
-
     def ntimeblocks(self):
         """
         Returns the timeblocks of the calibration solutions
         """
-        d_header = self.header(1)
+        d_header = self.header('SOLUTIONS')
         return d_header['NAXIS4']
 
-    def freqs_info(self):
+    def ant_info(self):
         """
-        Returns the frequency index, frequency array and frequency flags
+        Returns the info on the ant induces, tile ID and flags.
+        The ant indices/ numbers start from 0 and the ant numbers.
         """
-        freqs_info = self.data(4)
-        freq_inds = [fq[0] for fq in freqs_info]
-        freqs = [fq[1] for fq in freqs_info]
-        freq_flags = [fq[2] for fq in freqs_info]
-        return freq_inds, freqs, freq_flags
+        ant_data = self.data('TILES')
+        fields = self.hdu_fields('TILES')
+        ant_info = OrderedDict()
+        for i, fd in enumerate(fields):
+            ant_info[fd.upper()] = [ant_data[a][i]
+                                    for a in range(len(ant_data))]
+        return ant_info
+
+    def channel_info(self):
+        """
+        Returns the channels information as a dictionary
+        """
+        ch_data = self.data('CHANBLOCKS')
+        fields = self.hdu_fields('CHANBLOCKS')
+        ch_info = OrderedDict()
+        for i, fd in enumerate(fields):
+            ch_info[fd.upper()] = [ch_data[ch][i]
+                                   for ch in range(len(ch_data))]
+        return ch_info
 
     def gains_ind_for(self, antnum):
         """
         Returns index of the gain solutions fot the given antenna number,
-                indices matches the antenna number in this case
+                        indices matches the antenna number in this case
         - antnum : Antenna Number
         """
         return antnum
@@ -154,7 +184,7 @@ class Csoln(object):
         """
         Normalizes the gain solutions for each timeblock given a reference tile
         - data:	Input array of shape( tiles, freq, pols) containing the
-                solutions
+                        solutions
         """
         # if self.ref_antnum is None:
         #    annumbers, annames, _ = self.ant_info()
@@ -187,7 +217,7 @@ class Csoln(object):
         """
         Return normalized if norm is True else unnomalized gains
         - norm:	Boolean, If True returns normalized gains else
-                unormalized gains.
+                        unormalized gains.
         """
         if self.norm:
             return self.normalized_gains()
@@ -198,8 +228,8 @@ class Csoln(object):
         """
         Returns amplitude of the normalized gain solutions
         - norm:	Boolean, if True returns normalized gains else
-                unormalized gains.
-                Default is set to True.
+                        unormalized gains.
+                        Default is set to True.
         """
         gains = self._select_gains()
         return np.abs(gains)
@@ -208,8 +238,8 @@ class Csoln(object):
         """
         Returns phases in degrees of the normalized gain solutions
         - norm: Boolean, if True returns normalized gains else
-                unormalized gains.
-                Default is set to True.
+                        unormalized gains.
+                        Default is set to True.
         """
         gains = self._select_gains()
         return np.angle(gains) * 180 / np.pi
@@ -219,8 +249,8 @@ class Csoln(object):
         Returns gain solutions for the given tile ID
         - antnum:	Antenna Number, starts from 1
         - norm:	Boolean, If True returns normalized gains
-                else unormalized gains.
-                Default is set to True.
+                        else unormalized gains.
+                        Default is set to True.
         """
         gains = self._select_gains()
         ind = self.gains_ind_for(antnum)
@@ -229,7 +259,7 @@ class Csoln(object):
     def gains_for_antpair(self, antpair):
         """
         Evaluates conjugation of the gain solutions for antenna pair
-                (tile0, tile1)
+                        (tile0, tile1)
         - antpair:	Tuple of antenna numbers such as (1, 2)
         """
         gains_t0 = self.gains_for_antnum(antpair[0])
@@ -239,7 +269,7 @@ class Csoln(object):
     def gains_for_receiver(self, receiver):
         """
         Returns the dictionary of gains solutions for all the antennas
-                (8 antennas in principles) connected to the given receiver
+        (8 antennas in principles) connected to the given receiver
         """
         assert self.Metafits.metafits is not None, "metafits file associated"
         "with this observation is required to extract the receiver information"
@@ -257,7 +287,7 @@ class Csoln(object):
 
     def delays(self):
         # Evaluates geometric delay (fourier conjugate of frequency)
-        _, freqs, _ = self.freqs_info()
+        freqs = self.channel_info()['FREQ']
         freqs = np.array(freqs) * 1e-9
         df = freqs[1] - freqs[0]
         delays = np.fft.fftfreq(freqs.size, df)
@@ -272,7 +302,7 @@ class Csoln(object):
         gains = self.gains()
         fft_data = np.zeros(gains.shape, dtype=gains.dtype)
         _sh = gains.shape
-        _, freqs, _ = self.freqs_info()
+        freqs = self.channel_info()['FREQ']
         window = self.blackmanharris(len(freqs))
         for t in range(_sh[0]):
             for i in range(_sh[1]):

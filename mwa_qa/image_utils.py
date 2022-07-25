@@ -154,8 +154,8 @@ def pix_flux(image, ra, dec, constant, plot=None):
         fitted_data = gauss_mod(ll, mm)
         select_err = R < 2 * bm_radius_px
         residual = imdata - fitted_data
-        gauss_int = np.sum(fitted_data) / bm_npx
-        gauss_err = np.std(residual[select_err])
+        gauss_int = np.nansum(fitted_data) / bm_npx
+        gauss_err = np.nanstd(residual[select_err])
     else:
         warnings.warn('WARNING: Right ascension or declination outside \
             image field, therefore values are set to nan', Warning)
