@@ -39,7 +39,7 @@ class CalMetrics(object):
                               pol=pol, norm=norm, ref_antnum=ref_antnum)
         self.Metafits = rm.Metafits(metafits, pol)
 
-    def variance_for_antpair(self, antpair, norm=True):
+    def variance_for_antpair(self, antpair):
         """
         Returns variance across frequency for the given tile pair
         - antpair:	Antenna pair or tuple of antenna numbers
@@ -47,10 +47,10 @@ class CalMetrics(object):
         - norm:		Boolean, If True returns normalized gains
                     else unormalized gains. Default is set to True.
         """
-        gain_pairs = self.Csoln.gains_for_antpair(antpair, norm=norm)
+        gain_pairs = self.Csoln.gains_for_antpair(antpair)
         return np.nanvar(gain_pairs, axis=1)
 
-    def variance_for_baselines_less_than(self, uv_cut, norm=True):
+    def variance_for_baselines_less_than(self, uv_cut):
         """
         Returns bls shorter than the specified cut and the variances
                 calculated across frequency for each of the antenna pair
@@ -63,7 +63,7 @@ class CalMetrics(object):
         _sh = self.Csoln.gains().shape
         variances = np.zeros((_sh[0], len(bls), _sh[3]))
         for i, bl in enumerate(bls):
-            variances[:, i, :] = self.variance_for_antpair(bl, norm=norm)
+            variances[:, i, :] = self.variance_for_antpair(bl)
         return bls, variances
 
     def skewness_across_uvcut(self, uv_cut, norm=True):
@@ -76,7 +76,7 @@ class CalMetrics(object):
         - norm:		Boolean, If True returns normalized gains else unormalized
                     gains. Default is set to True.
         """
-        _, variances = self.variance_for_baselines_less_than(uv_cut, norm=norm)
+        _, variances = self.variance_for_baselines_less_than(uv_cut)
         vmean = np.nanmean(variances, axis=1)
         vmedian = np.nanmedian(variances, axis=1)
         vstd = np.nanstd(variances, axis=1)

@@ -38,6 +38,8 @@ setup_args = {
                          'pytest'],
     'include_package_data': True,
     'zip_safe':     False,
+    'scripts': ['scripts/run_calqa.py', 'scripts/run_imgqa.py',
+                'scripts/run_visqa.py']
 }
 
 if __name__ == '__main__':
