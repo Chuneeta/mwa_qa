@@ -128,18 +128,24 @@ def pix_flux(image, ra, dec, constant, plot=None):
         minval = np.nanmin(imdata_select)
         # allowing to take care of negative components
         peakval = minval if np.abs(minval) > np.abs(maxval) else maxval
-        # fitting gaussian to point sources
-        gauss_data = copy.deepcopy(imdata)
-        gauss_data[~select] = 0
-        gauss_data = gauss_data.reshape((nxaxis, nyaxis))
-        inds = np.where(gauss_data == peakval)
-        mod = models.Gaussian2D(peakval, inds[1], inds[0],
-                                bmaj_px/2, bmin_px/2,
-                                theta=bpa * np.pi/180)
-        fit_p = fitting.LevMarLSQFitter()
-        with warnings.catch_warnings():
-            # Ignore model linearity warning from the fitter
-            warnings.simplefilter('ignore')
+        if np.isnan(peakval):
+            warnings.warn(
+                'WARNING: Encounterd non-finite values in the selected region')
+            gauss_peak, gauss_int, gauss_err = np.nan, np.nan, np.nan
+            peakval = np.nan
+        else:
+            # fitting gaussian to point sources
+            gauss_data = copy.deepcopy(imdata)
+            gauss_data[~select] = 0
+            gauss_data = gauss_data.reshape((nxaxis, nyaxis))
+            inds = np.where(gauss_data == peakval)
+            mod = models.Gaussian2D(peakval, inds[1], inds[0],
+                                    bmaj_px/2, bmin_px/2,
+                                    theta=bpa * np.pi/180)
+            fit_p = fitting.LevMarLSQFitter()
+            with warnings.catch_warnings():
+                # Ignore model linearity warning from the fitter
+                warnings.simplefilter('ignore')
             try:
                 mod = models.Gaussian2D(peakval, inds[1], inds[0],
                                         bmaj_px/2, bmin_px/2,
@@ -150,16 +156,17 @@ def pix_flux(image, ra, dec, constant, plot=None):
                                         bmaj_px/2, bmin_px/2,
                                         theta=bpa * np.pi/180)
                 gauss_mod = fit_p(mod, ll, mm, gauss_data)
-        gauss_peak = gauss_mod.amplitude.value
-        fitted_data = gauss_mod(ll, mm)
-        select_err = R < 2 * bm_radius_px
-        residual = imdata - fitted_data
-        gauss_int = np.nansum(fitted_data) / bm_npx
-        gauss_err = np.nanstd(residual[select_err])
+            gauss_peak = gauss_mod.amplitude.value
+            fitted_data = gauss_mod(ll, mm)
+            select_err = R < 2 * bm_radius_px
+            residual = imdata - fitted_data
+            gauss_int = np.nansum(fitted_data) / bm_npx
+            gauss_err = np.nanstd(residual[select_err])
     else:
         warnings.warn('WARNING: Right ascension or declination outside \
             image field, therefore values are set to nan', Warning)
-        gauss_peak, gauss_int, peakval = np.nan, np.nan, np.nan
+        gauss_peak, gauss_int, gauss_err = np.nan, np.nan, np.nan
+        peakval = np.nan
         # plotting selected area
     if plot:
         print(ra_pix, dec_pix)
