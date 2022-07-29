@@ -39,7 +39,9 @@ setup_args = {
     'include_package_data': True,
     'zip_safe':     False,
     'scripts': ['scripts/run_calqa.py', 'scripts/run_imgqa.py',
-                'scripts/run_visqa.py']
+                'scripts/run_visqa.py', 'scripts/plot_ants.py',
+                'scripts/plot_reds.py', 'scripts/plot_calqa.py',
+                'scripts/plot_imgqa.py']
 }
 
 if __name__ == '__main__':
