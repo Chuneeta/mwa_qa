@@ -164,8 +164,8 @@ class Metafits(object):
     def lst(self):
         """
         Returns local sidereal time of the mid point time of the
-                observation in hours
-                """
+                        observation in hours
+                        """
         mhdr = self.mhdr()
         return mhdr['LST']
 
@@ -271,6 +271,71 @@ class Metafits(object):
                     (annumbers[i], annumbers[j]))
         return baseline_dict
 
+    def anpos_dict(self):
+        anpos = self.anpos()
+        annumbers = self.annumbers()
+        anpos_dict = OrderedDict()
+        for i, ant in enumerate(annumbers):
+            anpos_dict[ant] = anpos[i].tolist()
+        return anpos_dict
+
+    def group_antpairs(self, bl_tol):
+        angroups = OrderedDict()
+        anpos_dict = self.anpos_dict()
+        ankeys = list(anpos_dict.keys())
+        delta_z = np.abs(np.array(list(anpos_dict.values()))[
+            :, 2] - np.mean(list(anpos_dict.values()), axis=0)[2])
+        is_flat = np.all(delta_z < bl_tol)
+        p_m = (-1, 0, 1)
+        if is_flat:
+            eps = [[dx, dy] for dx in p_m for dy in p_m]
+        else:
+            eps = [[dx, dy, dz] for dx in p_m for dy in p_m for dz in p_m]
+
+        def _check_neighbours(delta):
+            for ep in eps:
+                nkey = (delta[0] + ep[0], delta[1] + ep[1], delta[2] + ep[2])
+                if nkey in angroups:
+                    return nkey
+
+        for i, ant1 in enumerate(ankeys):
+            for j, ant2 in enumerate(ankeys[i + 1:]):
+                antpair = (ant1, ant2)
+                delta = tuple(np.round(
+                    1.0 * (np.array(anpos_dict[ant2]) -
+                           np.array(anpos_dict[ant1]))
+                    / bl_tol).astype(int))
+                nkey = _check_neighbours(delta)
+                if nkey is None:
+                    nkey = _check_neighbours(tuple([-d for d in delta]))
+                    if nkey is None:
+                        antpair = (ant2, ant1)
+                if nkey is not None:
+                    angroups[nkey].append(antpair)
+                else:
+                    # new baseline
+                    if delta[0] <= 0 or (delta[0] == 0 and delta[1] <= 0) or \
+                        (delta[0] == 0 and delta[1] == 0 and
+                         delta[2] <= 0):
+                        delta = tuple([-d for d in delta])
+                        antpair = (ant2, ant1)
+                    angroups[delta] = [antpair]
+        return angroups
+
+    def redundant_antpairs(self, bl_tol=2e-1):
+        # keeping only redundant pairs
+        angroups = self.group_antpairs(bl_tol=bl_tol)
+        ankeys = list(angroups.keys())
+        for akey in ankeys:
+            if len(angroups[akey]) == 1:
+                del angroups[akey]
+        # sort keys by shortest baseline length
+        sorted_keys = [akey for (length, akey) in sorted(
+            zip([np.linalg.norm(akey) for akey in angroups.keys()],
+                angroups.keys()))]
+        reds = OrderedDict([(key, angroups[key]) for key in sorted_keys])
+        return reds
+
     def baselines_greater_than(self, baseline_cut):
         """
         Returns tile pairs/ baselines greater than the given cut
@@ -282,6 +347,23 @@ class Metafits(object):
         return bls
 
     def baselines_less_than(self, baseline_cut):
+        """
+        Returns tile pairs/ baselines less than the given cut
+        - baseline_cut : Baseline length cut in metres
+        """
+        angroups = self.group_antpairs(bl_tol=1.)
+        keys = list(angroups.keys())
+        lengths = [np.linalg.norm(key) for key in keys]
+        inds = np.where(np.array(lengths) < baseline_cut)
+        chosen_keys = np.array(keys)[inds[0]]
+        baselines = []
+        for ckey in chosen_keys:
+            antpairs = [antp for antp in angroups[tuple(ckey)]]
+            for antp in antpairs:
+                baselines.append(antp)
+        return baselines
+
+    def baselines_less_than1(self, baseline_cut):
         """
         Returns tile pairs/ baselines less than the given cut
         - baseline_cut : Baseline length cut in metres
