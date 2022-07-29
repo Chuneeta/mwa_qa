@@ -346,7 +346,7 @@ class Metafits(object):
                baseline_cut}
         return bls
 
-    def baselines_less_than(self, baseline_cut):
+    def baselines_greater_than(self, baseline_cut):
         """
         Returns tile pairs/ baselines less than the given cut
         - baseline_cut : Baseline length cut in metres
@@ -363,15 +363,22 @@ class Metafits(object):
                 baselines.append(antp)
         return baselines
 
-    def baselines_less_than1(self, baseline_cut):
+    def baselines_less_than(self, baseline_cut):
         """
         Returns tile pairs/ baselines less than the given cut
         - baseline_cut : Baseline length cut in metres
         """
-        bls_dict = self.baseline_lengths()
-        bls = {key: value for key, value in bls_dict.items() if value <
-               baseline_cut}
-        return bls
+        angroups = self.group_antpairs(bl_tol=1.)
+        keys = list(angroups.keys())
+        lengths = [np.linalg.norm(key) for key in keys]
+        inds = np.where(np.array(lengths) < baseline_cut)
+        chosen_keys = np.array(keys)[inds[0]]
+        baselines = []
+        for ckey in chosen_keys:
+            antpairs = [antp for antp in angroups[tuple(ckey)]]
+            for antp in antpairs:
+                baselines.append(antp)
+        return baselines
 
     def _cable_flavors(self):
         """
