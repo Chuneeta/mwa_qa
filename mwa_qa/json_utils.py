@@ -25,13 +25,12 @@ def write_metrics(metrics, filename):
         json.dump(metrics, outfile, indent=4, cls=NpEncoder)
 
 
-def load_metrics(filename, filetype='json'):
-    pass
+def load_json(filename):
+    with open(filename, 'r') as fl:
+        data = json.load(fl)
+    return data
 
 
-def combine_jsons():
-    pass
-
-
-def combine_metrics():
-    pass
+def json_keys(filename):
+    data = load_metrics(filename)
+    return list(data.keys())
