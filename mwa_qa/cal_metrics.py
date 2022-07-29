@@ -58,13 +58,12 @@ class CalMetrics(object):
                         shorter than the given value- norm : boolean,
                         If True returns normalized gains else unormalized
         """
-        baseline_dict = self.Metafits.baselines_less_than(uv_cut)
-        bls = list(baseline_dict.keys())
+        baselines = self.Metafits.baselines_less_than(uv_cut)
         _sh = self.Csoln.gains().shape
-        variances = np.zeros((_sh[0], len(bls), _sh[3]))
-        for i, bl in enumerate(bls):
+        variances = np.zeros((_sh[0], len(baselines), 4))
+        for i, bl in enumerate(baselines):
             variances[:, i, :] = self.variance_for_antpair(bl)
-        return bls, variances
+        return variances
 
     def skewness_across_uvcut(self, uv_cut, norm=True):
         """
@@ -76,7 +75,7 @@ class CalMetrics(object):
         - norm:		Boolean, If True returns normalized gains else unormalized
                     gains. Default is set to True.
         """
-        _, variances = self.variance_for_baselines_less_than(uv_cut)
+        variances = self.variance_for_baselines_less_than(uv_cut)
         vmean = np.nanmean(variances, axis=1)
         vmedian = np.nanmedian(variances, axis=1)
         vstd = np.nanstd(variances, axis=1)
@@ -265,6 +264,7 @@ class CalMetrics(object):
             np.nanmean(var_amp_freq, axis=0) ** 2, axis=0))
         # skewness across ucvut
         skewness = self.skewness_across_uvcut(self.metrics['UVCUT'])
+        mskewness = np.nanmean(skewness, axis=0)
         # metrics based on antennas connected to receivers
         rcv_chisq = np.zeros((len(receivers), ntimes, 8, len(pols)))
         for i, r in enumerate(receivers):
@@ -284,9 +284,9 @@ class CalMetrics(object):
         self.metrics['NON_CONVERGED_CHS'] = self.non_converging_percent()
         self.metrics['CONVERGENCE_VAR'] = self.convergence_variance()
         self.metrics['RECEIVER_CHISQ'] = rcv_chisq
-        self.metrics['SKEWNESS_UCVUT'] = skewness
         # metrics for each pols
         for i, p in enumerate(['XX', 'YY']):
+            self.metrics['SKEWNESS_UCVUT'] = mskewness[pol_dict[p]]
             self.metrics[p]['AMPVAR_ANT'] = var_amp_ant[:, :, pol_dict[p]]
             self.metrics[p]['AMPRMS_ANT'] = rms_amp_ant[:, :, pol_dict[p]]
             self.metrics[p]['RMS_AMPVAR_ANT'] = rmsvar_amp_ant[pol_dict[p]]
@@ -319,7 +319,7 @@ class CalMetrics(object):
                         + '<h2> CALIBRAITON RESULTS </h2>' +
                         df2.to_html(index=False, border=2,
                                     justify="center") + '<br><hr>'
-                        + '<h2> GAIN VARAIANCE </h2>' +
+                        + '<h2> GAIN VARIANCE </h2>' +
                         df5.to_html(index=False, border=2,
                                     justify="center") + '<br><hr>'
                         + '</center>')
