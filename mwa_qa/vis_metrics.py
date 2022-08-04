@@ -1,80 +1,85 @@
-from mwa_qa import read_uvfits as ru
+from mwa_qa.read_uvfits import UVfits
 from mwa_qa import json_utils as ju
 from collections import OrderedDict
 import numpy as np
 
-pol_dict = ru.pol_dict
-
 
 class VisMetrics(object):
-    def __init__(self, uvfits):
-        self.uvfits = uvfits
-        self.uvf = ru.UVfits(uvfits)
-
-    def autos_for_antnum(self, antnum):
-        auto_data = self.uvf.data_for_antpair((antnum, antnum))
-        if len(auto_data) == 0:
-            print("WARNING: No data found for Antenna Number {}, "
-                  "maybe it is flagged".format(antnum))
-        return auto_data
+    def __init__(self, uvfits_path):
+        self.uvfits_path = uvfits_path
+        self.uvf = UVfits(uvfits_path)
 
     def autos(self):
-        annumbers = self.uvf.annumbers()
-        auto_array = np.zeros((self.uvf.Ntimes, len(
-            annumbers), self.uvf.Nfreqs, self.uvf.Npols), dtype=np.complex64)
-        for i, num in enumerate(annumbers):
-            auto_data = self.autos_for_antnum(num)
-            if len(auto_data) > 0:
-                auto_array[:, i, :, :] = auto_data
-            else:
-                # fill array with Nans
-                auto_array[:, i, :, :] = np.nan
-        return auto_array
+        auto_antpairs = self.uvf.auto_antpairs()
+        return self.uvf._amps_phs_array(auto_antpairs)
+
+    def redundant_metrics(self):
+        red_pairs = self.uvf.redundant_antpairs()
+        red_keys = list(red_pairs.keys())
+        red_values = list(red_pairs.values())
+        amp_chisqs, phs_chisqs = [], []
+        amp_diff, phs_diff = [], []
+        for i in range(len(red_values)):
+            d = self.uvf._amps_phs_array(red_values[i])
+            d_amp = np.nanmean(d[:, :, :, 0], axis=0)
+            d_phs = np.nanmean(d[:, :, :, 1], axis=0)
+            mean_amp = np.nanmean(d_amp, axis=0)[np.newaxis, :]
+            mean_phs = np.nanmean(d_phs, axis=0)[np.newaxis, :]
+            amp_chisqs.append(
+                np.nansum((d_amp - mean_amp) ** 2 / mean_amp, axis=1))
+            phs_chisqs.append(
+                np.nansum((d_amp - mean_phs) ** 2 / mean_phs, axis=1))
+            amp_diff = np.diff(d_amp, axis=0)
+            phs_diff = np.diff(d_phs, axis=0)
+        return red_keys, amp_chisqs, phs_chisqs, amp_diff, phs_diff
 
     def _initialize_metrics_dict(self):
         self.metrics = OrderedDict()
-        self.metrics['NANTS'] = self.uvf.Nants
+        self.metrics['NBLS'] = self.uvf.Nbls
         self.metrics['NTIMES'] = self.uvf.Ntimes
         self.metrics['NFREQS'] = self.uvf.Nfreqs
         self.metrics['NPOLS'] = self.uvf.Npols
-        self.metrics['AUTOS'] = OrderedDict(
-            [('XX', OrderedDict()), ('YY', OrderedDict())])
+        self.metrics['AUTOS'] = OrderedDict()
+        self.metrics['REDUNDANT'] = OrderedDict()
 
-    def run_metrics(self, dev=3):
+    def run_metrics(self):
         self._initialize_metrics_dict()
-        self.metrics['NANTS']
-        self.metrics['NFREQS']
-        self.metrics['NPOLS']
+        # auto correlations
         autos = self.autos()
-        # metrics across frequency
-        used_pols = ['XX', 'YY']
-        for i, p in enumerate(used_pols):
-            avg_autos = autos[:, :, :, pol_dict[p]]
-            amps_avg_autos = np.abs(avg_autos)
-            var_amp_freq = np.nanvar(amps_avg_autos, axis=2)
-            rms_amp_freq = np.sqrt(np.nanmean(amps_avg_autos ** 2, axis=2))
-            mrms_amp_freq = np.nanmean(rms_amp_freq, axis=0)
-            mstd_amp_freq = np.nanstd(rms_amp_freq, axis=0)
-            min_lim = mrms_amp_freq - dev * mstd_amp_freq
-            max_lim = mrms_amp_freq + dev * mstd_amp_freq
-            # picking poor behaving timestamps
-            poor_times = []
-            for i in range(self.metrics['NANTS']):
-                inds_t = np.where((rms_amp_freq[:, i] < min_lim[i]) | (
-                    rms_amp_freq[:, i] > max_lim[i]))[0]
-            poor_times.append(inds_t.tolist())
-            median_amp_time = np.nanmedian(amps_avg_autos, axis=0)
-            rms_amp_time = np.sqrt(np.nanmean(amps_avg_autos ** 2, axis=0))
-            median_amp_ant = np.nanmedian(amps_avg_autos, axis=1)
-            rms_amp_ant = np.sqrt(np.nanmean(amps_avg_autos ** 2, axis=1))
-            # writing to json files
-            self.metrics['AUTOS'][p]['POOR_TIMES'] = inds_t
-            self.metrics['AUTOS'][p]['MEDIAN_AMP_TIME'] = median_amp_time
-            self.metrics['AUTOS'][p]['RMS_AMP_TIME'] = rms_amp_time
-            self.metrics['AUTOS'][p]['MEDIAN_AMP_ANT'] = median_amp_ant
-            self.metrics['AUTOS'][p]['RMS_AMP_ANT'] = rms_amp_ant
-            self.metrics['AUTOS'][p]['VAR_AMP_FREQ'] = var_amp_freq
-            self.metrics['AUTOS'][p]['RMS_AMP_FREQ'] = rms_amp_freq
+        # time difference
+        diff_autos = np.diff(autos, axis=0)
+        auto_amps = autos[:, :, :, 0]
+        auto_phs = autos[:, :, :, 1]
+        avg_auto_rms = np.sqrt(np.nanmean(
+            np.nanmean(auto_amps, axis=0), axis=1) ** 2)
+        mavg_auto_rms = np.nanmean(avg_auto_rms)
+        vavg_auto_rms = np.nanvar(avg_auto_rms)
+        vdiff_auto_amps = np.nanvar(diff_autos[:, :, :, 0], axis=2)
+        vdiff_auto_phs = np.nanvar(diff_autos[:, :, :, 1], axis=2)
+        # redundant baselines
+        reds, amp_chisqs, phs_chisqs, amp_diff, phs_diff \
+            = self.redundant_metrics()
+
+        # writing mwtric to dict
+        self.metrics['AUTOS']['MEAN_RMS_AMPS'] = mavg_auto_rms
+        self.metrics['AUTOS']['VAR_RMS_AMPS'] = vavg_auto_rms
+        self.metrics['AUTOS']['VAR_DIFF_AMPS'] = vdiff_auto_amps
+        self.metrics['AUTOS']['VAR_DIFF_PHS'] = vdiff_auto_phs
+        self.metrics['AUTOS']['MX_VAR_DIFF_AMPS'] = np.nanmax(
+            np.max(vdiff_auto_amps))
+        self.metrics['AUTOS']['MX_VAR_DIFF_PHS'] = np.nanmax(
+            np.max(vdiff_auto_phs))
+        self.metrics['REDUNDANT']['RED_PAIRS'] = reds
+        self.metrics['REDUNDANT']['AMP_CHISQ'] = amp_chisqs
+        self.metrics['REDUNDANT']['PHS_CHISQ'] = phs_chisqs
+        self.metrics['REDUNDANT']['VAR_AMP_CHISQ'] = amp_chisqs
+        self.metrics['REDUNDANT']['VAR_PHS_CHISQ'] = phs_chisqs
+        self.metrics['REDUNDANT']['AMP_DIFF'] = amp_diff
+        self.metrics['REDUNDANT']['PHS_DIFF'] = phs_diff
+        self.metrics['REDUNDANT']['MVAR_AMP_DIFF'] = np.nanmean(
+            np.nanvar(amp_diff, axis=1))
+        self.metrics['REDUNDANT']['MVAR_PHS_DIFF'] = np.nanmean(
+            np.nanvar(phs_diff, axis=1))
 
     def write_to(self, outfile=None):
         if outfile is None:
