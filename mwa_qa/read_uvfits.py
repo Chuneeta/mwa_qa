@@ -1,122 +1,225 @@
-from mwa_qa import read_metafits as rm
+from collections import OrderedDict
+from scipy import signal
 from astropy.io import fits
 import numpy as np
+import os
 
 # speed of light
 c = 299_792_458
-pol_dict = {'XX': 0, 'YY': 1, 'XY': 2, 'YX': 3}
+
+
+def make_fits_axis_array(hdu, axis):
+    count = hdu.header[f"NAXIS{axis}"]
+    crval = hdu.header[f"CRVAL{axis}"]
+    cdelt = hdu.header[f"CDELT{axis}"]
+    crpix = hdu.header[f"CRPIX{axis}"]
+    return cdelt * (np.arange(count) - crpix) + crval
 
 
 class UVfits(object):
-    def __init__(self, uvfits, metafits=None, pol='X'):
-        self.uvfits = uvfits
-        self.Metafits = rm.Metafits(metafits=metafits, pol=pol)
-        self._dgroup = self._read_dgroup()
-        self.Nants = len(self._ant_info())
-        bls = self.baselines()
-        self.Nbls = len(np.unique(np.array(bls)))
-        self.Ntimes = int(len(bls) / self.Nbls)
-        self.Nfreqs = self._dgroup[0][5].shape[2]
-        self.Npols = self._dgroup[0][5].shape[3]
+    def __init__(self, uvfits_path):
+        self.uvfits_path = uvfits_path
+        with fits.open(self.uvfits_path) as hdus:
+            vis_hdu = hdus['PRIMARY']
 
-    def _read_dgroup(self):
-        return fits.open(self.uvfits)[0].data
+            # the uvfits baseline of each row in the timestep-baseline axis
+            self.baseline_array = np.int64(vis_hdu.data["BASELINE"])
+            self.Nbls = len(self.baseline_array)
+            assert self.Nbls == vis_hdu.header["GCOUNT"]
+            self.unique_baselines = np.sort(
+                np.unique(self.baseline_array))
+            self.Nbls = len(self.unique_baselines)
 
-    def _header(self):
-        return fits.open(self.uvfits)[0].header
+            self.time_array = np.float64(vis_hdu.data["DATE"])
+            self.unique_times = np.sort(np.unique(self.time_array))
+            self.Ntimes = len(self.unique_times)
 
-    def _ant_info(self):
-        return fits.open(self.uvfits)[1].data
+            self.ant_2_array = self.baseline_array % 256 - 1
+            self.ant_1_array = (self.baseline_array
+                                - self.ant_2_array) // 256 - 1
+            self.antpairs = np.stack(
+                (self.ant_1_array, self.ant_2_array), axis=1)
+            self.unique_antpairs = np.sort(
+                np.unique(self.antpairs, axis=0))
+            assert len(self.unique_antpairs) == self.Nbls
 
-    def annames(self):
-        ant_info = self._ant_info()
-        return [ant_info[i][0] for i in range(self.Nants)]
+            self.freq_array = make_fits_axis_array(vis_hdu, 4)
+            self.Nfreqs = len(self.freq_array)
 
-    def annumbers(self):
-        ant_info = self._ant_info()
-        return [ant_info[i][2] for i in range(self.Nants)]
+            self.polarization_array = np.int32(
+                make_fits_axis_array(vis_hdu, 3))
+            self.Npols = len(self.polarization_array)
 
-    def group_count(self):
-        hdr = self._header()
-        return hdr['GCOUNT']
+            self.uvw_array = np.array(np.stack((
+                vis_hdu.data['UU'],
+                vis_hdu.data['VV'],
+                vis_hdu.data['WW'],
+            )).T)
 
-    def baselines(self):
-        gcount = self.group_count()
-        baselines = [self._dgroup[i][3] for i in range(gcount)]
-        return baselines
+            ant_hdu = hdus['AIPS AN']
+            self.ant_names = ant_hdu.data["ANNAME"]
+            self.antenna_numbers = ant_hdu.data.field("NOSTA") - 1
+            self.antenna_positions = ant_hdu.data.field("STABXYZ")
+            self.Nants = len(self.ant_names)
 
-    def _encode_baseline(self, ant1_number, ant2_number):
-        if ant2_number > 255:
-            return ant1_number * 2048 + ant2_number + 65_536
-        else:
-            return ant1_number * 256 + ant2_number
+    def debug(self):
+        print(
+            f"Ntimes={self.Ntimes}, Nbls={self.Nblts}, \
+			Nfreqs={self.Nfreqs}, Npols={self.Npols}")
 
-    def _decode_baseline(self, bl):
-        if bl < 65_535:
-            ant2_number = bl % 256
-            ant1_number = (bl - ant2_number) / 256
-        else:
-            ant2_number = (bl - 65_536) % 2048
-            ant1_number = (bl - ant2_number - 65_536) / 2048
-        return (int(ant1_number), int(ant2_number))
+    def auto_antpairs(self):
+        return [(ap[0], ap[1]) for ap in
+                self.unique_antpairs if ap[0] == ap[1]]
 
-    def annumber_to_anname(self, number):
-        annumbers = np.array(self.annumbers())
-        annames = np.array(self.annames())
-        ind = np.where(annumbers == number)[0][0]
-        return annames[ind]
+    def blt_idxs_for_antpair(self, antpair):
+        """
+        return the indices into the baseline-time axis corresponding
+        to the given antpair
+        """
+        (ant1, ant2) = sorted(antpair)
+        return np.where(np.logical_and(
+            self.ant_1_array == ant1,
+            self.ant_2_array == ant2,
+        ))[0]
 
-    def anname_to_annumber(self, ant_name):
-        annumbers = np.array(self.annumbers())
-        annames = np.array(self.annames())
-        ind = np.where(annames == ant_name)[0][0]
-        return annumbers[ind]
+    def _data_for_antpairs(self, vis_hdu, antpairs):
+        """
+        dimensions: [time, bl, freq, pol]
+        """
+        Npairs = len(antpairs)
+        # sorted to traverse in the order on disk to minimize seeks
+        blt_idxs = np.sort(np.concatenate([
+            self.blt_idxs_for_antpair(pair) for pair in antpairs
+        ]))
+        reals = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 0].reshape(
+            (self.Ntimes, Npairs, self.Nfreqs, self.Npols))
+        imags = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 1].reshape(
+            (self.Ntimes, Npairs, self.Nfreqs, self.Npols))
+        return reals + 1j * imags
 
-    def _indices_for_antpair(self, antpair):
-        bls = np.array(self.baselines())
-        bl = self._encode_baseline(antpair[0], antpair[1])
-        return np.where(bls == bl)[0]
-
-    def antpairs(self):
-        baselines = self.baselines()
-        antpairs = []
-        for bl in baselines:
-            antpair = self._decode_baseline(bl)
-            antpairs.append((antpair[0], antpair[1]))
-        return antpairs
-
-    def uvw(self):
-        gcount = self.group_count()
-        uvw = np.zeros((3, gcount))
-        for i in range(gcount):
-            uvw[0, i] = self._dgroup[i][0] * c
-            uvw[1, i] = self._dgroup[i][1] * c
-            uvw[2, i] = self._dgroup[i][2] * c
-        return uvw
-
-    def pols(self):
-        # Npols=4 --> ('XX', 'XY', 'YX', 'YY')
-        # Npols=2  --> ('XX', 'YY')
-        if self.Npols == 2:
-            return ['XX', 'YY']
-        if self.Npols == 4:
-            return ['XX', 'XY', 'YX', 'YY']
-        else:
-            raise (ValueError, "currently support only 2 and 4 polarizations")
+    def data_for_antpairs(self, antpairs):
+        """
+        dimensions: [time, bl, freq, pol]
+        """
+        with fits.open(self.uvfits_path) as hdus:
+            vis_hdu = hdus['PRIMARY']
+            result = self._data_for_antpairs(vis_hdu, antpairs)
+            return result
 
     def data_for_antpair(self, antpair):
-        inds = self._indices_for_antpair(antpair)
-        pols = self.pols()
-        # data shape (times, freqs, pol)
-        data = np.zeros((len(inds), self.Nfreqs, self.Npols),
-                        dtype=np.complex128)
-        for i, ind in enumerate(inds):
-            for j, p in enumerate(pols):
-                data[i, :, j] = self._dgroup[ind][5][0, 0, :, pol_dict[p], 0]
-                + self._dgroup[ind][5][0, 0, :, pol_dict[p], 1] * 1j
-        return data
+        """
+        dimensions: [time, freq, pol]
+        """
+        with fits.open(self.uvfits_path) as hdus:
+            vis_hdu = hdus['PRIMARY']
+            result = self._data_for_antpairs(vis_hdu, [antpair])
+            return result[:, 0, :, :]
 
-    def data_for_antpairpol(self, antpairpol):
-        data_antpair = self.data_for_antpair((antpairpol[0], antpairpol[1]))
-        pols = np.array(self.pols())
-        return data_antpair[:, :, np.where(pols == antpairpol[2])[0][0]]
+    def _amps_phs_array(self, antpairs):
+        # using a rust wrapper to speed things up
+        blt_idxs = np.sort(np.concatenate([
+            self.blt_idxs_for_antpair(pair) for pair in antpairs
+        ]))
+        blt_idxs = blt_idxs[blt_idxs < self.Nbls]
+        bl_str = ''
+        for blt_id in blt_idxs:
+            bl_str += '{} '.format(blt_id)
+        command = "uvfits-rip -u {} \
+				  -o {} \
+				  --num-timesteps {}\
+				  --num-baselines-per-timestep {} \
+				  --num-channels {} \
+					{}".format(self.uvfits_path,
+                'test.npy', self.Ntimes, self.Nbls,
+                self.Nfreqs, bl_str)
+        os.system(command)
+        d_array = np.load('test.npy')
+        os.system('rm -rf test.npy')
+        return d_array
+
+    def amplitude_array(self, antpairs):
+        return self._amps_phs_array(antpairs)[:, :, :, 0]
+
+    def phase_array(self, antpairs):
+        return self._amps_phs_array(antpairs)[:, :, :, 1]
+
+    def blackmanharris(self, n):
+        return signal.windows.blackmanharris(n)
+
+    def delays(self):
+        # Evaluates geometric delay (fourier conjugate of frequency)
+        dfreq = self.freq_array[1] - self.freq_array[0]
+        delays = np.fft.fftfreq(self.Nfreqs, dfreq)
+        return np.fft.fftshift(delays * 1e9)
+
+    def fft_array(self, antpairs):
+        try:
+            data = self.data_for_antpairs(antpairs)
+        except TypeError:
+            data = self.data_for_antpair(antpairs)
+        window = self.blackmanharris(self.Nfreqs)
+        data[np.where(np.isnan(data))] = 0.  # assigning nans to zero
+        fft_array = np.array([np.fft.fft(data[i, :, j] * window)
+                              for i in range(self.Ntimes) for j in range(self.Npols)])
+        # assigning nan nack to zero values
+        fft_array[np.where(fft_array == 0 + 0j)] = np.nan
+        fft_array = np.fft.fftshift(fft_array.reshape(
+            (self.Ntimes, self.Npols, self.Nfreqs)))
+        return np.swapaxes(fft_array, 1, 2)
+
+    def group_antpairs(self, antenna_positions, bl_tol):
+        angroups = OrderedDict()
+        delta_z = np.abs(antenna_positions -
+                         np.mean(antenna_positions, axis=0))[:, 2]
+        is_flat = np.all(delta_z < bl_tol)
+        p_m = (-1, 0, 1)
+        if is_flat:
+            eps = [[dx, dy] for dx in p_m for dy in p_m]
+        else:
+            eps = [[dx, dy, dz] for dx in p_m for dy in p_m for dz in p_m]
+
+        def _check_neighbours(delta):
+            for ep in eps:
+                nkey = (delta[0] + ep[0], delta[1] + ep[1], delta[2] + ep[2])
+                if nkey in angroups:
+                    return nkey
+
+        for i in range(self.Nants):
+            for j in range(i+1, self.Nants):
+                antpair = (self.antenna_numbers[i], self.antenna_numbers[j])
+                delta = tuple(np.round(
+                    1.0 * (self.antenna_positions[i] -
+                           self.antenna_positions[j])
+                    / bl_tol).astype(int))
+                nkey = _check_neighbours(delta)
+                if nkey is None:
+                    nkey = _check_neighbours(tuple([-d for d in delta]))
+                    if nkey is not None:
+                        antpair = (
+                            self.antenna_numbers[j], self.antenna_numbers[i])
+                if nkey is not None:
+                    angroups[nkey].append(antpair)
+                else:
+                    # new baseline
+                    if delta[0] <= 0 or (delta[0] == 0 and delta[1] <= 0) or \
+                            (delta[0] == 0 and delta[1] == 0 and
+                             delta[2] <= 0):
+                        delta = tuple([-d for d in delta])
+                        antpair = (
+                            self.antenna_numbers[j], self.antenna_numbers[i])
+                    angroups[delta] = [antpair]
+        return angroups
+
+    def redundant_antpairs(self, bl_tol=2e-1):
+        # keeping only redundant pairs
+        angroups = self.group_antpairs(self.antenna_positions, bl_tol=bl_tol)
+        ankeys = list(angroups.keys())
+        for akey in ankeys:
+            if len(angroups[akey]) == 1:
+                del angroups[akey]
+        # sort keys by shortest baseline length
+        sorted_keys = [akey for (length, akey) in sorted(
+            zip([np.linalg.norm(akey) for akey in angroups.keys()],
+                angroups.keys()))]
+        reds = OrderedDict([(key, angroups[key]) for key in sorted_keys])
+        return reds
