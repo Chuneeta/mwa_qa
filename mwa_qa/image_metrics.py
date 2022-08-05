@@ -1,95 +1,80 @@
 from collections import OrderedDict
-from mwa_qa import image_utils as iu
+from mwa_qa.read_image import Image
 from mwa_qa import json_utils as ju
 
 pol_dict = {-5: 'XX', -6: 'YY', -7: 'XY', 4: 'V'}
 # coordinates of PKS0023-26
-ra = 6.4549166666666675
-dec = -26.04
+srcnames = ['PKS0023_026']
+srcpos = [(6.4549166666666675, -26.04)]
 
 
 class ImgMetrics(object):
-    def __init__(self, images=[]):
-        self.images = images
+    def __init__(self, images=[], pix_box=[100, 100]):
+        self.images = [Image(img, pix_box=pix_box) for img in images]
 
     def _check_object(self):
         assert len(self.image) > 0, "At least one image should be specified"
 
     def pols_from_image(self):
-        pol_convs = [iu.pol_convention(image) for image in self.images]
-        return pol_convs
+        return [img.polarization for img in self.images]
 
-    def _initialize_metrics_dict(self, noise_box):
+    def _initialize_metrics_dict(self):
         self.metrics = OrderedDict()
-        self.metrics['noise_box'] = noise_box
+        self.metrics['PIX_BOX'] = self.images[0].pix_box
         pol_convs = self.pols_from_image()
         for i, pc in enumerate(pol_convs):
-            pol = 'YX' if 'XYi' in self.images[i] else pol_dict[pc]
+            pol = pol_dict[pc]
             self.metrics[pol] = OrderedDict()
-        if -5 and -6 in pol_convs:
+            self.metrics[pol]['IMAGENAME'] = self.images[i].fitspath
+            self.metrics[pol]['IMAGE_ID'] = self.images[i].image_ID
+            self.metrics[pol]['OBS-DATE'] = self.images[i].obsdate
+            for src in srcnames:
+                self.metrics[pol][src] = OrderedDict()
+        if -5 in pol_convs and -6 in pol_convs:
             self.metrics['{}_{}'.format(
                 pol_dict[-5], pol_dict[-6])] = OrderedDict()
-        if 4 and -5 in pol_convs:
+        if 4 in pol_convs and -5 in pol_convs:
             self.metrics['{}_{}'.format(
                 pol_dict[4], pol_dict[-5])] = OrderedDict()
-        if 4 and -6 in pol_convs:
+        if 4 in pol_convs and -6 in pol_convs:
             self.metrics['{}_{}'.format(
                 pol_dict[4], pol_dict[-6])] = OrderedDict()
 
-    def run_metrics(self, noise_box=[100, 100], constant=1.):
-        self._initialize_metrics_dict(noise_box)
-        keys = list(self.metrics.keys())
+    def run_metrics(self, beam_const=1, deconvol=False):
+        self._initialize_metrics_dict()
         pol_convs = self.pols_from_image()
-        pols = []
+        keys = list(self.metrics.keys())
         for i, pc in enumerate(pol_convs):
-            imagename = self.images[i]
             pol = pol_dict[pc]
-            pols.append(pols)
-            self.metrics[pol]['IMAGENAME'] = imagename
-            self.metrics[pol]['OBSDATE'] = iu.header(imagename)['DATE-OBS']
-            self.metrics[pol]['MEAN_ALL'] = float(iu.mean(imagename))
-            self.metrics[pol]['RMS_ALL'] = float(iu.rms(imagename))
-            self.metrics[pol]['STD_ALL'] = float(iu.std(imagename))
-            self.metrics[pol]['RMS_BOX'] = float(
-                iu.rms_for(imagename, noise_box[0], noise_box[1]))
-            self.metrics[pol]['STD_BOX'] = float(
-                iu.std_for(imagename, noise_box[0], noise_box[1]))
-            # flux density of PKS0023-26
-            pks_tflux = iu.pix_flux(imagename, ra, dec, constant)[
-                'GAUSS_PFLUX']
-            self.metrics[pol]['PKS0023_026'] = pks_tflux
+            self.metrics[pol]['MEAN_ALL'] = self.images[i].mean
+            self.metrics[pol]['RMS_ALL'] = self.images[i].rms
+            self.metrics[pol]['MEAN_BOX'] = self.images[i].mean_across_box
+            self.metrics[pol]['RMS_BOX'] = self.images[i].rms_across_box
+            for j, src in enumerate(srcnames):
+                src_flux = self.images[i].src_flux(
+                    srcpos[j], beam_const=beam_const, deconvol=deconvol)
+                self.metrics[pol][src]['PEAK_FLUX'] = src_flux[0]
+                self.metrics[pol][src]['INT_FLUX'] = src_flux[1]
 
         if 'XX_YY' in keys:
-            self.metrics['XX_YY']['RMS_RATIO_ALL'] = float(
+            self.metrics['XX_YY']['RMS_RATIO'] = float(
                 self.metrics['XX']['RMS_ALL'] / self.metrics['YY']['RMS_ALL'])
-            self.metrics['XX_YY']['STD_RATIO_ALL'] = float(
-                self.metrics['XX']['STD_ALL'] / self.metrics['YY']['STD_ALL'])
             self.metrics['XX_YY']['RMS_RATIO_BOX'] = float(
                 self.metrics['XX']['RMS_BOX'] / self.metrics['YY']['RMS_BOX'])
-            self.metrics['XX_YY']['STD_RATIO_BOX'] = float(
-                self.metrics['XX']['STD_BOX'] / self.metrics['YY']['STD_BOX'])
 
         if 'V_XX' in keys:
-            self.metrics['V_XX']['RMS_RATIO_ALL'] = float(
+            self.metrics['V_XX']['RMS_RATIO'] = float(
                 self.metrics['V']['RMS_ALL'] / self.metrics['XX']['RMS_ALL'])
-            self.metrics['V_XX']['STD_RATIO_ALL'] = float(
-                self.metrics['V']['STD_ALL'] / self.metrics['XX']['STD_ALL'])
             self.metrics['V_XX']['RMS_RATIO_BOX'] = float(
                 self.metrics['V']['RMS_BOX'] / self.metrics['XX']['RMS_BOX'])
-            self.metrics['V_XX']['STD_RATIO_BOX'] = float(
-                self.metrics['V']['STD_BOX'] / self.metrics['XX']['STD_BOX'])
 
         if 'V_YY' in keys:
-            self.metrics['V_YY']['RMS_RATIO_ALL'] = float(
+            self.metrics['V_YY']['RMS_RATIO'] = float(
                 self.metrics['V']['RMS_ALL'] / self.metrics['YY']['RMS_ALL'])
-            self.metrics['V_YY']['STD_RATIO_ALL'] = float(
-                self.metrics['V']['STD_ALL'] / self.metrics['YY']['STD_ALL'])
             self.metrics['V_YY']['RMS_RATIO_BOX'] = float(
                 self.metrics['V']['RMS_BOX'] / self.metrics['YY']['RMS_BOX'])
-            self.metrics['V_YY']['STD_RATIO_BOX'] = float(
-                self.metrics['V']['STD_BOX'] / self.metrics['YY']['STD_BOX'])
 
     def write_to(self, outfile=None):
         if outfile is None:
-            outfile = self.images[0].replace('.fits', '_metrics.json')
+            outfile = self.images[0].fitspath.replace('.fits', '_metrics.json')
         ju.write_metrics(self.metrics, outfile)
