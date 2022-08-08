@@ -4,13 +4,14 @@ import numpy as np
 
 
 class Metafits(object):
-    def __init__(self, metafits, pol):
+    def __init__(self, metafits, pol='X'):
         """
         Object takes in .metafits or metafits_pps.fits file readable by astropy
         - metafits: Metafits with extension *.metafits or _ppds.fits containing
                     information on an observation done with MWA,
         - pol:  Polarization, can be either 'X' or 'Y'. It should be specified
                 so that information associated with the given pol is provided.
+                Default is X
         """
         self.metafits = metafits
         self.pol = pol.upper()
@@ -366,7 +367,7 @@ class Metafits(object):
     def baselines_less_than(self, baseline_cut):
         """
         Returns tile pairs/ baselines less than the given cut
-        - baseline_cut : Baseline length cut in metres
+        - baseline_cut: Baseline length cut in metres
         """
         angroups = self.group_antpairs(bl_tol=1.)
         keys = list(angroups.keys())
