@@ -30,8 +30,8 @@ class VisMetrics(object):
             mean_phs = np.nanmean(d_phs, axis=0)[np.newaxis, :]
             amp_chisq = np.nansum((d_amp - mean_amp) ** 2 / mean_amp, axis=1)
             phs_chisq = np.nansum((d_amp - mean_phs) ** 2 / mean_phs, axis=1)
-            amp_chisqs[red_keys[i]] = amp_chisq
-            phs_chisqs[red_keys[i]] = phs_chisq
+            amp_chisqs[i] = amp_chisq
+            phs_chisqs[i] = phs_chisq
             amp_diff = np.diff(d_amp, axis=0)
             phs_diff = np.diff(d_phs, axis=0)
         return red_keys, amp_chisqs, phs_chisqs, amp_diff, phs_diff
@@ -66,11 +66,11 @@ class VisMetrics(object):
             = self.redundant_metrics()
         var_ampxx_chisqs, var_ampyy_chisqs = [], []
         var_phsxx_chisqs, var_phsyy_chisqs = [], []
-        for r in reds:
-            var_ampxx_chisqs.append(np.nanmean(amp_chisqs[r][:, 0]))
-            var_ampyy_chisqs.append(np.nanmean(amp_chisqs[r][:, 1]))
-            var_phsxx_chisqs.append(np.nanmean(phs_chisqs[r][:, 0]))
-            var_phsyy_chisqs.append(np.nanmean(phs_chisqs[r][:, 1]))
+        for i in range(len(reds)):
+            var_ampxx_chisqs.append(np.nanmean(amp_chisqs[i][:, 0]))
+            var_ampyy_chisqs.append(np.nanmean(amp_chisqs[i][:, 1]))
+            var_phsxx_chisqs.append(np.nanmean(phs_chisqs[i][:, 0]))
+            var_phsyy_chisqs.append(np.nanmean(phs_chisqs[i][:, 1]))
 
         # writing mwtric to dict
         for p in ['XX', 'YY']:
@@ -105,5 +105,5 @@ class VisMetrics(object):
 
     def write_to(self, outfile=None):
         if outfile is None:
-            outfile = self.uvfits.replace('.uvfits', '_vis_metrics.json')
+            outfile = self.uvfits_path.replace('.uvfits', '_vis_metrics.json')
         ju.write_metrics(self.metrics, outfile)
