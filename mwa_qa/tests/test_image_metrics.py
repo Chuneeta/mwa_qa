@@ -1,4 +1,4 @@
-from mwa_qa import image_metrics as im
+from mwa_qa.image_metrics import ImgMetrics
 from collections import OrderedDict
 from astropy.io import fits
 import unittest
@@ -12,37 +12,63 @@ image_yy = '../../test_files/1061315688_calibrated-YY-image.fits'
 image_v = '../../test_files/1061315688_calibrated-V-image.fits'
 images = [image_xx, image_yy, image_v]
 hdu = fits.open(images[0])
-_d = hdu[0].data
-_sh = _d.shape
+data = hdu[0].data
+hdr = hdu[0].header
+bmaj = 0.0353 if hdr['BMAJ'] == 0. else hdr['BMAJ']
+bmin = 0.0318 if hdr['BMIN'] == 0. else hdr['BMIN']
+bmaj_px = bmaj / np.abs(hdr['CDELT1'])
+bmin_px = bmin / np.abs(hdr['CDELT2'])
+barea = bmaj * bmin * np.pi / 4 / np.log(2)
+bnpix = barea / (np.abs(hdr['CDELT1']) * np.abs(hdr['CDELT2']))
+_sh = data.shape
 
 
 class TestImgMetrics(unittest.TestCase):
     def test_init__(self):
-        m = im.ImgMetrics(images=images)
-        self.assertEqual(m.images, images)
+        m = ImgMetrics(images=images)
+        self.assertTrue(len(m.images), 3)
+        self.assertEqual(m.images[0].fitspath, image_xx)
+        self.assertEqual(m.images[0].pix_box, [100, 100])
+        self.assertEqual(m.images[0].image_ID, 1061315688)
+        self.assertEqual(m.images[0].obsdate, hdr['DATE-OBS'])
+        self.assertEqual(m.images[0].image_size, [_sh[2], _sh[3]])
+        self.assertEqual(m.images[0].xcellsize, np.abs(hdr['CDELT1']))
+        self.assertEqual(m.images[0].ycellsize, np.abs(hdr['CDELT2']))
+        self.assertEqual(m.images[0].beam_major, bmaj)
+        self.assertEqual(m.images[0].beam_minor, bmin)
+        self.assertEqual(m.images[0].beam_parallactic_angle, hdr['BPA'])
+        self.assertEqual(m.images[0].beam_major_px, bmaj_px)
+        self.assertEqual(m.images[0].beam_minor_px, bmin_px)
+        self.assertEqual(m.images[0].beam_area, barea)
+        self.assertEqual(m.images[0].beam_npix, bnpix)
+        self.assertEqual(m.images[0].mean, np.nanmean(data))
+        self.assertEqual(m.images[0].rms, np.sqrt(np.nanmean(data ** 2)))
+        self.assertEqual(m.images[0].std, np.nanstd(data))
+        self.assertEqual(m.images[0].polarization, hdr['CRVAL4'])
+        self.assertEqual(m.images[0].mean_across_box, np.nanmean(
+            data[0, 0, 0: 100, 0: 100]))
+        self.assertEqual(m.images[0].rms_across_box, np.sqrt(
+            np.nanmean(data[0, 0, 0: 100, 0: 100] ** 2)))
+        self.assertEqual(m.images[0].std_across_box, np.nanstd(
+            data[0, 0, 0: 100, 0: 100]))
 
     def test_check_object(self):
-        m = im.ImgMetrics(images=[])
+        m = ImgMetrics(images=[])
         with self.assertRaises(Exception):
             m._check_object()
 
-    def test_pols_from_image(self):
-        m = im.ImgMetrics(images=images)
-        pol_convs = m.pols_from_image()
-        self.assertEqual(pol_convs, [-5, -6, 4])
-
     def test_initilaize_metrics_dict(self):
-        m = im.ImgMetrics(images=images)
-        m._initialize_metrics_dict([40, 40])
+        m = ImgMetrics(images=images)
+        m._initialize_metrics_dict()
         self.assertTrue(m.metrics, OrderedDict)
         keys = list(m.metrics.keys())
-        self.assertEqual(keys, ['noise_box', 'XX', 'YY',
-                                'V', 'XX_YY', 'V_XX', 'V_YY'])
+        self.assertEqual(keys, ['PIX_BOX', 'XX', 'YY',
+                         'V', 'XX_YY', 'V_XX', 'V_YY'])
 
     def test_metric_keys(self):
-        m = im.ImgMetrics(images=images)
-        m._initialize_metrics_dict([40, 40])
-        self.assertEqual(m.metrics['noise_box'], [40, 40])
+        m = ImgMetrics(images=images)
+        m._initialize_metrics_dict()
+        self.assertEqual(m.metrics['PIX_BOX'], [100, 100])
         self.assertTrue(isinstance(m.metrics['XX'], OrderedDict))
         self.assertTrue(isinstance(m.metrics['YY'], OrderedDict))
         self.assertTrue(isinstance(m.metrics['XX_YY'], OrderedDict))
@@ -50,82 +76,75 @@ class TestImgMetrics(unittest.TestCase):
         self.assertTrue(isinstance(m.metrics['V_YY'], OrderedDict))
 
     def test_run_metrics(self):
-        m = im.ImgMetrics(images=images)
+        m = ImgMetrics(images=images)
         m.run_metrics()
-        dxx = fits.open(images[0])[0].data
-        dyy = fits.open(images[1])[0].data
-        dv = fits.open(images[2])[0].data
-        rms_xx = np.sqrt(np.nansum(dxx[0, 0, :, :] ** 2) / (_sh[2] * _sh[3]))
-        rms_yy = np.sqrt(np.nansum(dyy[0, 0, :, :] ** 2) / (_sh[2] * _sh[3]))
-        rms_v = np.sqrt(np.nansum(dv[0, 0, :, :] ** 2) / (_sh[2] * _sh[3]))
-        std_xx = np.sqrt(np.nansum(
-            (dxx[0, 0, :, :] - np.nanmean(_d[0, 0, :, :])) ** 2
-        ) / (_sh[2] * _sh[3]))
-        std_yy = np.sqrt(np.nansum(
-            (dyy[0, 0, :, :] - np.nanmean(_d[0, 0, :, :])) ** 2
-        ) / (_sh[2] * _sh[3]))
-        std_v = np.sqrt(np.nansum(
-            (dv[0, 0, :, :] - np.nanmean(_d[0, 0, :, :])) ** 2
-        ) / (_sh[2] * _sh[3]))
-        rms_xx_box = np.sqrt(
-            np.nansum(dxx[0, 0, 0:100, 0:100] ** 2
-                      ) / (100 * 100))
-        rms_yy_box = np.sqrt(
-            np.nansum(dyy[0, 0, 0:100, 0:100] ** 2
-                      ) / (100 * 100))
-        rms_v_box = np.sqrt(
-            np.nansum(dv[0, 0, 0:100, 0:100] ** 2
-                      ) / (100 * 100))
-        std_xx_box = np.sqrt(np.nansum(
-            (dxx[0, 0, 0:100, 0:100] - np.nanmean(_d[0, 0, 0:100, 0:100])
-             ) ** 2) / (100 * 100))
-        std_yy_box = np.sqrt(np.nansum(
-            (dyy[0, 0, 0:100, 0:100] - np.nanmean(_d[0, 0, 0:100, 0:100])
-             ) ** 2) / (100 * 100))
-        std_v_box = np.sqrt(np.nansum(
-            (dv[0, 0, 0:100, 0:100] - np.nanmean(_d[0, 0, 0:100, 0:100])
-             ) ** 2) / (100 * 100))
-        np.testing.assert_almost_equal(m.metrics['XX']['STD_ALL'], std_xx)
-        np.testing.assert_almost_equal(m.metrics['XX']['RMS_ALL'], rms_xx)
-        np.testing.assert_almost_equal(m.metrics['XX']['RMS_BOX'], rms_xx_box)
-        np.testing.assert_almost_equal(m.metrics['XX']['STD_BOX'], std_xx_box)
-        np.testing.assert_almost_equal(
-            m.metrics['XX']['PKS0023_026'], 10.507473433991805)
-        np.testing.assert_almost_equal(
-            m.metrics['XX_YY']['RMS_RATIO_ALL'], rms_xx / rms_yy)
-        np.testing.assert_almost_equal(
-            m.metrics['XX_YY']['STD_RATIO_ALL'], std_xx / std_yy)
-        np.testing.assert_almost_equal(
-            m.metrics['XX_YY']['RMS_RATIO_BOX'], rms_xx_box / rms_yy_box)
-        np.testing.assert_almost_equal(
-            m.metrics['XX_YY']['STD_RATIO_BOX'], std_xx_box / std_yy_box,
-            decimal=2)
-        np.testing.assert_almost_equal(
-            m.metrics['V_XX']['RMS_RATIO_ALL'], rms_v / rms_xx)
-        np.testing.assert_almost_equal(
-            m.metrics['V_XX']['STD_RATIO_ALL'], std_v / std_xx)
-        np.testing.assert_almost_equal(
-            m.metrics['V_XX']['RMS_RATIO_BOX'], rms_v_box / rms_xx_box)
-        np.testing.assert_almost_equal(
-            m.metrics['V_XX']['STD_RATIO_BOX'], std_v_box / std_xx_box,
-            decimal=2)
-        np.testing.assert_almost_equal(
-            m.metrics['V_YY']['RMS_RATIO_ALL'], rms_v / rms_yy)
-        np.testing.assert_almost_equal(
-            m.metrics['V_YY']['STD_RATIO_ALL'], std_v / std_yy)
-        np.testing.assert_almost_equal(
-            m.metrics['V_YY']['RMS_RATIO_BOX'], rms_v_box / rms_yy_box)
-        np.testing.assert_almost_equal(
-            m.metrics['V_YY']['STD_RATIO_BOX'], std_v_box / std_yy_box,
-            decimal=2)
-        m1 = im.ImgMetrics(images=[image_v, image_xx, image_yy])
-        m1.run_metrics()
-        self.assertEqual(m1.metrics['V'], m.metrics['V'])
-        self.assertEqual(m1.metrics['XX'], m.metrics['XX'])
-        self.assertEqual(m1.metrics['YY'], m.metrics['YY'])
+        keys = list(m.metrics.keys())
+        self.assertEqual(keys, ['PIX_BOX', 'XX', 'YY',
+                         'V', 'XX_YY', 'V_XX', 'V_YY'])
+        self.assertEqual(m.metrics['PIX_BOX'], [100, 100])
+        self.assertEqual(list(m.metrics['XX'].keys()), [
+                         'IMAGENAME', 'IMAGE_ID',
+                         'OBS-DATE', 'PKS0023_026',
+                         'MEAN_ALL', 'RMS_ALL',
+                         'MEAN_BOX', 'RMS_BOX'])
+        self.assertEqual(list(m.metrics['YY'].keys()), [
+                         'IMAGENAME', 'IMAGE_ID',
+                         'OBS-DATE', 'PKS0023_026',
+                         'MEAN_ALL', 'RMS_ALL',
+                         'MEAN_BOX', 'RMS_BOX'])
+        self.assertEqual(list(m.metrics['V'].keys()), [
+                         'IMAGENAME', 'IMAGE_ID',
+                         'OBS-DATE', 'PKS0023_026',
+                         'MEAN_ALL', 'RMS_ALL',
+                         'MEAN_BOX', 'RMS_BOX'])
+        self.assertEqual(m.metrics['XX']['IMAGENAME'], m.images[0].fitspath)
+        self.assertEqual(m.metrics['XX']['MEAN_ALL'], m.images[0].mean)
+        self.assertEqual(m.metrics['XX']['RMS_ALL'], m.images[0].rms)
+        self.assertEqual(m.metrics['XX']['MEAN_BOX'],
+                         m.images[0].mean_across_box)
+        self.assertEqual(m.metrics['XX']['RMS_BOX'],
+                         m.images[0].rms_across_box)
+        self.assertEqual(m.metrics['XX']['IMAGE_ID'], m.images[0].image_ID)
+        self.assertEqual(m.metrics['XX']['OBS-DATE'], m.images[0].obsdate)
+        self.assertEqual(m.metrics['YY']['IMAGENAME'], m.images[1].fitspath)
+        self.assertEqual(m.metrics['YY']['MEAN_ALL'], m.images[1].mean)
+        self.assertEqual(m.metrics['YY']['RMS_ALL'], m.images[1].rms)
+        self.assertEqual(m.metrics['YY']['MEAN_BOX'],
+                         m.images[1].mean_across_box)
+        self.assertEqual(m.metrics['YY']['RMS_BOX'],
+                         m.images[1].rms_across_box)
+        self.assertEqual(m.metrics['YY']['IMAGE_ID'], m.images[1].image_ID)
+        self.assertEqual(m.metrics['YY']['OBS-DATE'], m.images[1].obsdate)
+        self.assertEqual(m.metrics['V']['IMAGENAME'], m.images[2].fitspath)
+        self.assertEqual(m.metrics['V']['MEAN_ALL'], m.images[2].mean)
+        self.assertEqual(m.metrics['V']['RMS_ALL'], m.images[2].rms)
+        self.assertEqual(m.metrics['V']['MEAN_BOX'],
+                         m.images[2].mean_across_box)
+        self.assertEqual(m.metrics['V']['RMS_BOX'],
+                         m.images[2].rms_across_box)
+        self.assertEqual(m.metrics['V']['IMAGE_ID'], m.images[2].image_ID)
+        self.assertEqual(m.metrics['V']['OBS-DATE'], m.images[2].obsdate)
+        self.assertEqual(list(m.metrics['XX_YY'].keys()), [
+                         'RMS_RATIO', 'RMS_RATIO_BOX'])
+        self.assertEqual(m.metrics['XX_YY']['RMS_RATIO'],
+                         m.images[0].rms / m.images[1].rms)
+        self.assertEqual(m.metrics['XX_YY']['RMS_RATIO_BOX'],
+                         m.images[0].rms_across_box / m.images[1].rms_across_box)
+        self.assertEqual(list(m.metrics['V_XX'].keys()), [
+                         'RMS_RATIO', 'RMS_RATIO_BOX'])
+        self.assertEqual(m.metrics['V_XX']['RMS_RATIO'],
+                         m.images[2].rms / m.images[0].rms)
+        self.assertEqual(m.metrics['V_XX']['RMS_RATIO_BOX'],
+                         m.images[2].rms_across_box / m.images[0].rms_across_box)
+        self.assertEqual(list(m.metrics['V_YY'].keys()), [
+                         'RMS_RATIO', 'RMS_RATIO_BOX'])
+        self.assertEqual(m.metrics['V_YY']['RMS_RATIO'],
+                         m.images[2].rms / m.images[1].rms)
+        self.assertEqual(m.metrics['V_YY']['RMS_RATIO_BOX'],
+                         m.images[2].rms_across_box / m.images[1].rms_across_box)
 
     def test_write_to(self):
-        m = im.ImgMetrics(images=images)
+        m = ImgMetrics(images=images)
         m.run_metrics()
         outfile = images[0].replace('.fits', '_metrics.json')
         m.write_to()
