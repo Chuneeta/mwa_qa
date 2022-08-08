@@ -1,0 +1,54 @@
+{
+    "noise_box": [
+        100,
+        100
+    ],
+    "V": {
+        "IMAGENAME": "/Users/ridhima/Documents/mwa/calibration/mwa_qa/test_files/1061315688_calibrated-V-image.fits",
+        "OBSDATE": "2013-08-23T17:54:37.0",
+        "MEAN_ALL": -1.3303888408700004e-06,
+        "RMS_ALL": 0.007609810967429247,
+        "STD_ALL": 0.00760981161147356,
+        "RMS_BOX": 0.009383107535541058,
+        "STD_BOX": 0.00938199833035469,
+        "PKS0023_026": 0.030714645276746548
+    },
+    "XX": {
+        "IMAGENAME": "/Users/ridhima/Documents/mwa/calibration/mwa_qa/test_files/1061315688_calibrated-XX-image.fits",
+        "OBSDATE": "2013-08-23T17:54:37.0",
+        "MEAN_ALL": 1.1477340677856773e-07,
+        "RMS_ALL": 0.035584480834735546,
+        "STD_ALL": 0.035584475845098495,
+        "RMS_BOX": 0.02065974287688732,
+        "STD_BOX": 0.020656466484069824,
+        "PKS0023_026": 10.905096047396066
+    },
+    "YY": {
+        "IMAGENAME": "/Users/ridhima/Documents/mwa/calibration/mwa_qa/test_files/1061315688_calibrated-YY-image.fits",
+        "OBSDATE": "2013-08-23T17:54:37.0",
+        "MEAN_ALL": 2.1388110326370224e-05,
+        "RMS_ALL": 0.03622464000723028,
+        "STD_ALL": 0.03622463345527649,
+        "RMS_BOX": 0.021375691518187523,
+        "STD_BOX": 0.021322818472981453,
+        "PKS0023_026": 11.795671760846952
+    },
+    "XX_YY": {
+        "RMS_RATIO_ALL": 0.9823280735883928,
+        "STD_RATIO_ALL": 0.9823281135206422,
+        "RMS_RATIO_BOX": 0.9665064102983038,
+        "STD_RATIO_BOX": 0.9687493475707268
+    },
+    "V_XX": {
+        "RMS_RATIO_ALL": 0.2138519598690051,
+        "STD_RATIO_ALL": 0.2138520079542427,
+        "RMS_RATIO_BOX": 0.4541734905151324,
+        "STD_RATIO_BOX": 0.4541918308046561
+    },
+    "V_YY": {
+        "RMS_RATIO_ALL": 0.21007278377122207,
+        "STD_RATIO_ALL": 0.21007283954629258,
+        "RMS_RATIO_BOX": 0.4389615899704313,
+        "STD_RATIO_BOX": 0.4399980397639645
+    }
+}

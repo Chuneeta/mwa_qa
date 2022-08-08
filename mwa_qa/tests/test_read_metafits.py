@@ -1,4 +1,5 @@
 from mwa_qa import read_metafits as rm
+from collections import OrderedDict
 import unittest
 import numpy as np
 import astropy
@@ -172,13 +173,30 @@ class TestMetafits(unittest.TestCase):
         baseline_length = m.baseline_length_for((75, 74))
         self.assertEqual(baseline_length, 516.6370807265803)
 
-    # def test_baseline_lengths(self):
-     #   m = rm.Metafits(metafits, 'X')
-      #  baseline_lengths = m.baseline_lengths()
-       # bls = nants * (nants - 1) / 2
-        #self.assertEqual(len(list(baseline_lengths.keys())), int(bls))
-        #self.assertEqual(list(baseline_lengths.keys()), antpairs)
-        #self.assertEqual(baseline_lengths[(75, 74)], 516.6370807265803)
+    def test_group_antpairs(self):
+        m = rm.Metafits(metafits, 'X')
+        angroups = m.group_antpairs(bl_tol=2e-1)
+        self.assertTrue(isinstance(angroups, OrderedDict))
+        keys = list(angroups.keys())
+        self.assertTrue(len(keys) == 8100)
+        self.assertEqual(keys[0], (2583, 51, -9))
+        self.assertEqual(angroups[keys[0]], [(74, 75)])
+
+    def test_redundant_baselines(self):
+        m = rm.Metafits(metafits, 'X')
+        reds = m.redundant_antpairs()
+        keys = list(reds.keys())
+        self.assertTrue(len(keys) == 27)
+        self.assertTrue(keys[0], (20, -5, 0))
+        self.assertEqual(reds[keys[0]], [(26, 12), (2, 1)])
+
+    def test_baseline_lengths(self):
+        m = rm.Metafits(metafits, 'X')
+        baseline_lengths = m.baseline_lengths()
+        bls = nants * (nants - 1) / 2
+        self.assertEqual(len(list(baseline_lengths.keys())), int(bls))
+        self.assertEqual(list(baseline_lengths.keys()), antpairs)
+        self.assertEqual(baseline_lengths[(75, 74)], 516.6370807265803)
 
     def test_baselines_greater_than(self):
         m = rm.Metafits(metafits, 'X')
