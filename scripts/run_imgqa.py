@@ -12,4 +12,4 @@ parser.add_argument('--out', help='json output path',
 args = parser.parse_args()
 m = ImgMetrics([*map(str, args.fits)])
 m.run_metrics()
-m.write_to(str(args.out))
+m.write_to(args.out)

@@ -11,4 +11,4 @@ parser.add_argument('--out', help='json output path', type=Path,
 args = parser.parse_args()
 m = VisMetrics(str(args.uvfits))
 m.run_metrics()
-m.write_to(str(args.out))
+m.write_to(args.out)
