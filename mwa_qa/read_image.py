@@ -17,7 +17,11 @@ class Image(object):
             img_hdu = hdus['PRIMARY']
 
             self.data_array = img_hdu.data
-            self.image_ID = img_hdu.header['OBJECT']
+            try:
+                self.image_ID = img_hdu.header['OBJECT']
+            except KeyError:
+                image_id = int(''.join(filter(str.isdigit, fitspath)))
+                self.image_ID = image_id
             self.obsdate = img_hdu.header['DATE-OBS']
             self.image_size = [img_hdu.header['NAXIS1'],
                                img_hdu.header['NAXIS2']]
@@ -37,10 +41,12 @@ class Image(object):
             self.beam_npix = self.beam_area / (self.xcellsize * self.ycellsize)
             self.mean = np.nanmean(self.data_array)
             self.rms = np.sqrt(np.nanmean(self.data_array ** 2))
+            self.std = np.nanstd(self.data_array)
             self.polarization = img_hdu.header['CRVAL4']
             region = self.data_array[0, 0,
                                      0:self.pix_box[0], 0:self.pix_box[1]]
             self.mean_across_box = np.nanmean(region)
+            self.std_across_box = np.nanstd(region)
             self.rms_across_box = np.sqrt(np.nanmean(region ** 2))
 
     def src_pix(self, src_pos):
