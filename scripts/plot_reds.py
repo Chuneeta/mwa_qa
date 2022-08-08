@@ -26,10 +26,11 @@ markers *= (int(len(redkeys) / len(markers)) + 1)
 fig = pylab.figure()
 for i, rkey in enumerate(redkeys):
     antpairs = reds_dict[rkey]
-    for antpair in antpairs:
-        ant1, ant2 = antpair
-        delta_x = np.abs(anpos_dict[ant1][0] - anpos_dict[ant2][0])
-        delta_y = np.abs(anpos_dict[ant1][1] - anpos_dict[ant2][1])
-        pylab.scatter(delta_x, delta_y, marker=markers[i], c=colors[i], s=5)
-    pylab.annotate(rkey, (rkey[0], rkey[1]))
+    print(rkey)
+    pylab.plot(rkey[0], rkey[1])
+    # for antpair in antpairs:
+    #    ant1, ant2 = antpair
+    #    delta_x = np.abs(anpos_dict[ant1][0] - anpos_dict[ant2][0])
+    #    delta_y = np.abs(anpos_dict[ant1][1] - anpos_dict[ant2][1])
+    #    pylab.scatter(delta_x, delta_y, marker=markers[i], c=colors[i], s=5)
 pylab.show()
