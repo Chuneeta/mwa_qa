@@ -4,9 +4,7 @@ from mwa_qa import json_utils as ju
 from collections import OrderedDict
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
-import pandas as pd
 import numpy as np
-import itertools
 
 pol_dict = {'XX': 0, 'XY': 1, 'YX': 2, 'YY':	3}
 
