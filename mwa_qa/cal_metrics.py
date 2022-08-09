@@ -155,66 +155,6 @@ class CalMetrics(object):
     def convergence_variance(self):
         return np.nanvar(self.Csoln.data(5), axis=1)
 
-    def _flag_table(self):
-        _d = [['ANTENNAS', self.metrics['FLAGGED_ANTS']],
-              ['BASELINES', self.metrics['FLAGGED_BLS']],
-              ['CHANNELS', self.metrics['FLAGGED_CHS']],
-              ['CONVERGENCE', self.metrics['NON_CONVERGED_CHS']]
-              ]
-        return pd.DataFrame(data=_d, columns=['FIELD', '%FLAG'])
-
-    def _convegence_table(self):
-        convergence_var = self.metrics['CONVERGENCE_VAR']
-        m_thresh = self.metrics['M_THRESH']
-        _d = []
-        for t in range(self.metrics['NTIMES']):
-            _d.append([convergence_var[t], m_thresh])
-            return pd.DataFrame(data=_d, columns=['VAR', 'M_THRESH'])
-
-    def _variance_antenna_stats(self):
-        var = self.metrics['VAR_AMP_FREQ']
-        mvar = np.nanmean(var, axis=1)
-        stdvar = np.nanstd(var, axis=1)
-        error = var - mvar
-        return error, stdvar
-
-    def variance_antenna_outliers(self, pol, dev=3):
-        error, std = self._variance_antenna_stats()
-        _sh = error.shape
-        pol_ind = pol_dict[pol.upper()]
-        d_error = error[:, :, pol_ind]
-        d_std = std[:, pol_ind]
-        annames = self.Metafits.annames()
-        poor_antennas = []
-        for t in range(_sh[0]):
-            inds = np.where(d_error[t, :] > dev * d_std[t])[0]
-            outliers = np.array(annames)[inds]
-            poor_antennas.append(outliers.tolist())
-            return sorted(poor_antennas)
-
-    def _variance_table(self, pol):
-        var = self.metrics['VAR_AMP_FREQ']
-        error, std = self._variance_antenna_stats()
-        pol_ind = pol_dict[pol.upper()]
-        _sh = var.shape
-        _d = []
-        for i in range(_sh[1]):
-            ratios = []
-            for t in range(_sh[0]):
-                try:
-                    ratios.append(round(error[t, i, pol_ind]
-                                        / std[t, pol_ind], 2))
-                except ValueError:
-                    ratios.append(np.nan)
-            dvar = [['ANTENNA {}'.format(
-                    i), var[t, i, pol_ind], error[t, i, pol_ind],
-                std[t, pol_ind], ratios[t]] for t in range(_sh[0])]
-            dvar = list(itertools.chain(*dvar))
-            _d.append(dvar)
-        columns = ['ANTENNA', 'VAR', 'ERROR', 'STD', 'RATIO']
-        columns *= _sh[0]
-        return pd.DataFrame(data=_d, columns=columns)
-
     def _initialize_metrics_dict(self):
         """
         Initializes the metric dictionary with some of the default
@@ -241,9 +181,6 @@ class CalMetrics(object):
         self.metrics['S_THRESH'] = self.Csoln.header('PRIMARY')['S_THRESH']
         self.metrics['XX'] = OrderedDict()
         self.metrics['YY'] = OrderedDict()
-
-    def make_clickable(self, val):
-        return f'<a target="_blank" href="{val}">{val}</a>'
 
     def run_metrics(self, window_length=19, polyorder=4, sigma=2,
                     html=None, html_link=None):
@@ -299,30 +236,6 @@ class CalMetrics(object):
                 np.abs(smfft_spectrum[:, :, :, i]))
             # receiver variance
             self.metrics[p]['RECEIVER_CHISQVAR'] = vmrcv_chisq[pol_dict[p]]
-
-        if html:
-            if html_link is None:
-                html_link = 'cal_metrics.html'
-            self.metrics['HTML'] = html_link
-            # create a HTML table for convergence
-            df1 = self._flag_table()
-            df2 = self._convegence_table()
-            df3 = self._variance_table('XX')
-            df4 = self._variance_table('YY')
-            df5 = pd.concat([df3, df4], axis=1, keys=['XX', 'YY'])
-            with open(html_link, 'w') as f:
-                f.write('<center>'
-                        + '<h1> {} </h1><br><hr>'.format(self.metrics['OBSID'])
-                        + '<h2> FLAGS </h2>' +
-                        df1.to_html(index=False, border=2,
-                                    justify="center") + '<be><hr>'
-                        + '<h2> CALIBRAITON RESULTS </h2>' +
-                        df2.to_html(index=False, border=2,
-                                    justify="center") + '<br><hr>'
-                        + '<h2> GAIN VARIANCE </h2>' +
-                        df5.to_html(index=False, border=2,
-                                    justify="center") + '<br><hr>'
-                        + '</center>')
 
     def write_to(self, outfile=None):
         if outfile is None:
