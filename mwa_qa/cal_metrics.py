@@ -18,19 +18,19 @@ class CalMetrics(object):
         varaibles
         - calfile:	.fits file containing the calibration solutions
         - metafits:	Metafits with extension *.metafits or _ppds.fits
-                    containing information
+                                containing information
         - pol: 	Polarization, can be either 'X' or 'Y'. It should be
-                specified so that information associated on an
-                observation done with MWA with the given pol is
-                provided. Default is X.
+                        specified so that information associated on an
+                        observation done with MWA with the given pol is
+                        provided. Default is X.
         - norm: Boolean, If True, the calibration solutions will be
-                normlaized else unnormlaized solutions will be used.
-                Default is set to False
+                        normlaized else unnormlaized solutions will be used.
+                        Default is set to False
         - ref_antnum:   Reference antenna number. If norm is True,
-                        a reference antenna is require for normalization.
-                        By default it uses the last antenna in the array.
-                        If the last antenna is flagged, it will return
-                        an error.
+                                        a reference antenna is require for normalization.
+                                        By default it uses the last antenna in the array.
+                                        If the last antenna is flagged, it will return
+                                        an error.
         """
         self.calfile = calfile
         self.Csoln = rc.Csoln(calfile, metafits=metafits,
@@ -41,9 +41,9 @@ class CalMetrics(object):
         """
         Returns variance across frequency for the given tile pair
         - antpair:	Antenna pair or tuple of antenna numbers
-                    e.g (102, 103)
+                                e.g (102, 103)
         - norm:		Boolean, If True returns normalized gains
-                    else unormalized gains. Default is set to True.
+                                else unormalized gains. Default is set to True.
         """
         gain_pairs = self.Csoln.gains_for_antpair(antpair)
         return np.nanvar(gain_pairs, axis=1)
@@ -51,10 +51,10 @@ class CalMetrics(object):
     def variance_for_baselines_less_than(self, uv_cut):
         """
         Returns bls shorter than the specified cut and the variances
-                calculated across frequency for each of the antenna pair
+                        calculated across frequency for each of the antenna pair
         - baseline_cut:	Baseline cut in metres, will use only baselines
-                        shorter than the given value- norm : boolean,
-                        If True returns normalized gains else unormalized
+                                        shorter than the given value- norm : boolean,
+                                        If True returns normalized gains else unormalized
         """
         baselines = self.Metafits.baselines_less_than(uv_cut)
         _sh = self.Csoln.gains().shape
@@ -69,9 +69,9 @@ class CalMetrics(object):
         variances averaged over baseliness shorter than the given
         uv length
         - uv_cut:	Baseline cut in metres, will use only baselines shorter
-                    than the given value
+                                than the given value
         - norm:		Boolean, If True returns normalized gains else unormalized
-                    gains. Default is set to True.
+                                gains. Default is set to True.
         """
         variances = self.variance_for_baselines_less_than(uv_cut)
         vmean = np.nanmean(variances, axis=1)
@@ -84,7 +84,7 @@ class CalMetrics(object):
         """
         Returns the receivers connected to the various tiles in the array
         - n:	Number of receivers in the array. Optional, enabled if
-                If metafits is not provided. Default is 16.
+                        If metafits is not provided. Default is 16.
         """
         if self.Metafits.metafits is None:
             receivers = list(np.arange(1, n + 1))
@@ -128,8 +128,9 @@ class CalMetrics(object):
 
     def flagged_baselines_percent(self):
         bls_weights = self.Csoln.data(6)
-        inds = np.where(np.isnan(bls_weights))[0]
-        return len(inds) / len(bls_weights) * 100
+        inds_nan = np.where(np.isnan(bls_weights))[0]
+        inds_wg0 = np.where(bls_weights == 0)[0]
+        return (len(inds_nan) + len(inds_wg0)) / len(bls_weights) * 100
 
     def flagged_channels_percent(self):
         chflags = self.Csoln.channel_info()['FLAG']
@@ -221,7 +222,7 @@ class CalMetrics(object):
         self.metrics['RECEIVER_CHISQ'] = rcv_chisq
         # metrics for each pols
         for i, p in enumerate(['XX', 'YY']):
-            self.metrics['SKEWNESS_UCVUT'] = mskewness[pol_dict[p]]
+            self.metrics[p]['SKEWNESS_UVCUT'] = mskewness[pol_dict[p]]
             self.metrics[p]['AMPVAR_ANT'] = var_amp_ant[:, :, pol_dict[p]]
             self.metrics[p]['AMPRMS_ANT'] = rms_amp_ant[:, :, pol_dict[p]]
             self.metrics[p]['RMS_AMPVAR_ANT'] = rmsvar_amp_ant[pol_dict[p]]
