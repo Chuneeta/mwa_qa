@@ -10,7 +10,7 @@ parser.add_argument('metafits', type=Path, help='MWA metadata fits file')
 parser.add_argument('--pol', default='X',
                     help='Polarization, can be either X or Y')
 parser.add_argument(
-    '--out', help='json output path', type=Path, default=None, required=False
+    '--out', help='json output path', type=str, default=None, required=False
 )
 
 args = parser.parse_args()

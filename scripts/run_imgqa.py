@@ -7,7 +7,7 @@ parser = ArgumentParser(description="QA for MWA images")
 parser.add_argument('fits', type=Path, nargs='+',
                     help='FITS image file(s)')
 parser.add_argument('--out', help='json output path',
-                    type=Path, default=None, required=False)
+                    type=str, default=None, required=False)
 
 args = parser.parse_args()
 m = ImgMetrics([*map(str, args.fits)])
