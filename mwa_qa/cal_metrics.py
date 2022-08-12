@@ -126,18 +126,18 @@ class CalMetrics(object):
                 gains_fft_sm[t, i, inds_nans_yy, 1] = np.nan
         return gains_fft_sm
 
-    def flagged_baselines_percent(self):
+    def unused_baselines_percent(self):
         bls_weights = self.Csoln.data(6)
         inds_nan = np.where(np.isnan(bls_weights))[0]
         inds_wg0 = np.where(bls_weights == 0)[0]
         return (len(inds_nan) + len(inds_wg0)) / len(bls_weights) * 100
 
-    def flagged_channels_percent(self):
+    def unused_channels_percent(self):
         chflags = self.Csoln.channel_info()['FLAG']
         inds = np.where(np.array(chflags) == 1)[0]
         return len(inds) / len(chflags) * 100
 
-    def flagged_antennas_percent(self):
+    def unused_antennas_percent(self):
         anflags = self.Csoln.ant_info()['FLAG']
         inds = np.where(np.array(anflags) == 1)[0]
         return len(inds) / len(anflags) * 100
@@ -214,9 +214,9 @@ class CalMetrics(object):
         # metric from delay spectrum
         smfft_spectrum = self.apply_gaussian_filter1D_fft(sigma)
         # writing metrics to json file
-        self.metrics['FLAGGED_BLS'] = self.flagged_baselines_percent()
-        self.metrics['FLAGGED_CHS'] = self.flagged_channels_percent()
-        self.metrics['FLAGGED_ANTS'] = self.flagged_antennas_percent()
+        self.metrics['UNUSED_BLS'] = self.unused_baselines_percent()
+        self.metrics['UNUSED_CHS'] = self.unused_channels_percent()
+        self.metrics['UNUSED_ANTS'] = self.unused_antennas_percent()
         self.metrics['NON_CONVERGED_CHS'] = self.non_converging_percent()
         self.metrics['CONVERGENCE_VAR'] = self.convergence_variance()
         self.metrics['RECEIVER_CHISQ'] = rcv_chisq
