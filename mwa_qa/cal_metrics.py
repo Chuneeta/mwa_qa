@@ -206,6 +206,10 @@ class CalMetrics(object):
         for i, r in enumerate(receivers):
             rcv_gains = self.Csoln.gains_for_receiver(r)
             rcv_amps = np.abs(rcv_gains)
+            # turning nans to zeros
+            rcv_amps[np.isnan(rcv_amps)] = 0
+            # ignoring zero division
+            np.seterr(divide='ignore', invalid='ignore')
             rcv_amps_mean = np.nanmean(rcv_amps, axis=1)
             chisq = np.nansum(((rcv_amps - rcv_amps_mean) / rcv_amps), axis=2)
             rcv_chisq[i] = chisq
