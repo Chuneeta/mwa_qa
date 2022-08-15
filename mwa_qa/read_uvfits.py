@@ -39,9 +39,9 @@ class UVfits(object):
                                 - self.ant_2_array) // 256 - 1
             self.antpairs = np.stack(
                 (self.ant_1_array, self.ant_2_array), axis=1)
-            self.unique_antpairs = np.sort(
+            self.antpairs = np.sort(
                 np.unique(self.antpairs, axis=0))
-            assert len(self.unique_antpairs) == self.Nbls
+            assert self.antpairs.shape[0] == self.Nbls
 
             self.freq_array = make_fits_axis_array(vis_hdu, 4)
             self.Nfreqs = len(self.freq_array)
@@ -69,7 +69,7 @@ class UVfits(object):
 
     def auto_antpairs(self):
         return [(ap[0], ap[1]) for ap in
-                self.unique_antpairs if ap[0] == ap[1]]
+                self.antpairs if ap[0] == ap[1]]
 
     def blt_idxs_for_antpair(self, antpair):
         """
@@ -89,8 +89,7 @@ class UVfits(object):
         Npairs = len(antpairs)
         # sorted to traverse in the order on disk to minimize seeks
         blt_idxs = np.sort(np.concatenate([
-            self.blt_idxs_for_antpair(pair) for pair in antpairs
-        ]))
+            self.blt_idxs_for_antpair(antpair) for antpair in antpairs]))
         reals = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 0].reshape(
             (self.Ntimes, Npairs, self.Nfreqs, self.Npols))
         imags = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 1].reshape(
@@ -198,7 +197,8 @@ class UVfits(object):
                         antpair = (
                             self.antenna_numbers[j], self.antenna_numbers[i])
                 if nkey is not None:
-                    angroups[nkey].append(antpair)
+                    if len(self.blt_idxs_for_antpair(antpair)) > 0:
+                        angroups[nkey].append(antpair)
                 else:
                     # new baseline
                     if delta[0] <= 0 or (delta[0] == 0 and delta[1] <= 0) or \
@@ -207,7 +207,8 @@ class UVfits(object):
                         delta = tuple([-d for d in delta])
                         antpair = (
                             self.antenna_numbers[j], self.antenna_numbers[i])
-                    angroups[delta] = [antpair]
+                    if len(self.blt_idxs_for_antpair(antpair)) > 0:
+                        angroups[delta] = [antpair]
         return angroups
 
     def redundant_antpairs(self, bl_tol=2e-1):
