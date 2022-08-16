@@ -3,7 +3,7 @@ from mwa_qa import json_utils as ju
 from collections import OrderedDict
 import numpy as np
 
-pol_dict = {'XX': 0, 'YY': 1, 'XY': 2, 'YY': 3}
+pol_dict = {'XX': 0, 'YY': 1, 'XY': 2, 'YX': 3}
 
 
 class VisMetrics(object):
@@ -78,13 +78,13 @@ class VisMetrics(object):
         if self.uvf.Ntimes > 1:
             vdiff_auto_amps = np.nanvar(np.abs(diff_autos), axis=2)
             vdiff_auto_phs = np.nanvar(np.angle(diff_autos), axis=2)
-            self.metrics['AUTOS'][p]['VAR_DIFF_AMPS'] = vdiff_auto_amps[:, pol_dict[p]]
-            self.metrics['AUTOS'][p]['VAR_DIFF_PHS'] = vdiff_auto_phs[:, pol_dict[p]]
             for p in ['XX', 'YY']:
+                self.metrics['AUTOS'][p]['VAR_DIFF_AMPS'] = vdiff_auto_amps[:, pol_dict[p]]
+                self.metrics['AUTOS'][p]['VAR_DIFF_PHS'] = vdiff_auto_phs[:, pol_dict[p]]
                 self.metrics['AUTOS'][p]['MX_VAR_DIFF_AMPS'] = np.nanmax(
                     np.max(vdiff_auto_amps[:, pol_dict[p]]))
-            self.metrics['AUTOS'][p]['MX_VAR_DIFF_PHS'] = np.nanmax(
-                np.max(vdiff_auto_phs))
+                self.metrics['AUTOS'][p]['MX_VAR_DIFF_PHS'] = np.nanmax(
+                    np.max(vdiff_auto_phs))
         # redundancy metrics
         red_metrics = self.redundant_metrics()
         if red_metrics is not None:
@@ -106,7 +106,7 @@ class VisMetrics(object):
                 var_phsxx_chisqs)
             self.metrics['REDUNDANT']['YY']['VAR_AMP_CHISQ'] = np.nanvar(
                 var_ampyy_chisqs)
-            self.metrics['REDUNDANT']['YY']['VAR_AMP_CHISQ'] = np.nanvar(
+            self.metrics['REDUNDANT']['YY']['VAR_PHS_CHISQ'] = np.nanvar(
                 var_phsyy_chisqs)
 
             for p in ['XX', 'YY']:
