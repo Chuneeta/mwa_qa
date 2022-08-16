@@ -62,7 +62,8 @@ class Image(object):
             select = self._select_region(src_pos, beam_const)
             region = self.data_array.squeeze()[select]
             pflux = np.nanmax(region)
-            tflux = np.nansum(region) / self.beam_npix
+            # might have negative pixels as well
+            tflux = np.nansum(np.abs(region)) / self.beam_npix
             std = np.nanstd(region)
 
         return pflux, tflux, std
