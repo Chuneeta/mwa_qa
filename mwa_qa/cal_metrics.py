@@ -172,9 +172,10 @@ class CalMetrics(object):
         if self.Csoln.norm:
             self.metrics['REF_ANTNUM'] = self.Csoln.ref_antnum
         self.metrics['NTIMES'] = self.Csoln.ntimeblocks()
-        self.metrics['FREQ_START'] = freqs[0]
-        self.metrics['FREQ_WIDTH'] = freqs[1] - freqs[0]
-        self.metrics['NFREQ'] = len(freqs)
+        self.metrics['START_FREQ'] = freqs[0]
+        self.metrics['CH_WIDTH'] = freqs[1] - freqs[0]
+        self.metrics['NCHAN'] = len(freqs)
+        self.metrics['ANTENNA'] = self.Csoln.ant_info()['ANTENNA']
         self.metrics['RECEIVERS'] = receivers.tolist()
         self.metrics['M_THRESH'] = self.Csoln.header('PRIMARY')['M_THRESH']
         self.metrics['S_THRESH'] = self.Csoln.header('PRIMARY')['S_THRESH']
