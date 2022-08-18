@@ -15,7 +15,8 @@ barea = bmaj * bmin * np.pi / 4 / np.log(2)
 bnpix = barea / (np.abs(hdr['CDELT1']) * np.abs(hdr['CDELT2']))
 _sh = data.shape
 
-srcpos = (6.4549166666666675, -26.04)
+srcpos1 = (6.4549166666666675, -26.04)
+srcpos2 = (45, -26.04)
 
 
 class TestImage(unittest.TestCase):
@@ -48,35 +49,45 @@ class TestImage(unittest.TestCase):
 
     def test_src_pix(self):
         img = Image(image)
-        src_pix = img.src_pix(srcpos)
+        src_pix = img.src_pix(srcpos1)
         self.assertEqual(src_pix, (1527, 2121))
+        src_pix = img.src_pix(srcpos2)
+        self.assertEqual(src_pix, (np.nan, np.nan))
 
     def test_src_flux(self):
         img = Image(image)
-        src_flux = img.src_flux(srcpos)
+        src_flux = img.src_flux(srcpos1)
         np.testing.assert_almost_equal(
             src_flux[0], 9.296637, decimal=4)
         np.testing.assert_almost_equal(
-            src_flux[1], 8.935091385417698, decimal=4)
+            src_flux[1], 11.322320497265924, decimal=4)
         np.testing.assert_almost_equal(
             src_flux[2], 2.7584093, decimal=4)
-        src_flux = img.src_flux(srcpos, deconvol=True)
+        src_flux = img.src_flux(srcpos1, deconvol=True)
         np.testing.assert_almost_equal(
             src_flux[0], 10.905096047396066, decimal=4)
         np.testing.assert_almost_equal(
             src_flux[1], 10.507473433991805, decimal=4)
         np.testing.assert_almost_equal(
             src_flux[2], 0.00593149258694896, decimal=4)
+        src_flux = img.src_flux(srcpos2)
+        np.testing.assert_almost_equal(src_flux[0], np.nan)
+        np.testing.assert_almost_equal(src_flux[1], np.nan)
+        np.testing.assert_almost_equal(src_flux[2], np.nan)
+        src_flux = img.src_flux(srcpos2, deconvol=True)
+        np.testing.assert_almost_equal(src_flux[0], np.nan)
+        np.testing.assert_almost_equal(src_flux[1], np.nan)
+        np.testing.assert_almost_equal(src_flux[2], np.nan)
 
     def test_select_region(self):
         img = Image(image)
-        select = img._select_region(srcpos, beam_const=1)
+        select = img._select_region(srcpos1, beam_const=1)
         self.assertEqual(select.dtype, 'bool')
         self.assertEqual(select.shape, (_sh[2], _sh[3]))
 
     def test_fit_gaussian(self):
         img = Image(image)
-        gauss_par = img.fit_gaussian(srcpos, 1)
+        gauss_par = img.fit_gaussian(srcpos1, 1)
         np.testing.assert_almost_equal(
             gauss_par[0], 10.905096047396066, decimal=4)
         np.testing.assert_almost_equal(
