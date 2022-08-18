@@ -21,6 +21,7 @@ class ImgMetrics(object):
     def _initialize_metrics_dict(self):
         self.metrics = OrderedDict()
         self.metrics['PIX_BOX'] = self.images[0].pix_box
+        self.metrics['IMAGE_SIZE'] = self.images[0].image_size
         pol_convs = self.pols_from_image()
         for i, pc in enumerate(pol_convs):
             pol = pol_dict[pc]
@@ -30,15 +31,6 @@ class ImgMetrics(object):
             self.metrics[pol]['OBS-DATE'] = self.images[i].obsdate
             for src in srcnames:
                 self.metrics[pol][src] = OrderedDict()
-        if -5 in pol_convs and -6 in pol_convs:
-            self.metrics['{}_{}'.format(
-                pol_dict[-5], pol_dict[-6])] = OrderedDict()
-        if 4 in pol_convs and -5 in pol_convs:
-            self.metrics['{}_{}'.format(
-                pol_dict[4], pol_dict[-5])] = OrderedDict()
-        if 4 in pol_convs and -6 in pol_convs:
-            self.metrics['{}_{}'.format(
-                pol_dict[4], pol_dict[-6])] = OrderedDict()
 
     def run_metrics(self, beam_const=1, deconvol=False):
         self._initialize_metrics_dict()
@@ -55,24 +47,6 @@ class ImgMetrics(object):
                     srcpos[j], beam_const=beam_const, deconvol=deconvol)
                 self.metrics[pol][src]['PEAK_FLUX'] = src_flux[0]
                 self.metrics[pol][src]['INT_FLUX'] = src_flux[1]
-
-        if 'XX_YY' in keys:
-            self.metrics['XX_YY']['RMS_RATIO'] = float(
-                self.metrics['XX']['RMS_ALL'] / self.metrics['YY']['RMS_ALL'])
-            self.metrics['XX_YY']['RMS_RATIO_BOX'] = float(
-                self.metrics['XX']['RMS_BOX'] / self.metrics['YY']['RMS_BOX'])
-
-        if 'V_XX' in keys:
-            self.metrics['V_XX']['RMS_RATIO'] = float(
-                self.metrics['V']['RMS_ALL'] / self.metrics['XX']['RMS_ALL'])
-            self.metrics['V_XX']['RMS_RATIO_BOX'] = float(
-                self.metrics['V']['RMS_BOX'] / self.metrics['XX']['RMS_BOX'])
-
-        if 'V_YY' in keys:
-            self.metrics['V_YY']['RMS_RATIO'] = float(
-                self.metrics['V']['RMS_ALL'] / self.metrics['YY']['RMS_ALL'])
-            self.metrics['V_YY']['RMS_RATIO_BOX'] = float(
-                self.metrics['V']['RMS_BOX'] / self.metrics['YY']['RMS_BOX'])
 
     def write_to(self, outfile=None):
         if outfile is None:
