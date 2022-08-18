@@ -62,26 +62,24 @@ class TestImgMetrics(unittest.TestCase):
         m._initialize_metrics_dict()
         self.assertTrue(m.metrics, OrderedDict)
         keys = list(m.metrics.keys())
-        self.assertEqual(keys, ['PIX_BOX', 'XX', 'YY',
-                         'V', 'XX_YY', 'V_XX', 'V_YY'])
+        self.assertEqual(keys, ['PIX_BOX', 'IMAGE_SIZE', 'XX', 'YY', 'V'])
 
     def test_metric_keys(self):
         m = ImgMetrics(images=images)
         m._initialize_metrics_dict()
         self.assertEqual(m.metrics['PIX_BOX'], [100, 100])
+        self.assertEqual(m.metrics['IMAGE_SIZE'], [4096, 4096])
         self.assertTrue(isinstance(m.metrics['XX'], OrderedDict))
         self.assertTrue(isinstance(m.metrics['YY'], OrderedDict))
-        self.assertTrue(isinstance(m.metrics['XX_YY'], OrderedDict))
-        self.assertTrue(isinstance(m.metrics['V_XX'], OrderedDict))
-        self.assertTrue(isinstance(m.metrics['V_YY'], OrderedDict))
+        self.assertTrue(isinstance(m.metrics['V'], OrderedDict))
 
     def test_run_metrics(self):
         m = ImgMetrics(images=images)
         m.run_metrics()
         keys = list(m.metrics.keys())
-        self.assertEqual(keys, ['PIX_BOX', 'XX', 'YY',
-                         'V', 'XX_YY', 'V_XX', 'V_YY'])
+        self.assertEqual(keys, ['PIX_BOX', 'IMAGE_SIZE', 'XX', 'YY', 'V'])
         self.assertEqual(m.metrics['PIX_BOX'], [100, 100])
+        self.assertEqual(m.metrics['IMAGE_SIZE'], [4096, 4096])
         self.assertEqual(list(m.metrics['XX'].keys()), [
                          'IMAGENAME', 'IMAGE_ID',
                          'OBS-DATE', 'PKS0023_026',
@@ -106,6 +104,14 @@ class TestImgMetrics(unittest.TestCase):
                          m.images[0].rms_across_box)
         self.assertEqual(m.metrics['XX']['IMAGE_ID'], m.images[0].image_ID)
         self.assertEqual(m.metrics['XX']['OBS-DATE'], m.images[0].obsdate)
+        self.assertTrue(isinstance(
+            m.metrics['XX']['PKS0023_026'], OrderedDict))
+        self.assertEqual(list(m.metrics['XX']['PKS0023_026'].keys()), [
+                         'PEAK_FLUX', 'INT_FLUX'])
+        self.assertEqual(m.metrics['XX']['PKS0023_026']
+                         ['PEAK_FLUX'], np.float32(9.296637))
+        self.assertEqual(m.metrics['XX']['PKS0023_026']
+                         ['INT_FLUX'], 11.322320497265924)
         self.assertEqual(m.metrics['YY']['IMAGENAME'], m.images[1].fitspath)
         self.assertEqual(m.metrics['YY']['MEAN_ALL'], m.images[1].mean)
         self.assertEqual(m.metrics['YY']['RMS_ALL'], m.images[1].rms)
@@ -115,6 +121,14 @@ class TestImgMetrics(unittest.TestCase):
                          m.images[1].rms_across_box)
         self.assertEqual(m.metrics['YY']['IMAGE_ID'], m.images[1].image_ID)
         self.assertEqual(m.metrics['YY']['OBS-DATE'], m.images[1].obsdate)
+        self.assertTrue(isinstance(
+            m.metrics['YY']['PKS0023_026'], OrderedDict))
+        self.assertEqual(list(m.metrics['YY']['PKS0023_026'].keys()), [
+                         'PEAK_FLUX', 'INT_FLUX'])
+        self.assertEqual(m.metrics['YY']['PKS0023_026']
+                         ['PEAK_FLUX'], np.float32(10.095679))
+        self.assertEqual(m.metrics['YY']['PKS0023_026']
+                         ['INT_FLUX'], 12.266889985793634)
         self.assertEqual(m.metrics['V']['IMAGENAME'], m.images[2].fitspath)
         self.assertEqual(m.metrics['V']['MEAN_ALL'], m.images[2].mean)
         self.assertEqual(m.metrics['V']['RMS_ALL'], m.images[2].rms)
@@ -124,24 +138,14 @@ class TestImgMetrics(unittest.TestCase):
                          m.images[2].rms_across_box)
         self.assertEqual(m.metrics['V']['IMAGE_ID'], m.images[2].image_ID)
         self.assertEqual(m.metrics['V']['OBS-DATE'], m.images[2].obsdate)
-        self.assertEqual(list(m.metrics['XX_YY'].keys()), [
-                         'RMS_RATIO', 'RMS_RATIO_BOX'])
-        self.assertEqual(m.metrics['XX_YY']['RMS_RATIO'],
-                         m.images[0].rms / m.images[1].rms)
-        self.assertEqual(m.metrics['XX_YY']['RMS_RATIO_BOX'],
-                         m.images[0].rms_across_box / m.images[1].rms_across_box)
-        self.assertEqual(list(m.metrics['V_XX'].keys()), [
-                         'RMS_RATIO', 'RMS_RATIO_BOX'])
-        self.assertEqual(m.metrics['V_XX']['RMS_RATIO'],
-                         m.images[2].rms / m.images[0].rms)
-        self.assertEqual(m.metrics['V_XX']['RMS_RATIO_BOX'],
-                         m.images[2].rms_across_box / m.images[0].rms_across_box)
-        self.assertEqual(list(m.metrics['V_YY'].keys()), [
-                         'RMS_RATIO', 'RMS_RATIO_BOX'])
-        self.assertEqual(m.metrics['V_YY']['RMS_RATIO'],
-                         m.images[2].rms / m.images[1].rms)
-        self.assertEqual(m.metrics['V_YY']['RMS_RATIO_BOX'],
-                         m.images[2].rms_across_box / m.images[1].rms_across_box)
+        self.assertTrue(isinstance(
+            m.metrics['V']['PKS0023_026'], OrderedDict))
+        self.assertEqual(list(m.metrics['V']['PKS0023_026'].keys()), [
+                         'PEAK_FLUX', 'INT_FLUX'])
+        self.assertEqual(m.metrics['V']['PKS0023_026']
+                         ['PEAK_FLUX'], np.float32(0.023942769))
+        self.assertEqual(m.metrics['V']['PKS0023_026']
+                         ['INT_FLUX'], 0.051840111910313624)
 
     def test_write_to(self):
         m = ImgMetrics(images=images)
