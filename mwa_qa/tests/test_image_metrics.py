@@ -18,7 +18,7 @@ bmaj = 0.0353 if hdr['BMAJ'] == 0. else hdr['BMAJ']
 bmin = 0.0318 if hdr['BMIN'] == 0. else hdr['BMIN']
 bmaj_px = bmaj / np.abs(hdr['CDELT1'])
 bmin_px = bmin / np.abs(hdr['CDELT2'])
-barea = bmaj * bmin * np.pi / 4 / np.log(2)
+barea = bmaj * bmin * np.pi
 bnpix = barea / (np.abs(hdr['CDELT1']) * np.abs(hdr['CDELT2']))
 _sh = data.shape
 
@@ -111,7 +111,7 @@ class TestImgMetrics(unittest.TestCase):
         self.assertEqual(m.metrics['XX']['PKS0023_026']
                          ['PEAK_FLUX'], np.float32(9.296637))
         self.assertEqual(m.metrics['XX']['PKS0023_026']
-                         ['INT_FLUX'], 11.322320497265924)
+                         ['INT_FLUX'], 1.9123037369524847)
         self.assertEqual(m.metrics['YY']['IMAGENAME'], m.images[1].fitspath)
         self.assertEqual(m.metrics['YY']['MEAN_ALL'], m.images[1].mean)
         self.assertEqual(m.metrics['YY']['RMS_ALL'], m.images[1].rms)
@@ -128,7 +128,7 @@ class TestImgMetrics(unittest.TestCase):
         self.assertEqual(m.metrics['YY']['PKS0023_026']
                          ['PEAK_FLUX'], np.float32(10.095679))
         self.assertEqual(m.metrics['YY']['PKS0023_026']
-                         ['INT_FLUX'], 12.266889985793634)
+                         ['INT_FLUX'], 2.0718385039782916)
         self.assertEqual(m.metrics['V']['IMAGENAME'], m.images[2].fitspath)
         self.assertEqual(m.metrics['V']['MEAN_ALL'], m.images[2].mean)
         self.assertEqual(m.metrics['V']['RMS_ALL'], m.images[2].rms)
@@ -145,7 +145,7 @@ class TestImgMetrics(unittest.TestCase):
         self.assertEqual(m.metrics['V']['PKS0023_026']
                          ['PEAK_FLUX'], np.float32(0.023942769))
         self.assertEqual(m.metrics['V']['PKS0023_026']
-                         ['INT_FLUX'], 0.051840111910313624)
+                         ['INT_FLUX'], 0.008755629179907626)
 
     def test_write_to(self):
         m = ImgMetrics(images=images)
