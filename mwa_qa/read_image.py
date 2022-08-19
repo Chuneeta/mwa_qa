@@ -37,8 +37,10 @@ class Image(object):
             self.beam_major_px = self.beam_major / self.xcellsize
             self.beam_minor_px = self.beam_minor / self.ycellsize
             self.beam_area = self.beam_major * \
-                self.beam_minor * np.pi / 4 / np.log(2)
+                self.beam_minor * np.pi
             self.beam_npix = self.beam_area / (self.xcellsize * self.ycellsize)
+            self.beam_radius_px = np.sqrt(self.beam_major_px **
+                                          2 + self.beam_minor_px ** 2)
             self.mean = np.nanmean(self.data_array)
             self.rms = np.sqrt(np.nanmean(self.data_array ** 2))
             self.std = np.nanstd(self.data_array)
@@ -73,14 +75,13 @@ class Image(object):
                 region = self.data_array.squeeze()[select]
                 pflux = np.nanmax(region)
                 # might have negative pixels as well
-                tflux = np.nansum(np.abs(region)) / self.beam_npix
+                npoints = len(np.where(select == True)[0])
+                tflux = np.nansum(np.abs(region)) / npoints
                 std = np.nanstd(region)
 
         return pflux, tflux, std
 
     def _select_region(self, src_pos, beam_const):
-        bm_radius_px = np.sqrt(self.beam_major_px **
-                               2 + self.beam_minor_px ** 2)
         ra_pix, dec_pix = self.src_pix(src_pos)
         if np.isnan(ra_pix) or np.isnan(dec_pix):
             warnings.warn('Source position out of bounds')
@@ -90,7 +91,7 @@ class Image(object):
             m_axis = np.arange(self.image_size[1])
             ll, mm = np.meshgrid(l_axis, m_axis)
             R = np.sqrt((ll - ra_pix)**2 + (mm - dec_pix)**2)
-            select = R < beam_const * bm_radius_px
+            select = R < beam_const * self.beam_radius_px
 
         return select
 
@@ -127,6 +128,7 @@ class Image(object):
                                         theta=self.parallactic_angle * np.pi/180)
                 gauss_mod = fit_p(mod, ll, mm, gauss_data)
             gauss_pflux = gauss_mod.amplitude.value
-            gauss_tflux = np.nansum(gauss_mod(ll, mm)) / self.beam_npix
+            npoints = len(np.where(select == True)[0])
+            gauss_tflux = np.nansum(gauss_mod(ll, mm)) / npoints
             gauss_std = np.nanstd(gauss_mod(ll, mm))
         return gauss_pflux, gauss_tflux, gauss_std
