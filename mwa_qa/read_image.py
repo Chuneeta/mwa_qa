@@ -73,7 +73,8 @@ class Image(object):
                 pflux, tflux, std = np.nan, np.nan, np.nan
             else:
                 region = self.data_array.squeeze()[select]
-                pflux = np.nanmax(region)
+                pflux = np.nanmax(np.abs(region))
+                print(pflux)
                 # might have negative pixels as well
                 npoints = len(np.where(select == True)[0])
                 tflux = np.nansum(np.abs(region)) / npoints
