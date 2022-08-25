@@ -1,5 +1,5 @@
-from mwa_qa import read_metafits as rm
-from mwa_qa import read_csolutions as rc
+from mwa_qa.read_metafits import Metafits
+from mwa_qa.read_calfits import CalFits
 from mwa_qa import json_utils as ju
 from collections import OrderedDict
 from scipy.ndimage import gaussian_filter1d
@@ -10,54 +10,55 @@ pol_dict = {'XX': 0, 'XY': 1, 'YX': 2, 'YY':	3}
 
 
 class CalMetrics(object):
-    def __init__(self, calfile, metafits=None, pol='X',
-                 norm=False, ref_antnum=None):
+    def __init__(self, calfits_path, metafits_path=None, pol='X',
+                 norm=False, ref_antenna=None):
         """
         Object that takes in .fits containing the calibration solutions
         file readable by astropy and initializes them as global
         varaibles
         - calfile:	.fits file containing the calibration solutions
         - metafits:	Metafits with extension *.metafits or _ppds.fits
-                                containing information
+                                                                                                        containing information
         - pol: 	Polarization, can be either 'X' or 'Y'. It should be
-                        specified so that information associated on an
-                        observation done with MWA with the given pol is
-                        provided. Default is X.
+                                                                        specified so that information associated on an
+                                                                        observation done with MWA with the given pol is
+                                                                        provided. Default is X.
         - norm: Boolean, If True, the calibration solutions will be
-                        normlaized else unnormlaized solutions will be used.
-                        Default is set to False
-        - ref_antnum:   Reference antenna number. If norm is True,
-                                        a reference antenna is require for normalization.
-                                        By default it uses the last antenna in the array.
-                                        If the last antenna is flagged, it will return
-                                        an error.
+                                                                        normlaized else unnormlaized solutions will be used.
+                                                                        Default is set to False
+        - ref_antenna:   Reference antenna number. If norm is True,
+                                                                                                                                        a reference antenna is require for normalization.
+                                                                                                                                        By default it uses the last antenna in the array.
+                                                                                                                                        If the last antenna is flagged, it will return
+                                                                                                                                        an error.
         """
-        self.calfile = calfile
-        self.Csoln = rc.Csoln(calfile, metafits=metafits,
-                              pol=pol, norm=norm, ref_antnum=ref_antnum)
-        self.Metafits = rm.Metafits(metafits, pol)
+        self.calfits_path = calfits_path
+        self.metafits_path = metafits_path
+        self.CalFits = CalFits(calfits_path, metafits_path=metafits_path,
+                               pol=pol, norm=norm, ref_antenna=ref_antenna)
+        self.Metafits = Metafits(metafits_path, pol)
 
     def variance_for_antpair(self, antpair):
         """
         Returns variance across frequency for the given tile pair
         - antpair:	Antenna pair or tuple of antenna numbers
-                                e.g (102, 103)
+                                                                                                        e.g (
+                                                                                                            102, 103)
         - norm:		Boolean, If True returns normalized gains
-                                else unormalized gains. Default is set to True.
+                                                                                                        else unormalized gains. Default is set to True.
         """
-        gain_pairs = self.Csoln.gains_for_antpair(antpair)
+        gain_pairs = self.CalFits.gains_for_antpair(antpair)
         return np.nanvar(gain_pairs, axis=1)
 
     def variance_for_baselines_less_than(self, uv_cut):
         """
         Returns bls shorter than the specified cut and the variances
-                        calculated across frequency for each of the antenna pair
-        - baseline_cut:	Baseline cut in metres, will use only baselines
-                                        shorter than the given value- norm : boolean,
-                                        If True returns normalized gains else unormalized
+        calculated across frequency for each of the antenna pair
+        - uv_cut:	Baseline cut in metres, will use only baselines
+        shorter than the given value- norm
         """
         baselines = self.Metafits.baselines_less_than(uv_cut)
-        _sh = self.Csoln.gains().shape
+        _sh = self.CalFits.gain_array.shape
         variances = np.zeros((_sh[0], len(baselines), 4))
         for i, bl in enumerate(baselines):
             variances[:, i, :] = self.variance_for_antpair(bl)
@@ -69,9 +70,9 @@ class CalMetrics(object):
         variances averaged over baseliness shorter than the given
         uv length
         - uv_cut:	Baseline cut in metres, will use only baselines shorter
-                                than the given value
+                                                                                                        than the given value
         - norm:		Boolean, If True returns normalized gains else unormalized
-                                gains. Default is set to True.
+                                                                                                        gains. Default is set to True.
         """
         variances = self.variance_for_baselines_less_than(uv_cut)
         vmean = np.nanmean(variances, axis=1)
@@ -84,7 +85,7 @@ class CalMetrics(object):
         """
         Returns the receivers connected to the various tiles in the array
         - n:	Number of receivers in the array. Optional, enabled if
-                        If metafits is not provided. Default is 16.
+                                                                        If metafits is not provided. Default is 16.
         """
         if self.Metafits.metafits is None:
             receivers = list(np.arange(1, n + 1))
@@ -127,32 +128,28 @@ class CalMetrics(object):
         return gains_fft_sm
 
     def unused_baselines_percent(self):
-        bls_weights = self.Csoln.data(6)
-        inds_nan = np.where(np.isnan(bls_weights))[0]
-        inds_wg0 = np.where(bls_weights == 0)[0]
-        return (len(inds_nan) + len(inds_wg0)) / len(bls_weights) * 100
+        inds_nan = np.where(np.isnan(self.CalFits.baseline_weights))[0]
+        inds_wg0 = np.where(self.CalFits.baseline_weights == 0)[0]
+        return (len(inds_nan) + len(inds_wg0)) / len(self.CalFits.baseline_weights) * 100
 
     def unused_channels_percent(self):
-        chflags = self.Csoln.channel_info()['FLAG']
-        inds = np.where(np.array(chflags) == 1)[0]
-        return len(inds) / len(chflags) * 100
+        inds = np.where(np.array(self.CalFits.frequency_flags) == 1)[0]
+        return len(inds) / len(self.CalFits.frequency_flags) * 100
 
     def unused_antennas_percent(self):
-        anflags = self.Csoln.ant_info()['FLAG']
-        inds = np.where(np.array(anflags) == 1)[0]
-        return len(inds) / len(anflags) * 100
+        inds = np.where(np.array(self.CalFits.antenna_flags) == 1)[0]
+        return len(inds) / len(self.CalFits.antenna_flags) * 100
 
     def non_converging_percent(self):
-        convergence = self.Csoln.data(5)
-        _sh = convergence.shape
+        sh = self.CalFits.convergence.shape
         count = 0
-        for t in range(_sh[0]):
-            inds = np.where(np.isnan(convergence[t, :]))[0]
+        for t in range(sh[0]):
+            inds = np.where(np.isnan(self.CalFits.convergence[t, :]))[0]
             count += len(inds)
-        return count / (_sh[0] * _sh[1]) * 100
+        return count / (sh[0] * sh[1]) * 100
 
     def convergence_variance(self):
-        return np.nanvar(self.Csoln.data(5), axis=1)
+        return np.nanvar(self.CalFits.convergence, axis=1)
 
     def _initialize_metrics_dict(self):
         """
@@ -160,35 +157,29 @@ class CalMetrics(object):
         parameters
         """
         self.metrics = OrderedDict()
-        freqs = self.Csoln.channel_info()['FREQ']
-        hdr = self.Csoln.header('PRIMARY')
         # assuming hyperdrive outputs 4 polarizations
         pols = ['XX', 'XY', 'YX', 'YY']
         receivers = np.unique(sorted(self.get_receivers()))
         self.metrics['POLS'] = pols
-        self.metrics['OBSID'] = hdr['OBSID']
-        self.metrics['UVCUT'] = hdr['UVW_MIN']
-        self.metrics['NITER'] = hdr['MAXITER']
-        if self.Csoln.norm:
-            self.metrics['REF_ANTNUM'] = self.Csoln.ref_antnum
-        self.metrics['NTIMES'] = self.Csoln.ntimeblocks()
-        self.metrics['START_FREQ'] = freqs[0]
-        self.metrics['CH_WIDTH'] = freqs[1] - freqs[0]
-        self.metrics['NCHAN'] = len(freqs)
-        self.metrics['ANTENNA'] = self.Csoln.ant_info()['ANTENNA']
+        self.metrics['OBSID'] = self.CalFits.obsid
+        self.metrics['UVCUT'] = self.CalFits.uvcut
+        if self.CalFits.norm:
+            self.metrics['REF_ANTNUM'] = self.CalFits.ref_antenna
+        self.metrics['NTIME'] = self.CalFits.Ntime
+        self.metrics['START_FREQ'] = self.CalFits.frequency_array[0]
+        self.metrics['CH_WIDTH'] = self.CalFits.frequency_array[1] - \
+            self.CalFits.frequency_array[0]
+        self.metrics['ANTENNA'] = self.CalFits.antenna
         self.metrics['RECEIVERS'] = receivers.tolist()
-        self.metrics['M_THRESH'] = self.Csoln.header('PRIMARY')['M_THRESH']
-        self.metrics['S_THRESH'] = self.Csoln.header('PRIMARY')['S_THRESH']
         self.metrics['XX'] = OrderedDict()
         self.metrics['YY'] = OrderedDict()
 
-    def run_metrics(self, window_length=19, polyorder=4, sigma=2,
-                    html=None, html_link=None):
+    def run_metrics(self, dly_cut=2000):
         self._initialize_metrics_dict()
         pols = self.metrics['POLS']
         receivers = self.metrics['RECEIVERS']
-        ntimes = self.metrics['NTIMES']
-        gain_amps = self.Csoln.amplitudes()
+        ntimes = self.metrics['NTIME']
+        gain_amps = self.CalFits.amplitudes
         # metrics across antennas
         var_amp_ant = np.nanvar(gain_amps, axis=1)
         rms_amp_ant = np.sqrt(np.nanmean(gain_amps ** 2, axis=1))
@@ -205,9 +196,9 @@ class CalMetrics(object):
         # metrics based on antennas connected to receivers
         rcv_chisq = np.zeros((len(receivers), ntimes, 8, len(pols)))
         for i, r in enumerate(receivers):
-            rcv_gains = self.Csoln.gains_for_receiver(r)
+            rcv_gains = self.CalFits.gains_for_receiver(r)
             rcv_amps = np.abs(rcv_gains)
-            # ignoring zero division
+        # ignoring zero division
             np.seterr(divide='ignore', invalid='ignore')
             rcv_amps_mean = np.nanmean(rcv_amps, axis=1)
             chisq = np.nansum(((rcv_amps - rcv_amps_mean) / rcv_amps), axis=2)
@@ -215,7 +206,9 @@ class CalMetrics(object):
         mrcv_chisq = np.nanmean(np.nanmean(rcv_chisq, axis=1), axis=1)
         vmrcv_chisq = np.nanvar(mrcv_chisq, axis=0)
         # metric from delay spectrum
-        smfft_spectrum = self.apply_gaussian_filter1D_fft(sigma)
+        fft_spectrum = self.CalFits.gains_fft()
+        delays = self.CalFits.delays()
+        #smfft_spectrum = self.apply_gaussian_filter1D_fft(sigma)
         # writing metrics to json file
         self.metrics['UNUSED_BLS'] = self.unused_baselines_percent()
         self.metrics['UNUSED_CHS'] = self.unused_channels_percent()
@@ -233,13 +226,19 @@ class CalMetrics(object):
             self.metrics[p]['AMPRMS_FREQ'] = rms_amp_freq[:, :, pol_dict[p]]
             self.metrics[p]['RMS_AMPVAR_FREQ'] = rmsvar_amp_freq[pol_dict[p]]
             # delay spectra
-            self.metrics[p]['DFFT'] = smfft_spectrum[:, :, :, i]
+            self.metrics[p]['DFFT'] = np.abs(fft_spectrum[:, :, :, i])
             self.metrics[p]['DFFT_POWER'] = np.nansum(
-                np.abs(smfft_spectrum[:, :, :, i]))
+                np.abs(fft_spectrum[:, :, :, i]))
+            inds_pos = np.where(delays > dly_cut)[0]
+            inds_neg = np.where(delays < -1 * dly_cut)[0]
+            self.metrics[p]['DFFT_POWER_HIGH_PKPL'] = np.nansum(
+                np.abs(fft_spectrum[:, :, inds_pos, i]))
+            self.metrics[p]['DFFT_POWER_HIGH_NKPL'] = np.nansum(
+                np.abs(fft_spectrum[:, :, inds_neg, i]))
             # receiver variance
             self.metrics[p]['RECEIVER_CHISQVAR'] = vmrcv_chisq[pol_dict[p]]
 
     def write_to(self, outfile=None):
         if outfile is None:
-            outfile = self.calfile.replace('.fits', '_cal_metrics.json')
+            outfile = self.calfits_path.replace('.fits', '_cal_metrics.json')
         ju.write_metrics(self.metrics, outfile)
