@@ -19,7 +19,6 @@ parser.add_argument('--save', dest='save', action='store_true',
                     default=None, help='Boolean to allow to save the image')
 parser.add_argument('--out', dest='figname', default=None,
                     help='Name of ouput figure name')
-parser.add_argument('--outliers', dest='outliers', action='store_true')
 
 args = parser.parse_args()
 # Stokes XX
@@ -66,7 +65,6 @@ for json in args.json:
     pks_pflux_sv.append(data['V']['PKS0023_026']['PEAK_FLUX'])
     pks_tflux_sv.append(data['V']['PKS0023_026']['INT_FLUX'])
     count += 1
-print(len(obsids))
 print('Total number of observations: {}'.format(count))
 
 ratio_rms_all_sxx = np.array(rms_all_sv) / np.array(rms_all_sxx)
