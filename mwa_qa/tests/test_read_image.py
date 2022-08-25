@@ -11,7 +11,7 @@ bmaj = 0.0353 if hdr['BMAJ'] == 0. else hdr['BMAJ']
 bmin = 0.0318 if hdr['BMIN'] == 0. else hdr['BMIN']
 bmaj_px = bmaj / np.abs(hdr['CDELT1'])
 bmin_px = bmin / np.abs(hdr['CDELT2'])
-barea = bmaj * bmin * np.pi / 4 / np.log(2)
+barea = bmaj * bmin * np.pi
 bnpix = barea / (np.abs(hdr['CDELT1']) * np.abs(hdr['CDELT2']))
 _sh = data.shape
 
@@ -60,14 +60,14 @@ class TestImage(unittest.TestCase):
         np.testing.assert_almost_equal(
             src_flux[0], 9.296637, decimal=4)
         np.testing.assert_almost_equal(
-            src_flux[1], 11.322320497265924, decimal=4)
+            src_flux[1], 1.9123037369524847, decimal=4)
         np.testing.assert_almost_equal(
             src_flux[2], 2.7584093, decimal=4)
         src_flux = img.src_flux(srcpos1, deconvol=True)
         np.testing.assert_almost_equal(
             src_flux[0], 10.905096047396066, decimal=4)
         np.testing.assert_almost_equal(
-            src_flux[1], 10.507473433991805, decimal=4)
+            src_flux[1], 1.7746786728571757, decimal=4)
         np.testing.assert_almost_equal(
             src_flux[2], 0.00593149258694896, decimal=4)
         src_flux = img.src_flux(srcpos2)
@@ -91,6 +91,6 @@ class TestImage(unittest.TestCase):
         np.testing.assert_almost_equal(
             gauss_par[0], 10.905096047396066, decimal=4)
         np.testing.assert_almost_equal(
-            gauss_par[1], 10.507473433991805, decimal=4)
+            gauss_par[1], 1.7746786728571757, decimal=4)
         np.testing.assert_almost_equal(
             gauss_par[2], 0.00593149258694896, decimal=4)
