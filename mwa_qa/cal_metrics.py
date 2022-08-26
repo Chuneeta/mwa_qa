@@ -169,6 +169,7 @@ class CalMetrics(object):
         self.metrics['START_FREQ'] = self.CalFits.frequency_array[0]
         self.metrics['CH_WIDTH'] = self.CalFits.frequency_array[1] - \
             self.CalFits.frequency_array[0]
+        self.metrics['NCHAN'] = self.CalFits.Nchan
         self.metrics['ANTENNA'] = self.CalFits.antenna
         self.metrics['RECEIVERS'] = receivers.tolist()
         self.metrics['XX'] = OrderedDict()

@@ -80,6 +80,7 @@ class CalFits(object):
             if 'Flag' in chan_fields:
                 self.frequency_flags = [chan_hdu.data[i][2]
                                         for i in range(len(chan_hdu.data))]
+            self.Nchan = len(self.frequency_array)
             self.convergence = result_hdu.data
             self.baseline_weights = bls_hdu.data
             self.norm = norm
