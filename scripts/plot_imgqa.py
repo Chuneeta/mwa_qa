@@ -97,9 +97,7 @@ max_ratio_pks = np.nanmax([max_ratio_pks_pflux, max_ratio_pks_tflux])
 # getting the outliers
 # saving the file
 if args.save:
-    if args.figname is None:
-        figname = 'image_qa'
-
+    figname = 'img_qa' if args.figname is None else args.figname
 # plotting rms
 fig = pylab.figure(figsize=(12, 7))
 fig.suptitle('RMS', size=16)

@@ -46,6 +46,7 @@ dfft_power_yy_pkpl = []
 dfft_power_yy_nkpl = []
 
 for json in args.json:
+    print('Reading {}'.format(json))
     data = ut.load_json(json)
     obsids.append(data['OBSID'])
     unused_bls.append(data['UNUSED_BLS'])
@@ -69,8 +70,7 @@ for json in args.json:
 # plotting
 # saving the file
 if args.save:
-    if args.figname is None:
-        figname = 'cal_qa'
+    figname = 'cal_qa' if args.figname is None else args.figname
 
 fig = pylab.figure(figsize=(8, 6))
 fig.suptitle('UNUSED DATA', size=16)
@@ -79,7 +79,7 @@ ax.plot(np.arange(len(obsids)), unused_ants, '.-',
         color='sienna', linewidth=2, label='ANTS')
 ax.plot(np.arange(len(obsids)), unused_bls, '.-',
         color='darkolivegreen', linewidth=2, label='BLS')
-#ax.set_ylim(-0.5, max_rms + 1)
+# ax.set_ylim(-0.5, max_rms + 1)
 ax.legend(loc='upper right', ncol=2)
 ax.grid(ls='dotted')
 ax = fig.add_subplot(2, 1, 2)
@@ -99,7 +99,7 @@ ax.plot(np.arange(len(obsids)), rms_ampvar_freq_xx, '.-',
         color='indianred', linewidth=2, label='XX')
 ax.plot(np.arange(len(obsids)), rms_ampvar_freq_yy, '.-',
         color='dodgerblue', linewidth=2, label='YY')
-#ax.set_ylim(-0.5, max_rms + 1)
+# ax.set_ylim(-0.5, max_rms + 1)
 ax.legend(loc='upper right', ncol=2)
 ax.grid(ls='dotted')
 ax.set_ylabel('RMS (freq)', fontsize=9)
