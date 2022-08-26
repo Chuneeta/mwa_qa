@@ -1,7 +1,14 @@
 from mwa_qa import json_utils as ju
 import numpy as np
 import pylab
+import matplotlib as mpl
 import warnings
+
+mpl.rcParams['axes.linewidth'] = 1.5
+mpl.rcParams['font.weight'] = 'bold'
+mpl.rcParams['axes.labelweight'] = 'bold'
+mpl.rcParams['axes.titleweight'] = 'bold'
+mpl.rcParams['figure.titleweight'] = 'bold'
 
 
 class CalQA(object):
@@ -41,20 +48,24 @@ class CalQA(object):
         self._check_pol_key(key)
         return self.metrics[pol][key]
 
-    def plot_fft(self, timestamp=0, cmap='hot', save=None, figname=None):
+    def plot_fft(self, timestamp=0, cmap='hot', vmin=None, vmax=None, save=None, figname=None):
         dfft_xx = np.array(self.read_pol_key('XX', 'DFFT'))
         dfft_yy = np.array(self.read_pol_key('YY', 'DFFT'))
+        if vmin is None:
+            vmin = np.log10(np.abs(np.nanmin(np.array([dfft_xx, dfft_yy]))))
+        if vmax is None:
+            vmax = np.log10(np.abs(np.nanmax(np.array([dfft_xx, dfft_yy]))))
         fig = pylab.figure(figsize=(10, 7))
         fig.suptitle('FFT SPECTRUM', size=15)
         ax1 = fig.add_subplot(121)
-        im = ax1.imshow(np.log10(np.abs(dfft_xx[timestamp, :, :])), aspect='auto', extent=(
+        im = ax1.imshow(np.log10(np.abs(dfft_xx[timestamp, :, :])), aspect='auto', vmin=vmin, vmax=vmax, extent=(
             self.delays[0], self.delays[-1], self.antenna[-1], self.antenna[0]), cmap=cmap)
         ax1.set_title('XX')
         ax1.set_xlabel('Delay (ns)', fontsize=12)
         ax1.set_ylabel('Amplitude', fontsize=12)
-        ax1.tick_params(labelsize=10, direction='in')
+        ax1.tick_params(labelsize=12, direction='in', length=4, width=2)
         ax2 = fig.add_subplot(122)
-        im = ax2.imshow(np.log10(np.abs(dfft_yy[timestamp, :, :])), aspect='auto', extent=(
+        im = ax2.imshow(np.log10(np.abs(dfft_yy[timestamp, :, :])), aspect='auto', vmin=vmin, vmax=vmax, extent=(
             self.delays[0], self.delays[-1], self.antenna[-1], self.antenna[0]), cmap=cmap)
         ax2.set_title('YY')
         ax2.set_xlabel('Delay (ns)', fontsize=12)
@@ -62,47 +73,61 @@ class CalQA(object):
         fig.subplots_adjust(right=0.8)
         cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
         fig.colorbar(im, cax=cbar_ax)
-        ax2.tick_params(labelsize=10, direction='in')
+        ax2.tick_params(labelsize=10, direction='in', length=4, width=2)
+
         if save:
             if figname is None:
                 figname = self.json_path.replace('.json', '_2dfft.png')
             else:
                 if figname.split('.')[-1] != 'png':
                     figname += '.png'
-            pylab.savefig(figname, dpi=300)
+            pylab.savefig(figname, dpi=200)
+            pylab.close()
         else:
             pylab.show()
-        pylab.close()
 
     def plot_amp_variances(self, timestamp=0, save=None, figname=None):
-        var_ant_xx = np.array(self.read_pol_key('XX', 'AMPVAR_ANT'))
-        var_ant_yy = np.array(self.read_pol_key('YY', 'AMPVAR_ANT'))
-        var_freq_xx = np.array(self.read_pol_key('XX', 'AMPVAR_FREQ'))
-        var_freq_yy = np.array(self.read_pol_key('YY', 'AMPVAR_FREQ'))
+        varxx_ant = np.array(self.read_pol_key(
+            'XX', 'AMPVAR_ANT'))[timestamp, :]
+        varyy_ant = np.array(self.read_pol_key(
+            'YY', 'AMPVAR_ANT'))[timestamp, :]
+        varxx_freq = np.array(self.read_pol_key(
+            'XX', 'AMPVAR_FREQ'))[timestamp, :]
+        varyy_freq = np.array(self.read_pol_key(
+            'YY', 'AMPVAR_FREQ'))[timestamp, :]
+        varxx_ant_thresh = np.nanmean(varxx_ant) + 3 * np.nanstd(varxx_ant)
+        varyy_ant_thresh = np.nanmean(varxx_ant) + 3 * np.nanstd(varxx_ant)
+        varxx_freq_thresh = np.nanmean(varxx_freq) + 3 * np.nanstd(varxx_freq)
+        varyy_freq_thresh = np.nanmean(varxx_freq) + 3 * np.nanstd(varxx_freq)
         fig = pylab.figure(figsize=(8, 6))
         ax1 = fig.add_subplot(211)
-        ax1.semilogy(self.frequencies,
-                     var_ant_xx[timestamp, :], '.', color='indianred', label='XX')
-        ax1.semilogy(self.frequencies,
-                     var_ant_yy[timestamp, :], '.', color='dodgerblue', label='YY')
+        ax1.semilogy(self.frequencies * 1e-6, varxx_ant,
+                     '.', color='indianred', label='XX')
+        ax1.semilogy(self.frequencies * 1e-6, varyy_ant,
+                     '.', color='dodgerblue', label='YY')
+        ax1.set_xlabel('Frequency (MHz)', fontsize=12)
+        ax1.set_ylabel('RMS (Ant)', fontsize=12)
         ax1.grid(ls='dotted')
         ax1.legend()
-        ax1.tick_params(labelsize=10, direction='in')
+        ax1.tick_params(labelsize=10, direction='in', length=4, width=2)
         ax2 = fig.add_subplot(212)
-        ax2.semilogy(self.antenna,
-                     var_freq_xx[timestamp, :], '.', color='indianred', label='XX')
-        ax2.semilogy(self.antenna,
-                     var_freq_yy[timestamp, :], '.', color='dodgerblue', label='YY')
+        ax2.semilogy(self.antenna, varxx_freq, '.',
+                     color='indianred', label='XX')
+        ax2.semilogy(self.antenna, varyy_freq, '.',
+                     color='dodgerblue', label='YY')
+        ax2.set_xlabel('Antenna', fontsize=12)
+        ax2.set_ylabel('RMS (Freq)', fontsize=12)
         ax2.grid(ls='dotted')
         ax2.legend()
-        ax2.tick_params(labelsize=10, direction='in')
+        ax2.tick_params(labelsize=10, direction='in', length=4, width=2)
+        pylab.subplots_adjust(hspace=0.3)
         if save:
             if figname is None:
                 figname = self.json_path.replace('.json', '_variance.png')
             else:
                 if figname.split('.')[-1] != 'png':
                     figname += '.png'
-            pylab.savefig(figname, dpi=300)
+            pylab.savefig(figname, dpi=200)
+            pylab.close()
         else:
             pylab.show()
-        pylab.close()
