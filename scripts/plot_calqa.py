@@ -2,22 +2,30 @@
 from argparse import ArgumentParser
 from mwa_qa import json_utils as ut
 from pathlib import Path
+import matplotlib as mpl
+import numpy as np
 import pylab
+
+mpl.rcParams['axes.linewidth'] = 1.5
+mpl.rcParams['font.weight'] = 'bold'
+mpl.rcParams['axes.labelweight'] = 'bold'
+mpl.rcParams['axes.titleweight'] = 'bold'
+mpl.rcParams['figure.titleweight'] = 'bold'
 
 parser = ArgumentParser(
     description="Plotting antenna positions")
 parser.add_argument('json', type=Path, nargs='+',
                     help='MWA metrics json files')
-
+parser.add_argument('--save', dest='save', action='store_true',
+                    default=None, help='Boolean to allow to save the image')
+parser.add_argument('--out', dest='figname', default=None,
+                    help='Name of ouput figure name')
 args = parser.parse_args()
-data0 = ut.load_json(args.json[0])
-start_freq = data0['FREQ_START']
-freq_width = data0['FREQ_WIDTH']
-nchan = data0['NFREQ']
+
 obsids = []
-flagged_bls = []
-flagged_ants = []
-flagged_chs = []
+unused_bls = []
+unused_ants = []
+unused_chs = []
 non_converged_chs = []
 convergence_var = []
 
@@ -26,97 +34,119 @@ rms_ampvar_freq_xx = []
 rms_ampvar_ant_xx = []
 receiver_chisqvar_xx = []
 dfft_power_xx = []
+dfft_power_xx_pkpl = []
+dfft_power_xx_nkpl = []
 
 # YY POL
 rms_ampvar_freq_yy = []
 rms_ampvar_ant_yy = []
 receiver_chisqvar_yy = []
 dfft_power_yy = []
+dfft_power_yy_pkpl = []
+dfft_power_yy_nkpl = []
 
 for json in args.json:
     data = ut.load_json(json)
     obsids.append(data['OBSID'])
-    flagged_bls.append(data['FLAGGED_BLS'])
-    flagged_ants.append(data['FLAGGED_ANTS'])
-    flagged_chs.append(data['FLAGGED_CHS'])
+    unused_bls.append(data['UNUSED_BLS'])
+    unused_ants.append(data['UNUSED_ANTS'])
+    unused_chs.append(data['UNUSED_CHS'])
     non_converged_chs.append(data['NON_CONVERGED_CHS'])
     convergence_var.append(data['CONVERGENCE_VAR'])
     rms_ampvar_freq_xx.append(data['XX']['RMS_AMPVAR_FREQ'])
     rms_ampvar_ant_xx.append(data['XX']['RMS_AMPVAR_ANT'])
     receiver_chisqvar_xx.append(data['XX']['RECEIVER_CHISQVAR'])
     dfft_power_xx.append(data['XX']['DFFT_POWER'])
+    dfft_power_xx_pkpl.append(data['XX']['DFFT_POWER_HIGH_PKPL'])
+    dfft_power_xx_nkpl.append(data['XX']['DFFT_POWER_HIGH_NKPL'])
     rms_ampvar_freq_yy.append(data['YY']['RMS_AMPVAR_FREQ'])
     rms_ampvar_ant_yy.append(data['YY']['RMS_AMPVAR_ANT'])
     receiver_chisqvar_yy.append(data['YY']['RECEIVER_CHISQVAR'])
     dfft_power_yy.append(data['YY']['DFFT_POWER'])
+    dfft_power_yy_pkpl.append(data['YY']['DFFT_POWER_HIGH_PKPL'])
+    dfft_power_yy_nkpl.append(data['YY']['DFFT_POWER_HIGH_NKPL'])
 
 # plotting
-pylab.figure(figsize=(8, 6))
-pylab.plot(flagged_ants, 'o',  label='ANTS')
-pylab.plot(flagged_bls, 'o', label='BLS')
-pylab.xlabel('Obsid')
-pylab.ylabel(r'$\%$ flagged')
-pylab.title('FLAG METRICS')
-pylab.grid()
-#pylab.tick_params(axis='x', rotation=45, labelsize=6, direction='in')
-pylab.legend()
+# saving the file
+if args.save:
+    if args.figname is None:
+        figname = 'cal_qa'
 
-pylab.figure(figsize=(8, 6))
-pylab.plot(flagged_chs, 'o', label='Flagged chs')
-pylab.plot(non_converged_chs, 'o', label='Non-converged chs')
-pylab.xlabel('Obsid')
-pylab.ylabel(r'$\%$')
-pylab.title('FLAG METRICS')
-#pylab.tick_params(axis='x', rotation=45, labelsize=6, direction='in')
-pylab.grid()
-pylab.legend()
+fig = pylab.figure(figsize=(8, 6))
+fig.suptitle('UNUSED DATA', size=16)
+ax = fig.add_subplot(2, 1, 1)
+ax.plot(np.arange(len(obsids)), unused_ants, '.-',
+        color='sienna', linewidth=2, label='ANTS')
+ax.plot(np.arange(len(obsids)), unused_bls, '.-',
+        color='darkolivegreen', linewidth=2, label='BLS')
+#ax.set_ylim(-0.5, max_rms + 1)
+ax.legend(loc='upper right', ncol=2)
+ax.grid(ls='dotted')
+ax = fig.add_subplot(2, 1, 2)
+ax.plot(np.arange(len(obsids)), unused_chs, '.-',
+        color='sienna', linewidth=2, label='CHS')
+ax.plot(np.arange(len(obsids)), non_converged_chs, '.-',
+        color='darkolivegreen', linewidth=2, label='NON-CONVERGED CHS')
+ax.legend(loc='upper right', ncol=2)
+ax.set_xlabel('Observation Number', fontsize=12)
+ax.grid(ls='dotted')
+if args.save:
+    pylab.savefig(figname + '_unused.png', dpi=200)
 
-pylab.figure(figsize=(8, 6))
-pylab.plot(convergence_var, '*-')
-pylab.xlabel('Obsid')
-pylab.ylabel('Variance')
-pylab.title('CONVERGENCE')
-pylab.grid()
-#pylab.tick_params(axis='x', rotation=45, labelsize=6, direction='in')
+fig = pylab.figure(figsize=(8, 6))
+ax = fig.add_subplot(3, 1, 1)
+ax.plot(np.arange(len(obsids)), rms_ampvar_freq_xx, '.-',
+        color='indianred', linewidth=2, label='XX')
+ax.plot(np.arange(len(obsids)), rms_ampvar_freq_yy, '.-',
+        color='dodgerblue', linewidth=2, label='YY')
+#ax.set_ylim(-0.5, max_rms + 1)
+ax.legend(loc='upper right', ncol=2)
+ax.grid(ls='dotted')
+ax.set_ylabel('RMS (freq)', fontsize=9)
+ax = fig.add_subplot(3, 1, 2)
+ax.plot(np.arange(len(obsids)), rms_ampvar_ant_xx, '.-',
+        color='indianred', linewidth=2, label='XX')
+ax.plot(np.arange(len(obsids)), rms_ampvar_ant_yy, '.-',
+        color='dodgerblue', linewidth=2, label='YY')
+ax.legend(loc='upper right', ncol=2)
+ax.set_ylabel('RMS (ant)', fontsize=9)
+ax.grid(ls='dotted')
+ax = fig.add_subplot(3, 1, 3)
+ax.plot(np.arange(len(obsids)), convergence_var, '.-',
+        color='darkolivegreen', linewidth=2)
+ax.set_ylabel('CONV VAR', fontsize=9)
+ax.set_xlabel('Observation Number', fontsize=12)
+ax.grid(ls='dotted')
+fig.subplots_adjust(hspace=0.3)
+if args.save:
+    pylab.savefig(figname + '_rms.png', dpi=200)
 
-pylab.figure(figsize=(8, 6))
-pylab.suptitle('AMPLITUDE VARIANCE')
-ax1 = pylab.subplot(211)
-ax1.set_title('Across frequency')
-ax1.plot(rms_ampvar_freq_xx, '.-', label='XX')
-ax1.plot(rms_ampvar_freq_yy, '.-', label='YY')
-ax1.set_ylabel('Rms')
-ax1.set_xticks([])
-ax1.legend()
-ax1.grid()
-ax2 = pylab.subplot(212)
-ax2.set_title('Across antenna')
-ax2.plot(rms_ampvar_ant_xx, '.-', label='XX')
-ax2.plot(rms_ampvar_ant_yy, '.-', label='YY')
-ax2.set_xlabel('Obsid')
-ax2.set_ylabel('Rms')
-ax2.grid()
-#ax2.tick_params(axis='x', rotation=45, labelsize=6, direction='in')
-pylab.subplots_adjust(wspace=0.1)
 
-pylab.figure(figsize=(8, 6))
-pylab.plot(receiver_chisqvar_xx, '.-', label='XX')
-pylab.plot(receiver_chisqvar_yy, '.-', label='YY')
-pylab.xlabel('Obsid')
-pylab.ylabel('Var')
-pylab.title('RECEIVER CHISQ')
-pylab.grid()
-#pylab.tick_params(axis='x', rotation=45, labelsize=6, direction='in')
-pylab.legend()
-
-pylab.figure(figsize=(8, 6))
-pylab.plot(dfft_power_xx, '.-', label='XX')
-pylab.plot(dfft_power_yy, '.-', label='YY')
-pylab.xlabel('Obsid')
-pylab.ylabel('Power')
-pylab.title('FFT SEPECTRUM')
-pylab.grid()
-#pylab.tick_params(axis='x', rotation=45, labelsize=6, direction='in')
-pylab.legend()
-
-pylab.show()
+fig = pylab.figure(figsize=(8, 6))
+ax = fig.add_subplot(2, 1, 1)
+ax.semilogy(np.arange(len(obsids)), dfft_power_xx, '.-',
+            color='coral', linewidth=2, label='Overall')
+ax.semilogy(np.arange(len(obsids)), dfft_power_xx_pkpl, '.-',
+            color='violet', linewidth=2, label='> 2000 ns')
+ax.semilogy(np.arange(len(obsids)), dfft_power_xx_nkpl, '.-',
+            color='greenyellow', linewidth=2, label='< -2000 ns')
+ax.legend(loc='upper right', ncol=2)
+ax.set_ylabel('XX', fontsize=12)
+ax.grid(ls='dotted')
+ax.legend(loc='upper right', ncol=1)
+ax = fig.add_subplot(2, 1, 2)
+ax.semilogy(np.arange(len(obsids)), dfft_power_yy, '.-',
+            color='coral', linewidth=2, label='Overall')
+ax.semilogy(np.arange(len(obsids)), dfft_power_yy_pkpl, '.-',
+            color='violet', linewidth=2, label='> 2000 ns')
+ax.semilogy(np.arange(len(obsids)), dfft_power_yy_nkpl, '.-',
+            color='greenyellow', linewidth=2, label='< -2000 ns')
+ax.legend(loc='upper right', ncol=2)
+ax.set_xlabel('Observation Number', fontsize=12)
+ax.set_ylabel('YY', fontsize=12)
+ax.legend(loc='upper right', ncol=1)
+ax.grid(ls='dotted')
+if args.save:
+    pylab.savefig(figname + '_fft.png', dpi=200)
+else:
+    pylab.show()
