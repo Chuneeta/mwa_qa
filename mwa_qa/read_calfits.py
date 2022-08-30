@@ -1,3 +1,4 @@
+from inspect import indentsize
 from mwa_qa.read_metafits import Metafits
 from scipy import signal
 from astropy.io import fits
@@ -15,7 +16,7 @@ def hdu_fields(hdr):
         print('WARNING: No fields is found for HDU '
               'Column "{}"'.format(hdu_name))
         pass
-    return tuple(fields)
+    return np.array(fields)
 
 
 class CalFits(object):
@@ -58,28 +59,14 @@ class CalFits(object):
             self.end_time = time_hdu.data[0][1]
             self.average_time = time_hdu.data[0][2]
             self.Ntime = len(self.gain_array)
-            self.uvcut = hdus[0].header['UVW_MIN']
-            self.obsid = hdus[0].header['OBSID']
-            tile_fields = hdu_fields(tile_hdu.header)
-            if 'Antenna' in tile_fields:
-                self.antenna = [tile_hdu.data[i][0]
-                                for i in range(len(tile_hdu.data))]
-            if 'TileName' in tile_fields:
-                self.tilename = [tile_hdu.data[i][1]
-                                 for i in range(len(tile_hdu.data))]
-            if 'Flag' in tile_fields:
-                self.antenna_flags = [tile_hdu.data[i][2]
-                                      for i in range(len(tile_hdu.data))]
-            chan_fields = hdu_fields(chan_hdu.header)
-            if 'Index' in chan_fields:
-                self.frequency_channels = [
-                    chan_hdu.data[i][0] for i in range(len(chan_hdu.data))]
-            if 'Freq' in chan_fields:
-                self.frequency_array = [chan_hdu.data[i][1]
-                                        for i in range(len(chan_hdu.data))]
-            if 'Flag' in chan_fields:
-                self.frequency_flags = [chan_hdu.data[i][2]
-                                        for i in range(len(chan_hdu.data))]
+            self.uvcut = hdus['PRIMARY'].header['UVW_MIN']
+            self.obsid = hdus['PRIMARY'].header['OBSID']
+            self.antenna = hdus['TILES'].data['Antenna']
+            self.annames = hdus['TILES'].data['TileName']
+            self.antenna_flags = hdus['TILES'].data['Flag']
+            self.frequency_array = hdus['CHANBLOCKS'].data['Freq']
+            self.frequency_flags = hdus['CHANBLOCKS'].data['Flag']
+            self.frequency_channels = hdus['CHANBLOCKS'].data['Index']
             self.Nchan = len(self.frequency_array)
             self.convergence = result_hdu.data
             self.baseline_weights = bls_hdu.data
@@ -193,7 +180,7 @@ class CalFits(object):
         # Evaluates geometric delay (fourier conjugate of frequency)
         df = (self.frequency_array[1] - self.frequency_array[0]) * 1e-9
         delays = np.fft.fftfreq(len(self.frequency_array), df)
-        return delays
+        return np.fft.fftshift(delays)
 
     def _filter_nans(self, data):
         nonans_inds = np.where(~np.isnan(data))[0]
@@ -201,6 +188,7 @@ class CalFits(object):
         return nonans_inds, nans_inds
 
     def gains_fft(self):
+        # going to discard first two frequency channel
         _sh = self.gain_array.shape
         fft_data = np.zeros(_sh, dtype=self.gain_array.dtype)
         window = self.blackmanharris(len(self.frequency_array))
@@ -212,7 +200,8 @@ class CalFits(object):
                             self.gain_array[t, i, :, j])
                         d_fft = np.fft.fft(
                             self.gain_array[t, i, nonans_inds, j] * window[nonans_inds])
-                        fft_data[t, i, nonans_inds, j] = np.fft.fftshift(d_fft)
+                        fft_data[t, i, nonans_inds,
+                                 j] = np.fft.fftshift(d_fft)
                         fft_data[t, i, nans_inds, j] = np.nan
                     except ValueError:
                         fft_data[t, i, :, j] = np.nan
