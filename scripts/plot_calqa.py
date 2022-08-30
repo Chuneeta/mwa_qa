@@ -24,7 +24,7 @@ parser.add_argument('--out', dest='figname', default='calmetrics',
                     help='Name of ouput figure name. Default calmetrics')
 parser.add_argument('--cmap', dest='cmap', default='hot',
                     help='CMAP for 2D matplotlib plot')
-parser.add_argument('--vmin', dest='vmin', default=-3,
+parser.add_argument('--vmin', dest='vmin', default=-1,
                     help='Minimum value of the colorbar for the 2D matplotlib')
 parser.add_argument('--vmax', dest='vmax', default=2.5,
                     help='Minimum value of the colorbar for the 2D matplotlib')
