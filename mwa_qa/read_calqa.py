@@ -1,4 +1,6 @@
 from mwa_qa import json_utils as ju
+from mpl_toolkits.axes_grid.inset_locator import (
+    inset_axes, InsetPosition, mark_inset)
 import numpy as np
 import pylab
 import matplotlib as mpl
@@ -9,6 +11,9 @@ mpl.rcParams['font.weight'] = 'bold'
 mpl.rcParams['axes.labelweight'] = 'bold'
 mpl.rcParams['axes.titleweight'] = 'bold'
 mpl.rcParams['figure.titleweight'] = 'bold'
+
+colors = ['springgreen', 'darkorange', 'dodgerblue', 'darkolivegreen', 'lightskyblue', 'sienna',
+          'orangered', 'violet', 'maroon', 'pink', 'orange', 'navy', 'crimson']
 
 
 class CalQA(object):
@@ -30,6 +35,7 @@ class CalQA(object):
         self.delays = np.fft.fftshift(
             np.fft.fftfreq(self.nchan, self.ch_width * 1e-9))
         self.antenna = self.metrics['ANTENNA']
+        self.obsid = self.metrics['OBSID']
 
     def _check_key(self, key):
         assert key in self.keys, "Key {} not found".format(key)
@@ -56,7 +62,7 @@ class CalQA(object):
         if vmax is None:
             vmax = np.log10(np.abs(np.nanmax(np.array([dfft_xx, dfft_yy]))))
         fig = pylab.figure(figsize=(10, 7))
-        fig.suptitle('FFT SPECTRUM', size=15)
+        fig.suptitle(self.obsid, size=15)
         ax1 = fig.add_subplot(121)
         im = ax1.imshow(np.log10(np.abs(dfft_xx[timestamp, :, :])), aspect='auto', vmin=vmin, vmax=vmax, extent=(
             self.delays[0], self.delays[-1], self.antenna[-1], self.antenna[0]), cmap=cmap)
@@ -86,6 +92,28 @@ class CalQA(object):
         else:
             pylab.show()
 
+    def plot_delay_spectra(self, delays=[], timestamp=0, save=None, figname=None):
+        dfft_xx = np.array(self.read_pol_key('XX', 'DFFT'))
+        dfft_yy = np.array(self.read_pol_key('YY', 'DFFT'))
+        fig = pylab.figure(figsize=(10, 7))
+        fig.suptitle('DELAY SPECTRA', size=15)
+        ax1 = fig.add_subplot(2, 1, 1)
+        ax2 = fig.add_subplot(2, 1, 2)
+        for i, dly in enumerate(delays):
+            ax1.plot(self.antenna, np.abs(dfft_xx[timestamp, :, dly]),
+                     '-', color=colors[i], linewidth=2, label='{} ns'.format(int(self.delays[dly])))
+            ax2.plot(self.antenna, np.abs(dfft_yy[timestamp, :, dly]),
+                     '-', color=colors[i], linewidth=2, label='{} ns'.format(int(self.delays[dly])))
+        ax2.set_xlabel('Antenna Number', fontsize=12)
+        ax1.set_ylabel('XX', fontsize=12)
+        ax2.set_ylabel('YY', fontsize=12)
+        ax1.grid(ls='dotted')
+        ax2.grid(ls='dotted')
+        ax2.legend(loc='upper right')
+        ax1.set_ylim(-0.1, 1)
+        ax2.set_ylim(0, 1)
+        fig.subplots_adjust(hspace=0)
+
     def plot_amp_variances(self, timestamp=0, save=None, figname=None):
         varxx_ant = np.array(self.read_pol_key(
             'XX', 'AMPVAR_ANT'))[timestamp, :]
@@ -100,6 +128,7 @@ class CalQA(object):
         varxx_freq_thresh = np.nanmean(varxx_freq) + 3 * np.nanstd(varxx_freq)
         varyy_freq_thresh = np.nanmean(varxx_freq) + 3 * np.nanstd(varxx_freq)
         fig = pylab.figure(figsize=(8, 6))
+        fig.suptitle(self.obsid, size=15)
         ax1 = fig.add_subplot(211)
         ax1.semilogy(self.frequencies * 1e-6, varxx_ant,
                      '.', color='indianred', label='XX')
