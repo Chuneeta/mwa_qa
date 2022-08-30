@@ -22,6 +22,12 @@ parser.add_argument('--save', dest='save', action='store_true',
                     default=None, help='Boolean to allow to save the image')
 parser.add_argument('--out', dest='figname', default='calmetrics',
                     help='Name of ouput figure name. Default calmetrics')
+parser.add_argument('--cmap', dest='cmap', default='hot',
+                    help='CMAP for 2D matplotlib plot')
+parser.add_argument('--vmin', dest='vmin', default=-3,
+                    help='Minimum value of the colorbar for the 2D matplotlib')
+parser.add_argument('--vmax', dest='vmax', default=2.5,
+                    help='Minimum value of the colorbar for the 2D matplotlib')
 args = parser.parse_args()
 
 if args.figname.split('.')[-1] == 'png':
@@ -32,6 +38,7 @@ else:
     outfile2 = args.figname + '_stats.png'
 
 calqa = CalQA(args.json)
-calqa.plot_fft(args.timestamp, cmap='hot', save=args.save, figname=outfile1)
+calqa.plot_fft(args.timestamp, vmin=args.vmin, vmax=args.vmax,
+               cmap=args.cmap, save=args.save, figname=outfile1)
 calqa.plot_amp_variances(timestamp=args.timestamp,
                          save=args.save, figname=outfile2)
