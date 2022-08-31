@@ -27,6 +27,7 @@ unused_bls = []
 unused_ants = []
 unused_chs = []
 non_converged_chs = []
+convergence = []
 convergence_var = []
 
 # XX POL
@@ -53,7 +54,11 @@ for json in args.json:
     unused_ants.append(data['UNUSED_ANTS'])
     unused_chs.append(data['UNUSED_CHS'])
     non_converged_chs.append(data['NON_CONVERGED_CHS'])
-    convergence_var.append(data['CONVERGENCE_VAR'])
+    conv_array = np.array(data['CONVERGENCE'])
+    conv_array[0, np.where(
+        conv_array[0] == -1.7976931348623157e+308)[0]] = np.nan
+    convergence.append(conv_array)
+    convergence_var.append(data['CONVERGENCE_VAR'][0])
     rms_ampvar_freq_xx.append(data['XX']['RMS_AMPVAR_FREQ'])
     rms_ampvar_ant_xx.append(data['XX']['RMS_AMPVAR_ANT'])
     receiver_chisqvar_xx.append(data['XX']['RECEIVER_CHISQVAR'])
@@ -71,6 +76,17 @@ for json in args.json:
 # saving the file
 if args.save:
     figname = 'cal_qa' if args.figname is None else args.figname
+
+fig = pylab.figure(figsize=(8, 6))
+pylab.title('CONVERGENCE', size=13)
+pylab.imshow(np.array(convergence)[:, 0, :], aspect='auto',
+             cmap='YlGn', vmin=1e-8, vmax=1e-5, extent=(0, 768, len(obsids), 0),
+             interpolation='nearest')
+pylab.xlabel('Frequency channels')
+pylab.ylabel('Observation Number')
+pylab.colorbar()
+if args.save:
+    pylab.savefig(figname + '_convergence.png', dpi=200)
 
 fig = pylab.figure(figsize=(8, 6))
 fig.suptitle('UNUSED DATA', size=16)
