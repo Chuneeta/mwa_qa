@@ -94,7 +94,7 @@ class CalMetrics(object):
         return receivers
 
     def smooth_calibration_precisions(self, window_length, polyorder):
-        cal_precisions = self.Csoln.data(5)
+        cal_precisions = self.CalFits.convergence
         _sh = cal_precisions.shape
         sm_cal_precisions = np.copy(cal_precisions)
         for t in range(_sh[0]):
@@ -106,7 +106,7 @@ class CalMetrics(object):
         return sm_cal_precisions
 
     def apply_gaussian_filter1D_fft(self, sigma):
-        gains_fft = self.Csoln.gains_fft()
+        gains_fft = self.CalFits.gains_fft()
         _sh = gains_fft.shape
         # we will be using only xx and yy polarizations
         gains_fft_sm = np.zeros(
@@ -175,7 +175,7 @@ class CalMetrics(object):
         self.metrics['XX'] = OrderedDict()
         self.metrics['YY'] = OrderedDict()
 
-    def run_metrics(self, dly_cut=2000):
+    def run_metrics(self, dly_cut=2000, sigma=2):
         self._initialize_metrics_dict()
         pols = self.metrics['POLS']
         receivers = self.metrics['RECEIVERS']
@@ -207,14 +207,15 @@ class CalMetrics(object):
         mrcv_chisq = np.nanmean(np.nanmean(rcv_chisq, axis=1), axis=1)
         vmrcv_chisq = np.nanvar(mrcv_chisq, axis=0)
         # metric from delay spectrum
-        fft_spectrum = self.CalFits.gains_fft()
+        #fft_spectrum = self.CalFits.gains_fft()
         delays = self.CalFits.delays()
-        #smfft_spectrum = self.apply_gaussian_filter1D_fft(sigma)
+        smfft_spectrum = self.apply_gaussian_filter1D_fft(sigma)
         # writing metrics to json file
         self.metrics['UNUSED_BLS'] = self.unused_baselines_percent()
         self.metrics['UNUSED_CHS'] = self.unused_channels_percent()
         self.metrics['UNUSED_ANTS'] = self.unused_antennas_percent()
         self.metrics['NON_CONVERGED_CHS'] = self.non_converging_percent()
+        self.metrics['CONVERGENCE'] = self.CalFits.convergence
         self.metrics['CONVERGENCE_VAR'] = self.convergence_variance()
         self.metrics['RECEIVER_CHISQ'] = rcv_chisq
         # metrics for each pols
@@ -227,15 +228,15 @@ class CalMetrics(object):
             self.metrics[p]['AMPRMS_FREQ'] = rms_amp_freq[:, :, pol_dict[p]]
             self.metrics[p]['RMS_AMPVAR_FREQ'] = rmsvar_amp_freq[pol_dict[p]]
             # delay spectra
-            self.metrics[p]['DFFT'] = np.abs(fft_spectrum[:, :, :, i])
+            self.metrics[p]['DFFT'] = np.abs(smfft_spectrum[:, :, :, i])
             self.metrics[p]['DFFT_POWER'] = np.nansum(
-                np.abs(fft_spectrum[:, :, :, i]))
+                np.abs(smfft_spectrum[:, :, :, i]))
             inds_pos = np.where(delays > dly_cut)[0]
             inds_neg = np.where(delays < -1 * dly_cut)[0]
             self.metrics[p]['DFFT_POWER_HIGH_PKPL'] = np.nansum(
-                np.abs(fft_spectrum[:, :, inds_pos, i]))
+                np.abs(smfft_spectrum[:, :, inds_pos, i]))
             self.metrics[p]['DFFT_POWER_HIGH_NKPL'] = np.nansum(
-                np.abs(fft_spectrum[:, :, inds_neg, i]))
+                np.abs(smfft_spectrum[:, :, inds_neg, i]))
             # receiver variance
             self.metrics[p]['RECEIVER_CHISQVAR'] = vmrcv_chisq[pol_dict[p]]
 
