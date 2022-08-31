@@ -92,27 +92,39 @@ class CalQA(object):
         else:
             pylab.show()
 
-    def plot_delay_spectra(self, delays=[], timestamp=0, save=None, figname=None):
+    def plot_delay_spectra(self, delays_ind=[], timestamp=0, save=None, figname=None):
         dfft_xx = np.array(self.read_pol_key('XX', 'DFFT'))
         dfft_yy = np.array(self.read_pol_key('YY', 'DFFT'))
         fig = pylab.figure(figsize=(10, 7))
-        fig.suptitle('DELAY SPECTRA', size=15)
+        fig.suptitle(self.obsid, size=15)
         ax1 = fig.add_subplot(2, 1, 1)
         ax2 = fig.add_subplot(2, 1, 2)
-        for i, dly in enumerate(delays):
-            ax1.plot(self.antenna, np.abs(dfft_xx[timestamp, :, dly]),
-                     '-', color=colors[i], linewidth=2, label='{} ns'.format(int(self.delays[dly])))
-            ax2.plot(self.antenna, np.abs(dfft_yy[timestamp, :, dly]),
-                     '-', color=colors[i], linewidth=2, label='{} ns'.format(int(self.delays[dly])))
+        for i, dly in enumerate(delays_ind):
+            ax1.semilogy(self.antenna, np.abs(dfft_xx[timestamp, :, dly]),
+                         '-', color=colors[i], linewidth=2, label='{} ns'.format(int(self.delays[dly])))
+            ax2.semilogy(self.antenna, np.abs(dfft_yy[timestamp, :, dly]),
+                         '-', color=colors[i], linewidth=2, label='{} ns'.format(int(self.delays[dly])))
         ax2.set_xlabel('Antenna Number', fontsize=12)
         ax1.set_ylabel('XX', fontsize=12)
         ax2.set_ylabel('YY', fontsize=12)
         ax1.grid(ls='dotted')
         ax2.grid(ls='dotted')
-        ax2.legend(loc='upper right')
-        ax1.set_ylim(-0.1, 1)
-        ax2.set_ylim(0, 1)
+        ax1.legend(ncol=2, loc='upper right')
+        ax2.legend(ncol=2, loc='upper right')
+        ax1.set_ylim(-0.1, 10**2)
+        ax2.set_ylim(0, 10**2)
         fig.subplots_adjust(hspace=0)
+        if save:
+            if figname is None:
+                figname = self.json_path.replace(
+                    '.json', '_delay_spectrum.png')
+            else:
+                if figname.split('.')[-1] != 'png':
+                    figname += '.png'
+            pylab.savefig(figname, dpi=200)
+            pylab.close()
+        else:
+            pylab.show()
 
     def plot_amp_variances(self, timestamp=0, save=None, figname=None):
         varxx_ant = np.array(self.read_pol_key(

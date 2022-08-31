@@ -32,13 +32,17 @@ args = parser.parse_args()
 
 if args.figname.split('.')[-1] == 'png':
     outfile1 = args.figname.replace('.png', '_fft.png')
-    outfile2 = args.figname.replace('.png', '_stats.png')
-else:
+    outfile2 = args.figname.replace('.png', '_variance.png')
+    outfile3 = args.figname.replace('.png', '_variance.png')
+elif args.figname is not None:
     outfile1 = args.figname + '_fft.png'
-    outfile2 = args.figname + '_stats.png'
+    outfile2 = args.figname + '_variance.png'
+    outfile3 = args.figname + '_dlyspectrum.png'
 
 calqa = CalQA(args.json)
 calqa.plot_fft(args.timestamp, vmin=args.vmin, vmax=args.vmax,
                cmap=args.cmap, save=args.save, figname=outfile1)
 calqa.plot_amp_variances(timestamp=args.timestamp,
+                         save=args.save, figname=outfile2)
+calqa.plot_delay_spectra(delays_ind=[144, 244, 294, 434, 484, 584], timestamp=args.timestamp,
                          save=args.save, figname=outfile2)
