@@ -45,4 +45,4 @@ calqa.plot_fft(args.timestamp, vmin=args.vmin, vmax=args.vmax,
 calqa.plot_amp_variances(timestamp=args.timestamp,
                          save=args.save, figname=outfile2)
 calqa.plot_delay_spectra(delays_ind=[144, 244, 294, 434, 484, 584], timestamp=args.timestamp,
-                         save=args.save, figname=outfile2)
+                         save=args.save, figname=outfile3)
