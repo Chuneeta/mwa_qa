@@ -5,7 +5,6 @@ from astropy.io import fits
 import numpy as np
 import copy
 
-
 def hdu_fields(hdr):
     fields = []
     try:
@@ -61,6 +60,8 @@ class CalFits(object):
             self.Ntime = len(self.gain_array)
             self.uvcut = hdus['PRIMARY'].header['UVW_MIN']
             self.obsid = hdus['PRIMARY'].header['OBSID']
+            self.s_thresh = hdus['PRIMARY'].header['S_THRESH']
+            self.m_thresh = hdus['PRIMARY'].header['M_THRESH']
             self.antenna = hdus['TILES'].data['Antenna']
             self.annames = hdus['TILES'].data['TileName']
             self.antenna_flags = hdus['TILES'].data['Flag']
@@ -82,6 +83,12 @@ class CalFits(object):
             self.amplitudes = np.abs(self.gain_array)
             self.phases = np.angle(self.gain_array)
             self.Metafits = Metafits(metafits_path, pol=pol)
+            # NOTE:polynomial parameters - only the fitted solutions will have these parameters
+            try:
+                self.poly_order = hdus['FIT_COEFFS'].header['ORDER']
+                self.poly_mse = hdus['FIT_COEFFS'].header['MSE']
+            except KeyError:
+                pass
 
     def _check_refant(self):
         """
