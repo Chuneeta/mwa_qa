@@ -27,8 +27,10 @@ class TestCalFits(unittest.TestCase):
         self.assertEqual(c.end_time, hdu['TIMEBLOCKS'].data[0][1])
         self.assertEqual(c.average_time, hdu['TIMEBLOCKS'].data[0][2])
         self.assertEqual(c.Ntime, 1)
-        self.assertEqual(c.uvcut, 82.18220291)
-        self.assertEqual(c.obsid, '1061315688')
+        self.assertEqual(c.uvcut, hdu['PRIMARY'].header['UVW_MIN'])
+        self.assertEqual(c.obsid, hdu['PRIMARY'].header['OBSID'])
+        self.assertEqual(c.s_thresh, hdu['PRIMARY'].header['S_THRESH'])
+        self.assertEqual(c.s_thresh, hdu['PRIMARY'].header['S_THRESH'])
         np.testing.assert_equal(np.array(c.antenna), np.arange(128))
         expected_flags = np.zeros((128))
         expected_flags[76] = 1
