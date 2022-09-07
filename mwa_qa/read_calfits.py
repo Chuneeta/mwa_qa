@@ -1,21 +1,8 @@
-from inspect import indentsize
 from mwa_qa.read_metafits import Metafits
 from scipy import signal
 from astropy.io import fits
 import numpy as np
 import copy
-
-def hdu_fields(hdr):
-    fields = []
-    try:
-        nfield = hdr['TFIELDS']
-        for fd in range(1, nfield + 1):
-            fields.append(hdr['TTYPE{}'.format(fd)])
-    except KeyError:
-        print('WARNING: No fields is found for HDU '
-              'Column "{}"'.format(hdu_name))
-        pass
-    return np.array(fields)
 
 
 class CalFits(object):
@@ -47,8 +34,6 @@ class CalFits(object):
         with fits.open(calfits_path) as hdus:
             cal_hdu = hdus['SOLUTIONS']
             time_hdu = hdus['TIMEBLOCKS']
-            tile_hdu = hdus['TILES']
-            chan_hdu = hdus['CHANBLOCKS']
             result_hdu = hdus['RESULTS']
             bls_hdu = hdus['BASELINES']
 
@@ -83,7 +68,8 @@ class CalFits(object):
             self.amplitudes = np.abs(self.gain_array)
             self.phases = np.angle(self.gain_array)
             self.Metafits = Metafits(metafits_path, pol=pol)
-            # NOTE:polynomial parameters - only the fitted solutions will have these parameters
+            # NOTE:polynomial parameters - only the fitted solutions will
+            # have these parameters
             try:
                 self.poly_order = hdus['FIT_COEFFS'].header['ORDER']
                 self.poly_mse = hdus['FIT_COEFFS'].header['MSE']
@@ -206,7 +192,8 @@ class CalFits(object):
                         nonans_inds, nans_inds = self._filter_nans(
                             self.gain_array[t, i, :, j])
                         d_fft = np.fft.fft(
-                            self.gain_array[t, i, nonans_inds, j] * window[nonans_inds])
+                            self.gain_array[t, i, nonans_inds, j] *
+                            window[nonans_inds])
                         fft_data[t, i, nonans_inds,
                                  j] = np.fft.fftshift(d_fft)
                         fft_data[t, i, nans_inds, j] = np.nan
