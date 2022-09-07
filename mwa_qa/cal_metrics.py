@@ -44,10 +44,9 @@ class CalMetrics(object):
         """
         Returns variance across frequency for the given tile pair
         - antpair:	Antenna pair or tuple of antenna numbers
-                                                                                                                                                                                                        e.g (
-                                                                                                                                                                                                                102, 103)
-        - norm:		Boolean, If True returns normalized gains
-                                                                                                                                                                                                        else unormalized gains. Default is set to True.
+                    e.g (102, 103)
+        - norm:	Boolean, If True returns normalized gains
+                else unormalized gains. Default is set to True.
         """
         gain_pairs = self.CalFits.gains_for_antpair(antpair)
         return np.nanvar(gain_pairs, axis=1)
@@ -72,9 +71,9 @@ class CalMetrics(object):
         variances averaged over baseliness shorter than the given
         uv length
         - uv_cut:	Baseline cut in metres, will use only baselines shorter
-                                                                                                                                                                                                        than the given value
+                    than the given value
         - norm:		Boolean, If True returns normalized gains else unormalized
-                                                                                                                                                                                                        gains. Default is set to True.
+                    gains. Default is set to True.
         """
         variances = self.variance_for_baselines_less_than(uv_cut)
         vmean = np.nanmean(variances, axis=1)
@@ -87,7 +86,7 @@ class CalMetrics(object):
         """
         Returns the receivers connected to the various tiles in the array
         - n:	Number of receivers in the array. Optional, enabled if
-                                                                                                                                        If metafits is not provided. Default is 16.
+                If metafits is not provided. Default is 16.
         """
         if self.Metafits.metafits is None:
             receivers = list(np.arange(1, n + 1))
@@ -132,7 +131,8 @@ class CalMetrics(object):
     def unused_baselines_percent(self):
         inds_nan = np.where(np.isnan(self.CalFits.baseline_weights))[0]
         inds_wg0 = np.where(self.CalFits.baseline_weights == 0)[0]
-        return (len(inds_nan) + len(inds_wg0)) / len(self.CalFits.baseline_weights) * 100
+        return (len(inds_nan) + len(inds_wg0)) / \
+            len(self.CalFits.baseline_weights) * 100
 
     def unused_channels_percent(self):
         inds = np.where(np.array(self.CalFits.frequency_flags) == 1)[0]
@@ -151,7 +151,7 @@ class CalMetrics(object):
         return count / (sh[0] * sh[1]) * 100
 
     def convergence_variance(self):
-        return np.nanvar(self.CalFits.convergence, axis=1)
+        return np.nanmax(np.nanvar(self.CalFits.convergence, axis=1))
 
     def _initialize_metrics_dict(self):
         """
@@ -177,10 +177,11 @@ class CalMetrics(object):
         self.metrics['RECEIVERS'] = receivers.tolist()
         self.metrics['XX'] = OrderedDict()
         self.metrics['YY'] = OrderedDict()
-        # NOTE:polynomial parameters - only the fitted solutions will have poly metrics
+        # NOTE:polynomial parameters - only the fitted
+        # solutions will have poly metrics
         try:
-            self.metrics['POLY_ORDER'] = self.poly_order
-            self.metrics['POLY_MSE'] = self.poly_mse
+            self.metrics['POLY_ORDER'] = self.CalFits.poly_order
+            self.metrics['POLY_MSE'] = self.CalFits.poly_mse
         except AttributeError:
             pass
 
@@ -216,7 +217,7 @@ class CalMetrics(object):
         mrcv_chisq = np.nanmean(np.nanmean(rcv_chisq, axis=1), axis=1)
         vmrcv_chisq = np.nanvar(mrcv_chisq, axis=0)
         # metric from delay spectrum
-        #fft_spectrum = self.CalFits.gains_fft()
+        # fft_spectrum = self.CalFits.gains_fft()
         delays = self.CalFits.delays()
         smfft_spectrum = self.apply_gaussian_filter1D_fft(sigma)
         # convergence metrics
@@ -255,8 +256,8 @@ class CalMetrics(object):
             convergence_var) > self.CalFits.m_thresh else 'PASS'
         self.metrics['STATUS'] = status
         if status == 'FAIL':
-            self.metrics['FAILURE_REASON'] = 'Converging results did not pass the requirement STD(CONV_RESULTS) < {}'.format(
-                self.metrics['M_THRESH'])
+            self.metrics['FAILURE_REASON'] = 'Converging results did not pass the requirement STD(CONV_RESULTS) [{}] < M_THRESH [{}]'.format(
+                np.sqrt(convergence_var), self.metrics['M_THRESH'])
 
     def write_to(self, outfile=None):
         if outfile is None:
