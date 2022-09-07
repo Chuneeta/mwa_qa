@@ -1,6 +1,4 @@
-from tkinter import E
 from mwa_qa.read_calfits import CalFits
-from mwa_qa import read_metafits as rm
 from mwa_qa.data import DATA_PATH
 from scipy import signal
 import unittest
@@ -10,6 +8,9 @@ import os
 
 calfile = os.path.join(DATA_PATH, 'test_1061315688.fits')
 metafits = os.path.join(DATA_PATH, 'test_1061315688.metafits')
+poly_path = '/Users/ridhima/Documents/mwa/calibration/mwa_qa/test_files/'
+calfile_poly = os.path.join(
+    poly_path, 'test_1061315688_poly.fits')
 hdu = astropy.io.fits.open(calfile)
 exp_gains = hdu[1].data[:, :, :, ::2] + hdu[1].data[:, :, :, 1::2] * 1j
 _sh = hdu[1].data.shape
@@ -30,7 +31,7 @@ class TestCalFits(unittest.TestCase):
         self.assertEqual(c.uvcut, hdu['PRIMARY'].header['UVW_MIN'])
         self.assertEqual(c.obsid, hdu['PRIMARY'].header['OBSID'])
         self.assertEqual(c.s_thresh, hdu['PRIMARY'].header['S_THRESH'])
-        self.assertEqual(c.s_thresh, hdu['PRIMARY'].header['S_THRESH'])
+        self.assertEqual(c.m_thresh, hdu['PRIMARY'].header['M_THRESH'])
         np.testing.assert_equal(np.array(c.antenna), np.arange(128))
         expected_flags = np.zeros((128))
         expected_flags[76] = 1
@@ -52,9 +53,9 @@ class TestCalFits(unittest.TestCase):
         np.testing.assert_almost_equal(c.convergence, hdu['RESULTS'].data)
         np.testing.assert_almost_equal(
             c.baseline_weights, hdu['BASELINES'].data)
-        self.assertTrue(c.norm == False)
+        self.assertFalse(c.norm)
         c = CalFits(calfile, metafits, norm=True)
-        self.assertTrue(c.norm == True)
+        self.assertTrue(c.norm)
         self.assertTrue(c.ref_antenna == 127)
         np.testing.assert_almost_equal(
             c.gain_array[0, 0, 100, :], np.array([
@@ -64,6 +65,10 @@ class TestCalFits(unittest.TestCase):
             [0.99870742, 0.04484763, 0.04205458, 1.23713418]))
         np.testing.assert_almost_equal(c.phases[0, 0, 100, :], np.array(
             [-0.77831304, -2.5032171,  0.71262886, -2.19765094]))
+        # polynomial testing
+        c = CalFits(calfile_poly, metafits)
+        self.assertEqual(c.poly_order, 9)
+        np.testing.assert_almost_equal(c.poly_mse, 0.2574473278254666)
 
         def test_iterate_refant(self):
             c = CalFits(calfile)
@@ -160,5 +165,7 @@ class TestCalFits(unittest.TestCase):
         fft_gains = c.gains_fft()
         self.assertEqual(fft_gains.shape, (1, 128, 768, 4))
         np.testing.assert_almost_equal(fft_gains[0, 0, 100, :],
-                                       np.array([0.38595275-0.47685325j,  0.43570297-0.52856661j,
-                                                 -0.15975999-0.36207117j, -0.24204551-0.39744718j]))
+                                       np.array([0.38595275-0.47685325j,
+                                                 0.43570297-0.52856661j,
+                                                 -0.15975999-0.36207117j,
+                                                 -0.24204551-0.39744718j]))
