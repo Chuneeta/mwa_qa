@@ -5,6 +5,8 @@ from collections import OrderedDict
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
 import numpy as np
+import warnings
+warnings.filterwarnings("ignore")
 
 pol_dict = {'XX': 0, 'XY': 1, 'YX': 2, 'YY':	3}
 
@@ -18,19 +20,19 @@ class CalMetrics(object):
         varaibles
         - calfile:	.fits file containing the calibration solutions
         - metafits:	Metafits with extension *.metafits or _ppds.fits
-                                                                                                        containing information
+        containing information
         - pol: 	Polarization, can be either 'X' or 'Y'. It should be
-                                                                        specified so that information associated on an
-                                                                        observation done with MWA with the given pol is
-                                                                        provided. Default is X.
+        specified so that information associated on an
+        observation done with MWA with the given pol is
+                provided. Default is X.
         - norm: Boolean, If True, the calibration solutions will be
-                                                                        normlaized else unnormlaized solutions will be used.
-                                                                        Default is set to False
+                normlaized else unnormlaized solutions will be used.
+                Default is set to False
         - ref_antenna:   Reference antenna number. If norm is True,
-                                                                                                                                        a reference antenna is require for normalization.
-                                                                                                                                        By default it uses the last antenna in the array.
-                                                                                                                                        If the last antenna is flagged, it will return
-                                                                                                                                        an error.
+        a reference antenna is require for normalization.
+        By default it uses the last antenna in the array.
+        If the last antenna is flagged, it will return
+        an error.
         """
         self.calfits_path = calfits_path
         self.metafits_path = metafits_path
@@ -42,10 +44,10 @@ class CalMetrics(object):
         """
         Returns variance across frequency for the given tile pair
         - antpair:	Antenna pair or tuple of antenna numbers
-                                                                                                        e.g (
-                                                                                                            102, 103)
+                                                                                                                                                                                                        e.g (
+                                                                                                                                                                                                                102, 103)
         - norm:		Boolean, If True returns normalized gains
-                                                                                                        else unormalized gains. Default is set to True.
+                                                                                                                                                                                                        else unormalized gains. Default is set to True.
         """
         gain_pairs = self.CalFits.gains_for_antpair(antpair)
         return np.nanvar(gain_pairs, axis=1)
@@ -70,9 +72,9 @@ class CalMetrics(object):
         variances averaged over baseliness shorter than the given
         uv length
         - uv_cut:	Baseline cut in metres, will use only baselines shorter
-                                                                                                        than the given value
+                                                                                                                                                                                                        than the given value
         - norm:		Boolean, If True returns normalized gains else unormalized
-                                                                                                        gains. Default is set to True.
+                                                                                                                                                                                                        gains. Default is set to True.
         """
         variances = self.variance_for_baselines_less_than(uv_cut)
         vmean = np.nanmean(variances, axis=1)
@@ -85,7 +87,7 @@ class CalMetrics(object):
         """
         Returns the receivers connected to the various tiles in the array
         - n:	Number of receivers in the array. Optional, enabled if
-                                                                        If metafits is not provided. Default is 16.
+                                                                                                                                        If metafits is not provided. Default is 16.
         """
         if self.Metafits.metafits is None:
             receivers = list(np.arange(1, n + 1))
@@ -163,6 +165,7 @@ class CalMetrics(object):
         self.metrics['POLS'] = pols
         self.metrics['OBSID'] = self.CalFits.obsid
         self.metrics['UVCUT'] = self.CalFits.uvcut
+        self.metrics['M_THRESH'] = self.CalFits.m_thresh
         if self.CalFits.norm:
             self.metrics['REF_ANTNUM'] = self.CalFits.ref_antenna
         self.metrics['NTIME'] = self.CalFits.Ntime
@@ -174,6 +177,12 @@ class CalMetrics(object):
         self.metrics['RECEIVERS'] = receivers.tolist()
         self.metrics['XX'] = OrderedDict()
         self.metrics['YY'] = OrderedDict()
+        # NOTE:polynomial parameters - only the fitted solutions will have poly metrics
+        try:
+            self.metrics['POLY_ORDER'] = self.poly_order
+            self.metrics['POLY_MSE'] = self.poly_mse
+        except AttributeError:
+            pass
 
     def run_metrics(self, dly_cut=2000, sigma=2):
         self._initialize_metrics_dict()
@@ -210,13 +219,15 @@ class CalMetrics(object):
         #fft_spectrum = self.CalFits.gains_fft()
         delays = self.CalFits.delays()
         smfft_spectrum = self.apply_gaussian_filter1D_fft(sigma)
+        # convergence metrics
+        convergence_var = self.convergence_variance()
         # writing metrics to json file
         self.metrics['UNUSED_BLS'] = self.unused_baselines_percent()
         self.metrics['UNUSED_CHS'] = self.unused_channels_percent()
         self.metrics['UNUSED_ANTS'] = self.unused_antennas_percent()
         self.metrics['NON_CONVERGED_CHS'] = self.non_converging_percent()
         self.metrics['CONVERGENCE'] = self.CalFits.convergence
-        self.metrics['CONVERGENCE_VAR'] = self.convergence_variance()
+        self.metrics['CONVERGENCE_VAR'] = convergence_var
         self.metrics['RECEIVER_CHISQ'] = rcv_chisq
         # metrics for each pols
         for i, p in enumerate(['XX', 'YY']):
@@ -239,6 +250,13 @@ class CalMetrics(object):
                 np.abs(smfft_spectrum[:, :, inds_neg, i]))
             # receiver variance
             self.metrics[p]['RECEIVER_CHISQVAR'] = vmrcv_chisq[pol_dict[p]]
+        # determining if the solutions passes the metrics basics tests
+        status = 'FAIL' if np.sqrt(
+            convergence_var) > self.CalFits.m_thresh else 'PASS'
+        self.metrics['STATUS'] = status
+        if status == 'FAIL':
+            self.metrics['FAILURE_REASON'] = 'Converging results did not pass the requirement STD(CONV_RESULTS) < {}'.format(
+                self.metrics['M_THRESH'])
 
     def write_to(self, outfile=None):
         if outfile is None:
