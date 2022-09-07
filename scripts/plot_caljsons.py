@@ -29,7 +29,6 @@ unused_chs = []
 non_converged_chs = []
 convergence = []
 convergence_var = []
-
 # XX POL
 rms_ampvar_freq_xx = []
 rms_ampvar_ant_xx = []
@@ -46,8 +45,9 @@ dfft_power_yy = []
 dfft_power_yy_pkpl = []
 dfft_power_yy_nkpl = []
 
+count = 0
 for json in args.json:
-    print('Reading {}'.format(json))
+    print(count, ' Reading {}'.format(json))
     data = ut.load_json(json)
     obsids.append(data['OBSID'])
     unused_bls.append(data['UNUSED_BLS'])
@@ -71,7 +71,9 @@ for json in args.json:
     dfft_power_yy.append(data['YY']['DFFT_POWER'])
     dfft_power_yy_pkpl.append(data['YY']['DFFT_POWER_HIGH_PKPL'])
     dfft_power_yy_nkpl.append(data['YY']['DFFT_POWER_HIGH_NKPL'])
+    count += 1
 
+# extracting bad obsids
 # plotting
 # saving the file
 if args.save:
@@ -79,8 +81,8 @@ if args.save:
 
 fig = pylab.figure(figsize=(8, 6))
 pylab.title('CONVERGENCE', size=13)
-pylab.imshow(np.array(convergence)[:, 0, :], aspect='auto',
-             cmap='YlGn', vmin=1e-8, vmax=1e-5, extent=(0, 768, len(obsids), 0),
+pylab.imshow(np.log10(np.array(convergence)[:, 0, :]), aspect='auto',
+             cmap='YlGn', vmin=-8, vmax=-5, extent=(0, 768, len(obsids), 0),
              interpolation='nearest')
 pylab.xlabel('Frequency channels')
 pylab.ylabel('Observation Number')
@@ -95,6 +97,8 @@ ax.plot(np.arange(len(obsids)), unused_ants, '.-',
         color='sienna', linewidth=2, label='ANTS')
 ax.plot(np.arange(len(obsids)), unused_bls, '.-',
         color='darkolivegreen', linewidth=2, label='BLS')
+ax.fill_between(np.arange(len(obsids)), 60,
+                100, color='red', alpha=0.2)
 # ax.set_ylim(-0.5, max_rms + 1)
 ax.legend(loc='upper right', ncol=2)
 ax.grid(ls='dotted')
@@ -103,6 +107,8 @@ ax.plot(np.arange(len(obsids)), unused_chs, '.-',
         color='sienna', linewidth=2, label='CHS')
 ax.plot(np.arange(len(obsids)), non_converged_chs, '.-',
         color='darkolivegreen', linewidth=2, label='NON-CONVERGED CHS')
+ax.fill_between(np.arange(len(obsids)), 60,
+                100, color='red', alpha=0.2)
 ax.legend(loc='upper right', ncol=2)
 ax.set_xlabel('Observation Number', fontsize=12)
 ax.grid(ls='dotted')
@@ -111,25 +117,27 @@ if args.save:
 
 fig = pylab.figure(figsize=(8, 6))
 ax = fig.add_subplot(3, 1, 1)
-ax.plot(np.arange(len(obsids)), rms_ampvar_freq_xx, '.-',
-        color='indianred', linewidth=2, label='XX')
-ax.plot(np.arange(len(obsids)), rms_ampvar_freq_yy, '.-',
-        color='dodgerblue', linewidth=2, label='YY')
+ax.semilogy(np.arange(len(obsids)), rms_ampvar_freq_xx, '.-',
+            color='indianred', linewidth=2, label='XX')
+ax.semilogy(np.arange(len(obsids)), rms_ampvar_freq_yy, '.-',
+            color='dodgerblue', linewidth=2, label='YY')
 # ax.set_ylim(-0.5, max_rms + 1)
 ax.legend(loc='upper right', ncol=2)
 ax.grid(ls='dotted')
 ax.set_ylabel('RMS (freq)', fontsize=9)
 ax = fig.add_subplot(3, 1, 2)
-ax.plot(np.arange(len(obsids)), rms_ampvar_ant_xx, '.-',
-        color='indianred', linewidth=2, label='XX')
-ax.plot(np.arange(len(obsids)), rms_ampvar_ant_yy, '.-',
-        color='dodgerblue', linewidth=2, label='YY')
+ax.semilogy(np.arange(len(obsids)), rms_ampvar_ant_xx, '.-',
+            color='indianred', linewidth=2, label='XX')
+ax.semilogy(np.arange(len(obsids)), rms_ampvar_ant_yy, '.-',
+            color='dodgerblue', linewidth=2, label='YY')
 ax.legend(loc='upper right', ncol=2)
 ax.set_ylabel('RMS (ant)', fontsize=9)
 ax.grid(ls='dotted')
 ax = fig.add_subplot(3, 1, 3)
-ax.plot(np.arange(len(obsids)), convergence_var, '.-',
-        color='darkolivegreen', linewidth=2)
+ax.semilogy(np.arange(len(obsids)), convergence_var, '.-',
+            color='darkolivegreen', linewidth=2)
+ax.fill_between(np.arange(len(obsids)), 10,
+                10 ** -12, color='red', alpha=0.2)
 ax.set_ylabel('CONV VAR', fontsize=9)
 ax.set_xlabel('Observation Number', fontsize=12)
 ax.grid(ls='dotted')
