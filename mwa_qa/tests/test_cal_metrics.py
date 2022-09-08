@@ -141,8 +141,7 @@ class TestCalMetrics(unittest.TestCase):
                                                   'UVCUT', 'M_THRESH',
                                                   'NTIME', 'START_FREQ',
                                                   'CH_WIDTH', 'NCHAN',
-                                                  'ANTENNA', 'RECEIVERS',
-                                                  'XX', 'YY'])
+                                                  'ANTENNA', 'XX', 'YY'])
 
         m = CalMetrics(calfile_poly)
         m._initialize_metrics_dict()
@@ -150,8 +149,7 @@ class TestCalMetrics(unittest.TestCase):
                                                   'UVCUT', 'M_THRESH',
                                                   'NTIME', 'START_FREQ',
                                                   'CH_WIDTH', 'NCHAN',
-                                                  'ANTENNA', 'RECEIVERS',
-                                                  'XX', 'YY',
+                                                  'ANTENNA', 'XX', 'YY',
                                                   'POLY_ORDER', 'POLY_MSE'])
 
     def test_run_metrics(self):
@@ -161,14 +159,13 @@ class TestCalMetrics(unittest.TestCase):
                                                   'UVCUT', 'M_THRESH',
                                                   'NTIME', 'START_FREQ',
                                                   'CH_WIDTH', 'NCHAN',
-                                                  'ANTENNA', 'RECEIVERS',
-                                                  'XX', 'YY',
+                                                  'ANTENNA', 'XX', 'YY',
                                                   'UNUSED_BLS', 'UNUSED_CHS',
                                                   'UNUSED_ANTS',
                                                   'NON_CONVERGED_CHS',
                                                   'CONVERGENCE',
                                                   'CONVERGENCE_VAR',
-                                                  'RECEIVER_CHISQ', 'STATUS'])
+                                                  'STATUS'])
         self.assertEqual(m.metrics['OBSID'], m.CalFits.obsid)
         self.assertEqual(m.metrics['UVCUT'], m.CalFits.uvcut)
         self.assertEqual(m.metrics['NTIME'], m.CalFits.Ntime)
@@ -226,6 +223,46 @@ class TestCalMetrics(unittest.TestCase):
         np.testing.assert_almost_equal(
             m.metrics['XX']['RECEIVER_CHISQVAR'], 8.06865584510551)
         self.assertTrue(m.metrics['STATUS'])
+
+        m = CalMetrics(calfile, metafits)
+        m.run_metrics(receiver_metrics=True)
+        self.assertEqual(list(m.metrics.keys()), ['POLS', 'OBSID',
+                                                  'UVCUT', 'M_THRESH',
+                                                  'NTIME', 'START_FREQ',
+                                                  'CH_WIDTH', 'NCHAN',
+                                                  'ANTENNA', 'XX', 'YY',
+                                                  'UNUSED_BLS', 'UNUSED_CHS',
+                                                  'UNUSED_ANTS',
+                                                  'NON_CONVERGED_CHS',
+                                                  'CONVERGENCE',
+                                                  'CONVERGENCE_VAR',
+                                                  'RECEIVERS',
+                                                  'STATUS'])
+        self.assertEqual(list(m.metrics['XX'].keys()), ['SKEWNESS_UVCUT',
+                                                        'AMPVAR_ANT',
+                                                        'AMPRMS_ANT',
+                                                        'RMS_AMPVAR_ANT',
+                                                        'AMPVAR_FREQ',
+                                                        'AMPRMS_FREQ',
+                                                        'RMS_AMPVAR_FREQ',
+                                                        'DFFT',
+                                                        'DFFT_POWER',
+                                                        'DFFT_POWER_HIGH_PKPL',
+                                                        'DFFT_POWER_HIGH_NKPL',
+                                                        'RECEIVER_CHISQ'
+                                                        'RECEIVER_CHISQVAR'])
+        self.assertEqual(list(m.metrics['YY'].keys()), ['SKEWNESS_UVCUT',
+                                                        'AMPVAR_ANT',
+                                                        'AMPRMS_ANT',
+                                                        'RMS_AMPVAR_ANT',
+                                                        'AMPVAR_FREQ',
+                                                        'AMPRMS_FREQ',
+                                                        'RMS_AMPVAR_FREQ',
+                                                        'DFFT', 'DFFT_POWER',
+                                                        'DFFT_POWER_HIGH_PKPL',
+                                                        'DFFT_POWER_HIGH_NKPL',
+                                                        'RECEIVER_CHISQ',
+                                                        'RECEIVER_CHISQVAR'])
 
     def test_write_metrics(self):
         m = CalMetrics(calfile)
