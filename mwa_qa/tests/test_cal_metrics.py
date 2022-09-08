@@ -174,9 +174,6 @@ class TestCalMetrics(unittest.TestCase):
                                        m.CalFits.frequency_array[1]
                                        - m.CalFits.frequency_array[0])
         np.testing.assert_almost_equal(m.metrics['ANTENNA'], m.CalFits.antenna)
-        self.assertEqual(m.metrics['RECEIVERS'], [
-                         1, 2, 3, 4, 5, 6, 7, 8,
-                         9, 10, 11, 12, 13, 14, 15, 16])
         self.assertTrue(isinstance(m.metrics['XX'], OrderedDict))
         self.assertTrue(isinstance(m.metrics['YY'], OrderedDict))
         self.assertEqual(m.metrics['UNUSED_BLS'], 13.065944881889763)
@@ -225,44 +222,6 @@ class TestCalMetrics(unittest.TestCase):
         self.assertTrue(m.metrics['STATUS'])
 
         m = CalMetrics(calfile, metafits)
-        m.run_metrics(receiver_metrics=True)
-        self.assertEqual(list(m.metrics.keys()), ['POLS', 'OBSID',
-                                                  'UVCUT', 'M_THRESH',
-                                                  'NTIME', 'START_FREQ',
-                                                  'CH_WIDTH', 'NCHAN',
-                                                  'ANTENNA', 'XX', 'YY',
-                                                  'UNUSED_BLS', 'UNUSED_CHS',
-                                                  'UNUSED_ANTS',
-                                                  'NON_CONVERGED_CHS',
-                                                  'CONVERGENCE',
-                                                  'CONVERGENCE_VAR',
-                                                  'RECEIVERS',
-                                                  'STATUS'])
-        self.assertEqual(list(m.metrics['XX'].keys()), ['SKEWNESS_UVCUT',
-                                                        'AMPVAR_ANT',
-                                                        'AMPRMS_ANT',
-                                                        'RMS_AMPVAR_ANT',
-                                                        'AMPVAR_FREQ',
-                                                        'AMPRMS_FREQ',
-                                                        'RMS_AMPVAR_FREQ',
-                                                        'DFFT',
-                                                        'DFFT_POWER',
-                                                        'DFFT_POWER_HIGH_PKPL',
-                                                        'DFFT_POWER_HIGH_NKPL',
-                                                        'RECEIVER_CHISQ'
-                                                        'RECEIVER_CHISQVAR'])
-        self.assertEqual(list(m.metrics['YY'].keys()), ['SKEWNESS_UVCUT',
-                                                        'AMPVAR_ANT',
-                                                        'AMPRMS_ANT',
-                                                        'RMS_AMPVAR_ANT',
-                                                        'AMPVAR_FREQ',
-                                                        'AMPRMS_FREQ',
-                                                        'RMS_AMPVAR_FREQ',
-                                                        'DFFT', 'DFFT_POWER',
-                                                        'DFFT_POWER_HIGH_PKPL',
-                                                        'DFFT_POWER_HIGH_NKPL',
-                                                        'RECEIVER_CHISQ',
-                                                        'RECEIVER_CHISQVAR'])
 
     def test_write_metrics(self):
         m = CalMetrics(calfile)
