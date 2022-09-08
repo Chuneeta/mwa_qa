@@ -6,7 +6,7 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
 import numpy as np
 import warnings
-warnings.filterwarnings("ignore")
+
 
 pol_dict = {'XX': 0, 'XY': 1, 'YX': 2, 'YY':	3}
 
@@ -155,6 +155,7 @@ class CalMetrics(object):
 
     def receiver_metrics(self):
         # metrics based on antennas connected to receivers
+        warnings.filterwarnings("ignore")
         pols = list(pol_dict.keys())
         ntimes = self.CalFits.Ntime
         receivers = np.unique(sorted(self.get_receivers()))
@@ -200,10 +201,8 @@ class CalMetrics(object):
         except AttributeError:
             pass
 
-    def run_metrics(self, dly_cut=2000, sigma=2, receiver_metrics=None):
+    def run_metrics(self, dly_cut=2000, sigma=2):
         self._initialize_metrics_dict()
-        pols = self.metrics['POLS']
-        ntimes = self.metrics['NTIME']
         gain_amps = self.CalFits.amplitudes
         # metrics across antennas
         var_amp_ant = np.nanvar(gain_amps, axis=1)
@@ -218,8 +217,11 @@ class CalMetrics(object):
         # skewness across ucvut
         skewness = self.skewness_across_uvcut(self.metrics['UVCUT'])
         mskewness = np.nanmean(skewness, axis=0)
-        # metric from delay spectrum
-        # fft_spectrum = self.CalFits.gains_fft()
+        # receiver metrics
+        rcv_chisq = self.receiver_metrics()
+        mrcv_chisq = np.nanmean(np.nanmean(rcv_chisq, axis=1), axis=1)
+        vmrcv_chisq = np.nanvar(mrcv_chisq, axis=0)
+        # delay spectrum
         delays = self.CalFits.delays()
         smfft_spectrum = self.apply_gaussian_filter1D_fft(sigma)
         # convergence metrics
@@ -250,16 +252,7 @@ class CalMetrics(object):
                 np.abs(smfft_spectrum[:, :, inds_pos, i]))
             self.metrics[p]['DFFT_POWER_HIGH_NKPL'] = np.nansum(
                 np.abs(smfft_spectrum[:, :, inds_neg, i]))
-
-        # receiver metrics
-        if receiver_metrics:
-            self.metrics['RECEIVERS'] = self.get_receivers()
-            rcv_chisq = self.receiver_metrics()
-            mrcv_chisq = np.nanmean(np.nanmean(rcv_chisq, axis=1), axis=1)
-            vmrcv_chisq = np.nanvar(mrcv_chisq, axis=0)
-            for p in ['XX', 'YY']:
-                self.metrics[p]['RECEIVER_CHISQ'] = mrcv_chisq[:, pol_dict[p]]
-                self.metrics[p]['RECEIVER_CHISQVAR'] = vmrcv_chisq[pol_dict[p]]
+            self.metrics[p]['RECEIVER_CHISQVAR'] = vmrcv_chisq[pol_dict[p]]
 
         # determining if the solutions passes the metrics basics tests
         status = 'FAIL' if np.sqrt(
