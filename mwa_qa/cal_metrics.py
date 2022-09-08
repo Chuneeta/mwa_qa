@@ -22,17 +22,17 @@ class CalMetrics(object):
         - metafits:	Metafits with extension *.metafits or _ppds.fits
         containing information
         - pol: 	Polarization, can be either 'X' or 'Y'. It should be
-        specified so that information associated on an
-        observation done with MWA with the given pol is
+                specified so that information associated on an
+                observation done with MWA with the given pol is
                 provided. Default is X.
         - norm: Boolean, If True, the calibration solutions will be
                 normlaized else unnormlaized solutions will be used.
                 Default is set to False
-        - ref_antenna:   Reference antenna number. If norm is True,
-        a reference antenna is require for normalization.
-        By default it uses the last antenna in the array.
-        If the last antenna is flagged, it will return
-        an error.
+        - ref_antenna:	Reference antenna number. If norm is True,
+                        a reference antenna is require for normalization.
+                        By default it uses the last antenna in the array.
+                        If the last antenna is flagged, it will return
+                        an error.
         """
         self.calfits_path = calfits_path
         self.metafits_path = metafits_path
@@ -44,9 +44,9 @@ class CalMetrics(object):
         """
         Returns variance across frequency for the given tile pair
         - antpair:	Antenna pair or tuple of antenna numbers
-                    e.g (102, 103)
+                                e.g (102, 103)
         - norm:	Boolean, If True returns normalized gains
-                else unormalized gains. Default is set to True.
+                        else unormalized gains. Default is set to True.
         """
         gain_pairs = self.CalFits.gains_for_antpair(antpair)
         return np.nanvar(gain_pairs, axis=1)
@@ -153,6 +153,23 @@ class CalMetrics(object):
     def convergence_variance(self):
         return np.nanmax(np.nanvar(self.CalFits.convergence, axis=1))
 
+    def receiver_metrics(self):
+        # metrics based on antennas connected to receivers
+        pols = list(pol_dict.keys())
+        ntimes = self.CalFits.Ntime
+        receivers = np.unique(sorted(self.get_receivers()))
+        nants = len(self.Metafits.annumbers_for_receiver(receivers[0]))
+        rcv_chisq = np.zeros((len(receivers), ntimes, nants, len(pols)))
+        for i, r in enumerate(receivers):
+            rcv_gains = self.CalFits.gains_for_receiver(r)
+            rcv_amps = np.abs(rcv_gains)
+            # ignoring zero division
+            np.seterr(divide='ignore', invalid='ignore')
+            rcv_amps_mean = np.nanmean(rcv_amps, axis=1)
+            chisq = np.nansum(((rcv_amps - rcv_amps_mean) / rcv_amps), axis=2)
+            rcv_chisq[i] = chisq
+        return rcv_chisq
+
     def _initialize_metrics_dict(self):
         """
         Initializes the metric dictionary with some of the default
@@ -160,9 +177,8 @@ class CalMetrics(object):
         """
         self.metrics = OrderedDict()
         # assuming hyperdrive outputs 4 polarizations
-        pols = ['XX', 'XY', 'YX', 'YY']
         receivers = np.unique(sorted(self.get_receivers()))
-        self.metrics['POLS'] = pols
+        self.metrics['POLS'] = list(pol_dict.keys())
         self.metrics['OBSID'] = self.CalFits.obsid
         self.metrics['UVCUT'] = self.CalFits.uvcut
         self.metrics['M_THRESH'] = self.CalFits.m_thresh
@@ -174,7 +190,6 @@ class CalMetrics(object):
             self.CalFits.frequency_array[0]
         self.metrics['NCHAN'] = self.CalFits.Nchan
         self.metrics['ANTENNA'] = self.CalFits.antenna
-        self.metrics['RECEIVERS'] = receivers.tolist()
         self.metrics['XX'] = OrderedDict()
         self.metrics['YY'] = OrderedDict()
         # NOTE:polynomial parameters - only the fitted
@@ -185,10 +200,9 @@ class CalMetrics(object):
         except AttributeError:
             pass
 
-    def run_metrics(self, dly_cut=2000, sigma=2):
+    def run_metrics(self, dly_cut=2000, sigma=2, receiver_metrics=None):
         self._initialize_metrics_dict()
         pols = self.metrics['POLS']
-        receivers = self.metrics['RECEIVERS']
         ntimes = self.metrics['NTIME']
         gain_amps = self.CalFits.amplitudes
         # metrics across antennas
@@ -204,18 +218,6 @@ class CalMetrics(object):
         # skewness across ucvut
         skewness = self.skewness_across_uvcut(self.metrics['UVCUT'])
         mskewness = np.nanmean(skewness, axis=0)
-        # metrics based on antennas connected to receivers
-        rcv_chisq = np.zeros((len(receivers), ntimes, 8, len(pols)))
-        for i, r in enumerate(receivers):
-            rcv_gains = self.CalFits.gains_for_receiver(r)
-            rcv_amps = np.abs(rcv_gains)
-        # ignoring zero division
-            np.seterr(divide='ignore', invalid='ignore')
-            rcv_amps_mean = np.nanmean(rcv_amps, axis=1)
-            chisq = np.nansum(((rcv_amps - rcv_amps_mean) / rcv_amps), axis=2)
-            rcv_chisq[i] = chisq
-        mrcv_chisq = np.nanmean(np.nanmean(rcv_chisq, axis=1), axis=1)
-        vmrcv_chisq = np.nanvar(mrcv_chisq, axis=0)
         # metric from delay spectrum
         # fft_spectrum = self.CalFits.gains_fft()
         delays = self.CalFits.delays()
@@ -229,7 +231,6 @@ class CalMetrics(object):
         self.metrics['NON_CONVERGED_CHS'] = self.non_converging_percent()
         self.metrics['CONVERGENCE'] = self.CalFits.convergence
         self.metrics['CONVERGENCE_VAR'] = convergence_var
-        self.metrics['RECEIVER_CHISQ'] = rcv_chisq
         # metrics for each pols
         for i, p in enumerate(['XX', 'YY']):
             self.metrics[p]['SKEWNESS_UVCUT'] = mskewness[pol_dict[p]]
@@ -249,8 +250,17 @@ class CalMetrics(object):
                 np.abs(smfft_spectrum[:, :, inds_pos, i]))
             self.metrics[p]['DFFT_POWER_HIGH_NKPL'] = np.nansum(
                 np.abs(smfft_spectrum[:, :, inds_neg, i]))
-            # receiver variance
-            self.metrics[p]['RECEIVER_CHISQVAR'] = vmrcv_chisq[pol_dict[p]]
+
+        # receiver metrics
+        if receiver_metrics:
+            self.metrics['RECEIVERS'] = self.get_receivers()
+            rcv_chisq = self.receiver_metrics()
+            mrcv_chisq = np.nanmean(np.nanmean(rcv_chisq, axis=1), axis=1)
+            vmrcv_chisq = np.nanvar(mrcv_chisq, axis=0)
+            for p in ['XX', 'YY']:
+                self.metrics[p]['RECEIVER_CHISQ'] = mrcv_chisq[:, pol_dict[p]]
+                self.metrics[p]['RECEIVER_CHISQVAR'] = vmrcv_chisq[pol_dict[p]]
+
         # determining if the solutions passes the metrics basics tests
         status = 'FAIL' if np.sqrt(
             convergence_var) > self.CalFits.m_thresh else 'PASS'
