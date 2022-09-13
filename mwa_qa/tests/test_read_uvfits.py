@@ -4,8 +4,8 @@ from scipy import signal
 import numpy as np
 import unittest
 
-uvfits = '../../test_files/1061315688_cal.uvfits'
-uvfits_hex = '../../test_files/1320411840_hyp_cal.uvfits'
+uvfits = '/Users/ridhima/Documents/mwa/calibration/mwa_qa/test_files/1061315688_cal.uvfits'
+uvfits_hex = '/Users/ridhima/Documents/mwa/calibration/mwa_qa/test_files/1320411840_hyp_cal.uvfits'
 hdu = fits.open(uvfits)
 data0, data1 = hdu[0].data, hdu[1].data
 hdr0, hdr1 = hdu[0].header, hdu[1].header
@@ -23,18 +23,20 @@ class TestUVfits(unittest.TestCase):
         self.assertEqual(uvf.Nants, 128)
         np.testing.assert_equal(uvf.antenna_numbers, np.arange(0, uvf.Nants))
         self.assertEqual(len(uvf.ant_1_array), ndata)
-        # np.testing.assert_equal(uvf.ant_1_array, np.repeat(
-        #    np.arange(uvf.Nants), uvf.Nants))
-        # np.testing.assert_equal(uvf.ant_2_array, np.array(
-        #    np.arange(128).tolist() * uvf.Nants))
+        self.assertEqual(uvf.ant_1_array[0], 0)
+        self.assertEqual(uvf.ant_1_array[-1], 127)
+        self.assertEqual(uvf.ant_2_array[0], 0)
+        self.assertEqual(uvf.ant_2_array[-1], 127)
         self.assertEqual(len(uvf.ant_2_array), ndata)
         self.assertEqual(len(uvf.baseline_array), ndata)
-        self.assertEqual(len(uvf.antpairs), ndata)
+        self.assertEqual(len(uvf.antpairs), uvf.Nbls)
         self.assertEqual(len(uvf.antenna_positions), uvf.Nants)
         np.testing.assert_equal(uvf.antpairs[0], np.array([0, 0]))
         np.testing.assert_almost_equal(uvf.antenna_positions[0], np.array([
             4.56250049e+02, -1.49785004e+02,  6.80459899e+01]), decimal=4)
-        # self.assertEqual(uvf.baseline_array, np.arange(257, 32897))
+        self.assertEqual(len(uvf.baseline_array), 219456)
+        self.assertEqual(uvf.baseline_array[0], 257)
+        self.assertEqual(uvf.baseline_array[-1], 32896)
         self.assertEqual(uvf.ant_names[0], 'Tile011')
         self.assertEqual(len(uvf.ant_names), uvf.Nants)
         self.assertEqual(len(uvf.freq_array), uvf.Nfreqs)
@@ -60,6 +62,13 @@ class TestUVfits(unittest.TestCase):
             data0[0][5][0, 0, :, :, 1] * 1j
         np.testing.assert_almost_equal(data[0, 0, :, :], expected)
 
+    def test__flag_for_antpairs(self):
+        uvf = UVfits(uvfits)
+        vis_hdu = hdu['PRIMARY']
+        flag = uvf._flag_for_antpairs(vis_hdu, [(0, 0)])
+        self.assertEqual(flag.shape, (27, 1, 768, 4))
+        self.assertTrue(np.all(flag[0, 0, 0, :]))
+
     def test_data_for_antpairs(self):
         uvf = UVfits(uvfits)
         data = uvf.data_for_antpairs([(0, 0)])
@@ -68,6 +77,12 @@ class TestUVfits(unittest.TestCase):
             data0[0][5][0, 0, :, :, 1] * 1j
         np.testing.assert_almost_equal(data[0, 0, :, :], expected)
 
+    def test_flag_for_antpairs(self):
+        uvf = UVfits(uvfits)
+        flag = uvf.flag_for_antpairs([(0, 0)])
+        self.assertEqual(flag.shape, (27, 1, 768, 4))
+        self.assertTrue(np.all(flag[0, 0, 0, :]))
+
     def test_data_for_antpair(self):
         uvf = UVfits(uvfits)
         data = uvf.data_for_antpair((0, 0))
@@ -75,6 +90,12 @@ class TestUVfits(unittest.TestCase):
         expected = data0[0][5][0, 0, :, :, 0] + \
             data0[0][5][0, 0, :, :, 1] * 1j
         np.testing.assert_almost_equal(data[0, :, :], expected)
+
+    def test_flag_for_antpair(self):
+        uvf = UVfits(uvfits)
+        flag = uvf.flag_for_antpair((0, 0))
+        self.assertEqual(flag.shape, (27, 768, 4))
+        self.assertTrue(np.all(flag[0, 0, :]))
 
     def test_blackmanharris(self):
         uvf = UVfits(uvfits)
