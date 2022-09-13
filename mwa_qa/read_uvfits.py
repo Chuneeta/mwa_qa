@@ -3,6 +3,7 @@ from scipy import signal
 from astropy.io import fits
 import numpy as np
 import os
+import copy
 
 # speed of light
 c = 299_792_458
@@ -96,6 +97,20 @@ class UVfits(object):
             (self.Ntimes, Npairs, self.Nfreqs, self.Npols))
         return reals + 1j * imags
 
+    def _flag_for_antpairs(self, vis_hdu, antpairs):
+        """
+        dimensions: [time, bl, freq, pol]
+        """
+        Npairs = len(antpairs)
+        # sorted to traverse in the order on disk to minimize seeks
+        blt_idxs = np.sort(np.concatenate([
+            self.blt_idxs_for_antpair(antpair) for antpair in antpairs]))
+        flags = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 2]
+        print(flags[0, :, 0])
+        flags = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 2] <= 0
+        return flags.reshape(
+            (self.Ntimes, Npairs, self.Nfreqs, self.Npols))
+
     def data_for_antpairs(self, antpairs):
         """
         dimensions: [time, bl, freq, pol]
@@ -105,6 +120,15 @@ class UVfits(object):
             result = self._data_for_antpairs(vis_hdu, antpairs)
             return result
 
+    def flag_for_antpairs(self, antpairs):
+        """
+        dimensions: [time, bl, freq, pol]
+        """
+        with fits.open(self.uvfits_path) as hdus:
+            vis_hdu = hdus['PRIMARY']
+            result = self._flag_for_antpairs(vis_hdu, antpairs)
+            return result
+
     def data_for_antpair(self, antpair):
         """
         dimensions: [time, freq, pol]
@@ -112,6 +136,15 @@ class UVfits(object):
         with fits.open(self.uvfits_path) as hdus:
             vis_hdu = hdus['PRIMARY']
             result = self._data_for_antpairs(vis_hdu, [antpair])
+            return result[:, 0, :, :]
+
+    def flag_for_antpair(self, antpair):
+        """
+        dimensions: [time, freq, pol]
+        """
+        with fits.open(self.uvfits_path) as hdus:
+            vis_hdu = hdus['PRIMARY']
+            result = self._flag_for_antpairs(vis_hdu, [antpair])
             return result[:, 0, :, :]
 
     def _amps_phs_array(self, antpairs):
@@ -150,6 +183,28 @@ class UVfits(object):
         dfreq = self.freq_array[1] - self.freq_array[0]
         delays = np.fft.fftfreq(self.Nfreqs, dfreq)
         return np.fft.fftshift(delays * 1e9)
+
+    def fft_data_for_antpair(self, antpair):
+        data = self.data_for_antpair(antpair)
+        fft_data = copy.deepcopy(data)
+        _sh = data.shape
+        for t in range(_sh[0]):
+            for p in range(_sh[2]):
+                nonan_inds = np.where(~np.isnan(data[t, :, p]))[0]
+                window = self.blackmanharris(len(nonan_inds))
+                fft_data[t, nonan_inds, p] = np.fft.fftshift(
+                    np.fft.fft(data[t, nonan_inds, p] * window))
+                nan_inds = np.where(np.isnan(data[t, :, p]))
+                if len(nan_inds) > 0:
+                    fft_data[t, nan_inds[0], p] = np.nan
+        return fft_data
+
+    def fft_data_for_antpairs(self, antpairs):
+        fft_data = np.zeros((self.Ntimes, len(antpairs),
+                            self.Nfreqs, self.Npols), dtype=np.complex64)
+        for i, antpair in enumerate(antpairs):
+            fft_data[:, i, :, :] = self.fft_data_for_antpair(antpair)
+        return fft_data
 
     def fft_array(self, antpairs):
         try:
