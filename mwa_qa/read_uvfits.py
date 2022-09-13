@@ -106,7 +106,6 @@ class UVfits(object):
         blt_idxs = np.sort(np.concatenate([
             self.blt_idxs_for_antpair(antpair) for antpair in antpairs]))
         flags = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 2]
-        print(flags[0, :, 0])
         flags = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 2] <= 0
         return flags.reshape(
             (self.Ntimes, Npairs, self.Nfreqs, self.Npols))
