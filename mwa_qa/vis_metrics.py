@@ -13,33 +13,11 @@ class VisMetrics(object):
 
     def autos(self):
         auto_antpairs = self.uvf.auto_antpairs()
-        return self.uvf.data_for_antpairs(auto_antpairs)
+        autos = self.uvf.data_for_antpairs(auto_antpairs)
+        flags = self.uvf.flag_for_antpairs(auto_antpairs)
+        autos[flags] = np.nan
+        return autos
         # return self.uvf._amps_phs_array(auto_antpairs)
-
-    def redundant_metrics(self):
-        red_pairs = self.uvf.redundant_antpairs()
-        red_keys = list(red_pairs.keys())
-        if len(red_keys) > 0:
-            red_values = list(red_pairs.values())
-            amp_chisqs, phs_chisqs = OrderedDict(), OrderedDict()
-            for i in range(len(red_values)):
-                d = self.uvf.data_for_antpairs(red_values[i])
-                # d = self.uvf._amps_phs_array(red_values[i])
-                d_amp = np.nanmean(np.abs(d), axis=0)
-                d_phs = np.nanmean(np.angle(d), axis=0)
-                mean_amp = np.nanmean(d_amp, axis=0)[np.newaxis, :]
-                mean_phs = np.nanmean(d_phs, axis=0)[np.newaxis, :]
-                amp_chisq = np.nansum(
-                    (d_amp - mean_amp) ** 2 / mean_amp, axis=1)
-                phs_chisq = np.nansum(
-                    (d_amp - mean_phs) ** 2 / mean_phs, axis=1)
-                amp_chisqs[i] = amp_chisq
-                phs_chisqs[i] = phs_chisq
-                amp_diff = np.diff(d_amp, axis=0)
-                phs_diff = np.diff(d_phs, axis=0)
-            return red_keys, amp_chisqs, phs_chisqs, amp_diff, phs_diff
-        else:
-            return None
 
     def _initialize_metrics_dict(self):
         self.metrics = OrderedDict()
@@ -52,72 +30,102 @@ class VisMetrics(object):
         self.metrics['REDUNDANT'] = OrderedDict([
             ('XX', OrderedDict()), ('YY', OrderedDict())])
 
-    def run_metrics(self):
+    def run_metrics(self, nbl_limit=10):
         self._initialize_metrics_dict()
         # auto correlations
         autos = self.autos()
-        # time difference
-        diff_autos = np.diff(autos, axis=0)
-        auto_amps = np.abs(autos)
-        auto_phs = np.angle(autos)
-        avg_amp_rms = np.sqrt(np.nanmean(
-            np.nanmean(auto_amps, axis=0), axis=1) ** 2)
-        avg_phs_rms = np.sqrt(np.nanmean(
-            np.nanmean(auto_phs, axis=0), axis=1) ** 2)
-        mavg_amp_rms = np.nanmean(avg_amp_rms, axis=0)
-        mavg_phs_rms = np.nanmean(avg_phs_rms, axis=0)
-        vavg_amp_rms = np.nanvar(avg_amp_rms, axis=0)
-        vavg_phs_rms = np.nanvar(avg_phs_rms, axis=0)
-        # writing mwtric to dict
+        autos_amps = np.abs(autos)  # amplitude
+        # rms across antenna
+        autos_amps_rms_ant = np.sqrt(np.nanmean(autos_amps, axis=1))
+        # rms across frequency
+        autos_amps_rms_freq = np.sqrt(np.nanmean(autos_amps, axis=2))
+
         for p in ['XX', 'YY']:
-            self.metrics['AUTOS'][p]['MEAN_RMS_AMPS'] = mavg_amp_rms[pol_dict[p]]
-            self.metrics['AUTOS'][p]['VAR_RMS_AMPS'] = vavg_amp_rms[pol_dict[p]]
-            self.metrics['AUTOS'][p]['MEAN_RMS_PHS'] = mavg_phs_rms[pol_dict[p]]
-            self.metrics['AUTOS'][p]['VAR_RMS_PHS'] = vavg_phs_rms[pol_dict[p]]
-        # auto difference:
-        if self.uvf.Ntimes > 1:
-            vdiff_auto_amps = np.nanvar(np.abs(diff_autos), axis=2)
-            vdiff_auto_phs = np.nanvar(np.angle(diff_autos), axis=2)
-            for p in ['XX', 'YY']:
-                self.metrics['AUTOS'][p]['VAR_DIFF_AMPS'] = vdiff_auto_amps[:, pol_dict[p]]
-                self.metrics['AUTOS'][p]['VAR_DIFF_PHS'] = vdiff_auto_phs[:, pol_dict[p]]
-                self.metrics['AUTOS'][p]['MX_VAR_DIFF_AMPS'] = np.nanmax(
-                    np.max(vdiff_auto_amps[:, pol_dict[p]]))
-                self.metrics['AUTOS'][p]['MX_VAR_DIFF_PHS'] = np.nanmax(
-                    np.max(vdiff_auto_phs))
-        # redundancy metrics
-        red_metrics = self.redundant_metrics()
-        if red_metrics is not None:
-            reds, amp_chisqs, phs_chisqs, amp_diff, phs_diff = red_metrics
-            var_ampxx_chisqs, var_ampyy_chisqs = [], []
-            var_phsxx_chisqs, var_phsyy_chisqs = [], []
-            for i in range(len(reds)):
-                var_ampxx_chisqs.append(np.nanmean(amp_chisqs[i][:, 0]))
-                var_ampyy_chisqs.append(np.nanmean(amp_chisqs[i][:, 1]))
-                var_phsxx_chisqs.append(np.nanmean(phs_chisqs[i][:, 0]))
-                var_phsyy_chisqs.append(np.nanmean(phs_chisqs[i][:, 1]))
+            # taking the maximum rms out of the timestamps
+            rms_amp_ant = np.nanmean(
+                autos_amps_rms_ant[:, :, pol_dict[p]], axis=0)
+            rms_amp_freq = np.nanmean(
+                autos_amps_rms_freq[:, :, pol_dict[p]], axis=0)
+            self.metrics['AUTOS'][p]['RMS_AMP_ANT'] = rms_amp_ant
+            self.metrics['AUTOS'][p]['RMS_AMP_FREQ'] = rms_amp_freq
+            self.metrics['AUTOS'][p]['MXRMS_AMP_ANT'] = np.nanmax(rms_amp_ant)
+            self.metrics['AUTOS'][p]['MNRMS_AMP_ANT'] = np.nanmin(rms_amp_ant)
+            self.metrics['AUTOS'][p]['MXRMS_AMP_FREQ'] = np.nanmax(
+                rms_amp_freq)
+            self.metrics['AUTOS'][p]['MNRMS_AMP_FREQ'] = np.nanmin(
+                rms_amp_freq)
+            # finding outliers in frequency channels > mena + 3 sigma
+            threshold_freq_high = np.nanmedian(
+                rms_amp_ant) + 3 * np.nanstd(rms_amp_ant)
+            threshold_freq_low = np.nanmedian(
+                rms_amp_ant) - 3 * np.nanstd(rms_amp_ant)
+            inds_rms_freq = np.where((rms_amp_ant < threshold_freq_low) | (
+                rms_amp_ant > threshold_freq_high))
+            if len(inds_rms_freq) == 0:
+                self.metrics['AUTOS'][p]['POOR_CHANNELS'] = []
+                self.metrics['AUTOS'][p]['NPOOR_CHANNELS'] = 0
+            else:
+                self.metrics['AUTOS'][p]['POOR_CHANNELS'] = inds_rms_freq[0]
+                self.metrics['AUTOS'][p]['NPOOR_CHANNELS'] = len(
+                    inds_rms_freq[0])
+            # finding outliers in antennas
+            threshold_ant_high = np.nanmedian(
+                rms_amp_freq) + 3 * np.nanstd(rms_amp_freq)
+            threshold_ant_low = np.nanmedian(
+                rms_amp_freq) - 3 * np.nanstd(rms_amp_freq)
+            inds_rms_ant = np.where((rms_amp_freq < threshold_ant_low) | (
+                rms_amp_freq > threshold_ant_high))
+            if len(inds_rms_freq) == 0:
+                self.metrics['AUTOS'][p]['POOR_ANTENNAS'] = []
+                self.metrics['AUTOS'][p]['NPOOR_ANTENNAS'] = 0
+            else:
+                self.metrics['AUTOS'][p]['POOR_ANTENNAS'] = inds_rms_ant[0]
+                self.metrics['AUTOS'][p]['NPOOR_ANTENNAS'] = len(
+                    inds_rms_ant[0])
+            # need to add FFT of autos here
+        # redundant baselines
+        red_dict = self.uvf.redundant_antpairs()
+        red_keys = list(red_dict.keys())
+        self.metrics['REDUNDANT']['RED_PAIRS'] = []
+        for p in ['XX', 'YY']:
+            self.metrics['REDUNDANT'][p]['POOR_BLS'] = []
+            self.metrics['REDUNDANT'][p]['AMP_CHISQ'] = []
+        if len(red_keys) > 0:
+            red_values = np.array(list(red_dict.values()))
+            for i, key in enumerate(red_keys):
+                # selecting redundant grouos with at least
+                # 10 redundant baselines
+                if len(red_values[i]) > nbl_limit:
+                    self.metrics['REDUNDANT']['RED_PAIRS'].append(key)
+                    d = self.uvf.data_for_antpairs(red_values[i])
+                    f = self.uvf.flag_for_antpairs(red_values[i])
+                    d[f] = np.nan
+                    d_amp = np.nanmean(np.abs(d), axis=0)
+                    mean_amp = np.nanmean(d_amp, axis=0)[np.newaxis, :]
+                    amp_chisq = np.nansum(
+                        (d_amp - mean_amp) ** 2 / mean_amp, axis=1)
+                    for p in ['XX', 'YY']:
+                        mamp_chisq = np.nanmean(
+                            amp_chisq[:, pol_dict[p]])
+                        stamp_chisq = np.nanstd(
+                            amp_chisq[pol_dict[p]])
+                        threshold_high = mamp_chisq + (3 * stamp_chisq)
+                        threshold_low = mamp_chisq - (3 * stamp_chisq)
+                        inds = np.where((amp_chisq[:, pol_dict[p]]
+                                         < threshold_low) |
+                                        (amp_chisq[:, pol_dict[p]]
+                                         > threshold_high))
+                        self.metrics['REDUNDANT'][p]['AMP_CHISQ'].append(
+                            amp_chisq[:, pol_dict[p]].tolist())
+                        if len(inds[0]) > 0:
+                            poor_bls = np.array(red_values[i])[inds[0]]
+                            [self.metrics['REDUNDANT'][p]['POOR_BLS'].append(
+                                tuple(bl)) for bl in poor_bls]
 
-            self.metrics['REDUNDANT']['RED_PAIRS'] = reds
-            self.metrics['REDUNDANT']['AMP_CHISQ'] = amp_chisqs
-            self.metrics['REDUNDANT']['PHS_CHISQ'] = phs_chisqs
-            self.metrics['REDUNDANT']['XX']['VAR_AMP_CHISQ'] = np.nanvar(
-                var_ampxx_chisqs)
-            self.metrics['REDUNDANT']['XX']['VAR_PHS_CHISQ'] = np.nanvar(
-                var_phsxx_chisqs)
-            self.metrics['REDUNDANT']['YY']['VAR_AMP_CHISQ'] = np.nanvar(
-                var_ampyy_chisqs)
-            self.metrics['REDUNDANT']['YY']['VAR_PHS_CHISQ'] = np.nanvar(
-                var_phsyy_chisqs)
-
-            for p in ['XX', 'YY']:
-                self.metrics['REDUNDANT'][p]['AMP_DIFF'] = amp_diff[:,
-                                                                    :, pol_dict[p]]
-                self.metrics['REDUNDANT'][p]['PHS_DIFF'] = phs_diff[:,
-                                                                    :, pol_dict[p]]
-                self.metrics['REDUNDANT'][p]['MVAR_AMP_DIFF'] = np.nanmean(
-                    np.nanvar(amp_diff[:, :, pol_dict[p]], axis=1))
-                self.metrics['REDUNDANT'][p]['MVAR_PHS_DIFF'] = np.nanmean(
-                    np.nanvar(phs_diff[:, :, pol_dict[p]], axis=1))
+        self.metrics['REDUNDANT']['XX']['NPOOR_BLS'] = len(
+            self.metrics['REDUNDANT']['XX']['POOR_BLS'])
+        self.metrics['REDUNDANT']['YY']['NPOOR_BLS'] = len(
+            self.metrics['REDUNDANT']['YY']['POOR_BLS'])
 
     def write_to(self, outfile=None):
         if outfile is None:
