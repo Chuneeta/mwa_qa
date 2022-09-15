@@ -21,6 +21,7 @@ class TestUVfits(unittest.TestCase):
         self.assertEqual(uvf.Ntimes, 27)
         self.assertEqual(uvf.Nbls, 8128)
         self.assertEqual(uvf.Nants, 128)
+        self.assertEqual(uvf.channel_width, 40000.0)
         np.testing.assert_equal(uvf.antenna_numbers, np.arange(0, uvf.Nants))
         self.assertEqual(len(uvf.ant_1_array), ndata)
         self.assertEqual(uvf.ant_1_array[0], 0)
@@ -109,14 +110,6 @@ class TestUVfits(unittest.TestCase):
         dfreq = uvf.freq_array[1] - uvf.freq_array[0]
         np.testing.assert_almost_equal(delays * 1e-9, np.fft.fftshift(
             np.fft.fftfreq(uvf.Nfreqs, dfreq)), decimal=4)
-
-    def test_fft_array(self):
-        uvf = UVfits(uvfits)
-        fft_array = uvf.fft_array((0, 0))
-        self.assertEqual(fft_array.shape, (27, 768, 4))
-        d0 = uvf.data_for_antpair((0, 0))
-        # np.testing.assert_almost_equal(
-        # fft_array[0, :, 0], np.fft.fftshift(np.fft.fft(d0[0, :, 0])))
 
     def redundant_antpairs(self):
         uvf = UVfits(uvfits)
