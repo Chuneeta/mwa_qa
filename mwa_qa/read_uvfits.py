@@ -30,6 +30,7 @@ class UVfits(object):
             self.unique_baselines = np.sort(
                 np.unique(self.baseline_array))
             self.Nbls = len(self.unique_baselines)
+            self.channel_width = vis_hdu.header['CDELT4']
 
             self.time_array = np.float64(vis_hdu.data["DATE"])
             self.unique_times = np.sort(np.unique(self.time_array))
@@ -97,7 +98,7 @@ class UVfits(object):
             (self.Ntimes, Npairs, self.Nfreqs, self.Npols))
         return reals + 1j * imags
 
-    def _flag_for_antpairs(self, vis_hdu, antpairs):
+    def _flag_for_antpairs(self, vis_hdu, antpairs, weight_limit=5):
         """
         dimensions: [time, bl, freq, pol]
         """
@@ -105,8 +106,8 @@ class UVfits(object):
         # sorted to traverse in the order on disk to minimize seeks
         blt_idxs = np.sort(np.concatenate([
             self.blt_idxs_for_antpair(antpair) for antpair in antpairs]))
-        flags = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 2]
-        flags = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 2] <= 0
+        # weights are clauculate (1/PFB_GAINS * Nf * Nt)
+        flags = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 2] < weight_limit
         return flags.reshape(
             (self.Ntimes, Npairs, self.Nfreqs, self.Npols))
 
@@ -183,8 +184,11 @@ class UVfits(object):
         delays = np.fft.fftfreq(self.Nfreqs, dfreq)
         return np.fft.fftshift(delays * 1e9)
 
-    def fft_data_for_antpair(self, antpair):
+    def fft_data_for_antpair(self, antpair, apply_flag=True):
         data = self.data_for_antpair(antpair)
+        if apply_flag:
+            flag = self.flag_for_antpair(antpair)
+            data[flag] = np.nan
         fft_data = copy.deepcopy(data)
         _sh = data.shape
         for t in range(_sh[0]):
@@ -198,27 +202,13 @@ class UVfits(object):
                     fft_data[t, nan_inds[0], p] = np.nan
         return fft_data
 
-    def fft_data_for_antpairs(self, antpairs):
+    def fft_data_for_antpairs(self, antpairs, apply_flag=True):
         fft_data = np.zeros((self.Ntimes, len(antpairs),
                             self.Nfreqs, self.Npols), dtype=np.complex64)
         for i, antpair in enumerate(antpairs):
-            fft_data[:, i, :, :] = self.fft_data_for_antpair(antpair)
+            fft_data[:, i, :, :] = self.fft_data_for_antpair(
+                antpair, apply_flag=apply_flag)
         return fft_data
-
-    def fft_array(self, antpairs):
-        try:
-            data = self.data_for_antpairs(antpairs)
-        except TypeError:
-            data = self.data_for_antpair(antpairs)
-        window = self.blackmanharris(self.Nfreqs)
-        data[np.where(np.isnan(data))] = 0.  # assigning nans to zero
-        fft_array = np.array([np.fft.fft(data[i, :, j] * window)
-                              for i in range(self.Ntimes) for j in range(self.Npols)])
-        # assigning nan nack to zero values
-        fft_array[np.where(fft_array == 0 + 0j)] = np.nan
-        fft_array = np.fft.fftshift(fft_array.reshape(
-            (self.Ntimes, self.Npols, self.Nfreqs)))
-        return np.swapaxes(fft_array, 1, 2)
 
     def group_antpairs(self, antenna_positions, bl_tol):
         angroups = OrderedDict()
