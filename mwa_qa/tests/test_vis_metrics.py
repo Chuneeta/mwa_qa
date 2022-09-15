@@ -124,7 +124,8 @@ class TestVisMetrics(unittest.TestCase):
         self.assertEqual(
             len(vis.metrics['REDUNDANT']['XX']['AMP_CHISQ'][0]), 56)
         self.assertEqual(
-            vis.metrics['REDUNDANT']['XX']['AMP_CHISQ'][0][0], 677.5272216796875)
+            vis.metrics['REDUNDANT']['XX']['AMP_CHISQ'][0][0],
+            677.5272216796875)
         self.assertEqual(
             len(vis.metrics['REDUNDANT']['XX']['POOR_BLS']), 924)
         self.assertEqual(vis.metrics['REDUNDANT']
