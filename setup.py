@@ -33,15 +33,18 @@ setup_args = {
     'packages':     ['mwa_qa'],
     'package_dir':  {'mwa_qa': 'mwa_qa'},
     'package_data': {'mwa_qa': data_files},
-    'install_requires': ['numpy>=1.16.5', 'numpy<1.23.0', 'scipy', 'astropy>3.0.0',
-                         'matplotlib>=2.2', 'python_dateutil>=2.6.0',
+    'install_requires': ['numpy>=1.16.5', 'numpy<1.23.0', 'scipy',
+                         'astropy>3.0.0', 'matplotlib>=2.2',
+                         'python_dateutil>=2.6.0',
                          'pytest'],
     'include_package_data': True,
     'zip_safe':     False,
     'scripts': ['scripts/run_calqa.py', 'scripts/run_imgqa.py',
-                'scripts/run_visqa.py', 'scripts/plot_ants.py',
-                'scripts/plot_reds.py', 'scripts/plot_calqa.py',
-                'scripts/plot_imgqa.py', 'scripts/plot_caljsons.py']
+                'scripts/run_visqa.py', 'scripts/run_prepvisqa.py',
+                'scripts/plot_ants.py', 'scripts/plot_reds.py',
+                'scripts/plot_calqa.py', 'scripts/plot_imgqa.py',
+                'scripts/plot_visqa.py', 'scripts/plot_caljsons.py',
+                'scripts/plot_prepvisqa.py']
 }
 
 if __name__ == '__main__':
