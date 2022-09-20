@@ -8,9 +8,7 @@ import os
 
 calfile = os.path.join(DATA_PATH, 'test_1061315688.fits')
 metafits = os.path.join(DATA_PATH, 'test_1061315688.metafits')
-poly_path = '/Users/ridhima/Documents/mwa/calibration/mwa_qa/test_files/'
-calfile_poly = os.path.join(
-    poly_path, 'test_1061315688_poly.fits')
+calfile_poly = os.path.join(DATA_PATH, 'test_1061315688_poly.fits')
 hdu = astropy.io.fits.open(calfile)
 exp_gains = hdu[1].data[:, :, :, ::2] + hdu[1].data[:, :, :, 1::2] * 1j
 _sh = hdu[1].data.shape
