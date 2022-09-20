@@ -14,29 +14,17 @@ class TestVisMetrics(unittest.TestCase):
         vis = VisMetrics(uvfits)
         self.assertTrue(vis.uvfits_path, uvfits)
 
-    def test_autos(self):
-        vis = VisMetrics(uvfits)
-        autos = vis.autos()
-        np.testing.assert_almost_equal(autos[0, 0, 100, :],
-                                       np.array([np.nan+0.j, np.nan+0.j,
-                                                 np.nan+0.j, np.nan+0.j]))
-
     def test_initialize_metrics_dict(self):
         vis = VisMetrics(uvfits)
         vis._initialize_metrics_dict()
         self.assertEqual(list(vis.metrics.keys()), [
-            'NBLS', 'NTIMES', 'NFREQS', 'NPOLS', 'AUTOS', 'REDUNDANT'])
-        self.assertEqual(vis.metrics['NBLS'], 8128)
+            'NANTS', 'NTIMES', 'NFREQS', 'NPOLS', 'OBSID', 'REDUNDANT'])
+        self.assertEqual(vis.metrics['NANTS'], 128)
         self.assertEqual(vis.metrics['NFREQS'], 768)
         self.assertEqual(vis.metrics['NPOLS'], 4)
         self.assertEqual(vis.metrics['NTIMES'], 27)
-        self.assertEqual(list(vis.metrics['AUTOS'].keys()), ['XX', 'YY'])
         self.assertEqual(
             list(vis.metrics['REDUNDANT'].keys()), ['XX', 'YY'])
-        self.assertTrue(isinstance(
-            vis.metrics['AUTOS']['XX'], OrderedDict))
-        self.assertTrue(isinstance(
-            vis.metrics['AUTOS']['YY'], OrderedDict))
         self.assertTrue(isinstance(
             vis.metrics['REDUNDANT']['XX'], OrderedDict))
         self.assertTrue(isinstance(
@@ -46,36 +34,9 @@ class TestVisMetrics(unittest.TestCase):
         vis = VisMetrics(uvfits)
         vis.run_metrics()
         self.assertEqual(list(vis.metrics.keys()), [
-            'NBLS', 'NTIMES', 'NFREQS', 'NPOLS', 'AUTOS', 'REDUNDANT'])
-        self.assertEqual(list(vis.metrics['AUTOS']['XX'].keys()),
-                         ['RMS_AMP_ANT', 'RMS_AMP_FREQ', 'MXRMS_AMP_ANT',
-                          'MNRMS_AMP_ANT', 'MXRMS_AMP_FREQ', 'MNRMS_AMP_FREQ',
-                          'POOR_CHANNELS', 'NPOOR_CHANNELS', 'POOR_ANTENNAS',
-                          'NPOOR_ANTENNAS'])
-        self.assertEqual(list(vis.metrics['AUTOS']['YY'].keys()),
-                         ['RMS_AMP_ANT', 'RMS_AMP_FREQ', 'MXRMS_AMP_ANT',
-                          'MNRMS_AMP_ANT', 'MXRMS_AMP_FREQ', 'MNRMS_AMP_FREQ',
-                          'POOR_CHANNELS', 'NPOOR_CHANNELS', 'POOR_ANTENNAS',
-                          'NPOOR_ANTENNAS'])
-        np.testing.assert_equal(vis.metrics['AUTOS']
-                                ['XX']['MXRMS_AMP_ANT'], np.nan)
-        np.testing.assert_equal(vis.metrics['AUTOS']
-                                ['XX']['MNRMS_AMP_ANT'], np.nan)
-        self.assertTrue(np.all(vis.metrics['AUTOS']['XX']['RMS_AMP_ANT']))
-        np.testing.assert_equal(vis.metrics['AUTOS']
-                                ['XX']['MXRMS_AMP_FREQ'], np.nan)
-        np.testing.assert_equal(vis.metrics['AUTOS']
-                                ['XX']['MXRMS_AMP_FREQ'], np.nan)
-        self.assertTrue(np.all(vis.metrics['AUTOS']['XX']['RMS_AMP_FREQ']))
-        self.assertTrue(np.all(vis.metrics['AUTOS']['XX']['RMS_AMP_FREQ']))
-        np.testing.assert_equal(vis.metrics['AUTOS']
-                                ['XX']['POOR_CHANNELS'], np.array([]))
-        self.assertEqual(vis.metrics['AUTOS']['XX']['NPOOR_CHANNELS'], 0)
-        np.testing.assert_equal(vis.metrics['AUTOS']
-                                ['XX']['POOR_ANTENNAS'], np.array([]))
-        self.assertEqual(vis.metrics['AUTOS']['XX']['NPOOR_ANTENNAS'], 0)
+            'NANTS', 'NTIMES', 'NFREQS', 'NPOLS', 'OBSID', 'REDUNDANT'])
         self.assertEqual(list(vis.metrics['REDUNDANT'].keys()), [
-                         'XX', 'YY', 'RED_PAIRS'])
+            'XX', 'YY', 'RED_PAIRS'])
         self.assertEqual(list(vis.metrics['REDUNDANT']['XX'].keys()), [
             'POOR_BLS', 'AMP_CHISQ', 'NPOOR_BLS'])
         self.assertEqual(vis.metrics['REDUNDANT']['RED_PAIRS'], [])
@@ -119,7 +80,7 @@ class TestVisMetrics(unittest.TestCase):
              (391, 482, 778), (363, 587, 725), (306, 727, 617),
              (334, 692, 671), (390, 552, 779), (362, 657, 725)])
         self.assertEqual(list(vis.metrics['REDUNDANT']['XX'].keys()), [
-                         'POOR_BLS', 'AMP_CHISQ', 'NPOOR_BLS'])
+            'POOR_BLS', 'AMP_CHISQ', 'NPOOR_BLS'])
         self.assertEqual(len(vis.metrics['REDUNDANT']['XX']['AMP_CHISQ']), 97)
         self.assertEqual(
             len(vis.metrics['REDUNDANT']['XX']['AMP_CHISQ'][0]), 56)
@@ -127,11 +88,10 @@ class TestVisMetrics(unittest.TestCase):
             vis.metrics['REDUNDANT']['XX']['AMP_CHISQ'][0][0],
             677.5272216796875)
         self.assertEqual(
-            len(vis.metrics['REDUNDANT']['XX']['POOR_BLS']), 924)
+            len(vis.metrics['REDUNDANT']['XX']['POOR_BLS']), 81)
         self.assertEqual(vis.metrics['REDUNDANT']
-                         ['XX']['POOR_BLS'][0], (60, 65))
-        self.assertEqual(vis.metrics['REDUNDANT']['XX']['NPOOR_BLS'], len(
-            vis.metrics['REDUNDANT']['XX']['POOR_BLS']))
+                         ['XX']['POOR_BLS'][0][0], ([60, 65], 4))
+        self.assertEqual(vis.metrics['REDUNDANT']['XX']['NPOOR_BLS'], 924)
 
     def test_write_to(self):
         vis = VisMetrics(uvfits)
