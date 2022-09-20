@@ -73,6 +73,11 @@ for json in args.json:
     dfft_power_yy_nkpl.append(data['YY']['DFFT_POWER_HIGH_NKPL'])
     count += 1
 
+print(convergence_var)
+inds = np.where(np.sqrt(np.array(convergence_var)) > 1e-4)
+print(inds)
+corrupted_obsids = np.array(obsids)[inds[0]]
+print(corrupted_obsids)
 # extracting bad obsids
 # plotting
 # saving the file
@@ -122,7 +127,7 @@ ax.semilogy(np.arange(len(obsids)), rms_ampvar_freq_xx, '.-',
 ax.semilogy(np.arange(len(obsids)), rms_ampvar_freq_yy, '.-',
             color='dodgerblue', linewidth=2, label='YY')
 # ax.set_ylim(-0.5, max_rms + 1)
-ax.legend(loc='upper right', ncol=2)
+ax.legend(loc='upper left', ncol=2)
 ax.grid(ls='dotted')
 ax.set_ylabel('RMS (freq)', fontsize=9)
 ax = fig.add_subplot(3, 1, 2)
@@ -130,14 +135,14 @@ ax.semilogy(np.arange(len(obsids)), rms_ampvar_ant_xx, '.-',
             color='indianred', linewidth=2, label='XX')
 ax.semilogy(np.arange(len(obsids)), rms_ampvar_ant_yy, '.-',
             color='dodgerblue', linewidth=2, label='YY')
-ax.legend(loc='upper right', ncol=2)
+ax.legend(loc='upper left', ncol=2)
 ax.set_ylabel('RMS (ant)', fontsize=9)
 ax.grid(ls='dotted')
 ax = fig.add_subplot(3, 1, 3)
 ax.semilogy(np.arange(len(obsids)), convergence_var, '.-',
             color='darkolivegreen', linewidth=2)
 ax.fill_between(np.arange(len(obsids)), 10,
-                10 ** -12, color='red', alpha=0.2)
+                10 ** -8, color='red', alpha=0.2)
 ax.set_ylabel('CONV VAR', fontsize=9)
 ax.set_xlabel('Observation Number', fontsize=12)
 ax.grid(ls='dotted')
@@ -157,7 +162,7 @@ ax.semilogy(np.arange(len(obsids)), dfft_power_xx_nkpl, '.-',
 ax.legend(loc='upper right', ncol=2)
 ax.set_ylabel('XX', fontsize=12)
 ax.grid(ls='dotted')
-ax.legend(loc='upper right', ncol=1)
+ax.legend(loc='upper left', ncol=1)
 ax = fig.add_subplot(2, 1, 2)
 ax.semilogy(np.arange(len(obsids)), dfft_power_yy, '.-',
             color='coral', linewidth=2, label='Overall')
@@ -165,10 +170,10 @@ ax.semilogy(np.arange(len(obsids)), dfft_power_yy_pkpl, '.-',
             color='violet', linewidth=2, label='> 2000 ns')
 ax.semilogy(np.arange(len(obsids)), dfft_power_yy_nkpl, '.-',
             color='greenyellow', linewidth=2, label='< -2000 ns')
-ax.legend(loc='upper right', ncol=2)
+ax.legend(loc='upper left', ncol=2)
 ax.set_xlabel('Observation Number', fontsize=12)
 ax.set_ylabel('YY', fontsize=12)
-ax.legend(loc='upper right', ncol=1)
+ax.legend(loc='upper left', ncol=1)
 ax.grid(ls='dotted')
 if args.save:
     pylab.savefig(figname + '_fft.png', dpi=200)

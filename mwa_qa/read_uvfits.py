@@ -26,6 +26,7 @@ class UVfits(object):
             # the uvfits baseline of each row in the timestep-baseline axis
             self.baseline_array = np.int64(vis_hdu.data["BASELINE"])
             self.Nbls = len(self.baseline_array)
+            self.obsid = vis_hdu.header["OBJECT"]
             assert self.Nbls == vis_hdu.header["GCOUNT"]
             self.unique_baselines = np.sort(
                 np.unique(self.baseline_array))
