@@ -66,4 +66,18 @@ ax.grid(ls='dotted')
 ax.set_ylim(mn_limit, mx_limit)
 ax.tick_params(labelsize=10, direction='in', length=4, width=2)
 ax.set_xlabel('Group Number')
-pylab.show()
+pylab.subplots_adjust(hspace=0.3, left=0.15)
+if args.save:
+    if args.figname is None:
+        figname = args.json.replace('.json', '_rms.png')
+    else:
+        if args.figname.split('.')[-1] != 'png':
+            print(args.figname)
+            figname = args.figname + '.png'
+        else:
+            figname = args.figname
+
+    pylab.savefig(figname, dpi=args.dpi)
+    pylab.close()
+else:
+    pylab.show()
