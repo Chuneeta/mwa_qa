@@ -58,7 +58,7 @@ for json in args.json:
     conv_array[0, np.where(
         conv_array[0] == -1.7976931348623157e+308)[0]] = np.nan
     convergence.append(conv_array)
-    convergence_var.append(data['CONVERGENCE_VAR'][0])
+    convergence_var.append(data['CONVERGENCE_VAR'])
     rms_ampvar_freq_xx.append(data['XX']['RMS_AMPVAR_FREQ'])
     rms_ampvar_ant_xx.append(data['XX']['RMS_AMPVAR_ANT'])
     receiver_chisqvar_xx.append(data['XX']['RECEIVER_CHISQVAR'])
@@ -73,11 +73,8 @@ for json in args.json:
     dfft_power_yy_nkpl.append(data['YY']['DFFT_POWER_HIGH_NKPL'])
     count += 1
 
-print(convergence_var)
 inds = np.where(np.sqrt(np.array(convergence_var)) > 1e-4)
-print(inds)
 corrupted_obsids = np.array(obsids)[inds[0]]
-print(corrupted_obsids)
 # extracting bad obsids
 # plotting
 # saving the file
@@ -141,7 +138,7 @@ ax.grid(ls='dotted')
 ax = fig.add_subplot(3, 1, 3)
 ax.semilogy(np.arange(len(obsids)), convergence_var, '.-',
             color='darkolivegreen', linewidth=2)
-ax.fill_between(np.arange(len(obsids)), 10,
+ax.fill_between(np.arange(len(obsids)), 10**2,
                 10 ** -8, color='red', alpha=0.2)
 ax.set_ylabel('CONV VAR', fontsize=9)
 ax.set_xlabel('Observation Number', fontsize=12)
