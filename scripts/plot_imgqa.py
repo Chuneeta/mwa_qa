@@ -196,10 +196,10 @@ ax.plot(ratio_pks_pflux_sxx, '*-', color='indianred',
         linewidth=2, label='V/XX')
 ax.plot(ratio_pks_pflux_syy, '*-', color='dodgerblue',
         linewidth=2, label='V/YY')
-ax.fill_between(np.arange(len(obsids)), 0.5,
-                max_ratio_pks + 0.2, color='red', alpha=0.2)
-ax.fill_between(np.arange(len(obsids)), 0.3,
-                0.5, color='orange', alpha=0.2)
+#ax.fill_between(np.arange(len(obsids)), 0.5,
+#                max_ratio_pks + 0.2, color='red', alpha=0.2)
+#ax.fill_between(np.arange(len(obsids)), 0.3,
+#                0.5, color='orange', alpha=0.2)
 ax.set_ylim(-0.1, max_ratio_pks + 0.2)
 ax.set_xlim(0, len(obsids))
 ax.legend(loc='upper right', ncol=2)
@@ -210,10 +210,10 @@ ax.plot(ratio_pks_tflux_sxx, '*-', color='indianred',
         linewidth=2, label='V/XX')
 ax.plot(ratio_pks_tflux_syy, '*-', color='dodgerblue',
         linewidth=2, label='V/YY')
-ax.fill_between(np.arange(len(obsids)), 0.5,
-                max_ratio_pks + 0.2, color='red', alpha=0.2)
-ax.fill_between(np.arange(len(obsids)), 0.3,
-                0.5, color='orange', alpha=0.2)
+#ax.fill_between(np.arange(len(obsids)), 0.5,
+#                max_ratio_pks + 0.2, color='red', alpha=0.2)
+#ax.fill_between(np.arange(len(obsids)), 0.3,
+#                0.5, color='orange', alpha=0.2)
 ax.set_ylim(-0.1, max_ratio_pks + 0.2)
 ax.set_xlim(0, len(obsids))
 ax.legend(loc='upper right', ncol=2)
