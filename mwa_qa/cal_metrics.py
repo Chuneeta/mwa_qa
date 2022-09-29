@@ -13,7 +13,7 @@ pol_dict = {'XX': 0, 'XY': 1, 'YX': 2, 'YY':	3}
 
 class CalMetrics(object):
     def __init__(self, calfits_path, metafits_path=None, pol='X',
-                 norm=False, ref_antenna=None):
+                 norm=True, ref_antenna=None):
         """
         Object that takes in .fits containing the calibration solutions
         file readable by astropy and initializes them as global
