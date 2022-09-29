@@ -44,7 +44,7 @@ setup_args = {
                 'scripts/plot_ants.py', 'scripts/plot_reds.py',
                 'scripts/plot_calqa.py', 'scripts/plot_imgqa.py',
                 'scripts/plot_visqa.py', 'scripts/plot_caljsons.py',
-                'scripts/plot_prepvisqa.py']
+                'scripts/plot_prepvisqa.py', 'scripts/run_combineqa.py']
 }
 
 if __name__ == '__main__':
