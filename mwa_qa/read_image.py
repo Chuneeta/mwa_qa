@@ -3,6 +3,7 @@ from astropy import wcs
 from astropy.modeling import models, fitting
 import numpy as np
 import warnings
+import pylab
 
 
 bm_values = (0.0353, 0.0318)  # default MWA synthesize beam
@@ -17,6 +18,7 @@ class Image(object):
             img_hdu = hdus['PRIMARY']
 
             self.data_array = img_hdu.data
+            self.header = img_hdu.header
             try:
                 self.image_ID = img_hdu.header['OBJECT']
             except KeyError:
@@ -74,7 +76,6 @@ class Image(object):
             else:
                 region = self.data_array.squeeze()[select]
                 pflux = np.nanmax(np.abs(region))
-                print(pflux)
                 # might have negative pixels as well
                 npoints = len(np.where(select == True)[0])
                 tflux = np.nansum(np.abs(region)) / npoints
@@ -133,3 +134,31 @@ class Image(object):
             gauss_tflux = np.nansum(gauss_mod(ll, mm)) / npoints
             gauss_std = np.nanstd(gauss_mod(ll, mm))
         return gauss_pflux, gauss_tflux, gauss_std
+
+    def plot_image(self, select=False, srcpos=None, beam_const=None, vmin=None, vmax=None, cmap='viridis', save=None, figname=None, dpi=200):
+        my_wcs = wcs.WCS(self.header, naxis=[wcs.WCSSUB_CELESTIAL])
+        fig = pylab.figure(figsize=(8, 6))
+        ax = fig.add_subplot(111, projection=my_wcs)
+        if vmin is None:
+            vmax = np.nanmin(self.data_array)
+        if vmax is None:
+            vmax = np.nanmax(self.data_array)
+        if select:
+            plot_data = self.data_array.squeeze() * \
+                self._select_region(srcpos, beam_const)
+        else:
+            plot_data = self.data_array.squeeze()
+        im = ax.imshow(plot_data, origin='lower',
+                       cmap=cmap, vmin=vmin, vmax=vmax)
+        cbar = pylab.colorbar(im, ax=ax)
+        cbar.set_label(self.header['BUNIT'])
+        ax.coords[0].set_axislabel('R.A. [deg]')
+        ax.coords[1].set_axislabel('Dec [deg]')
+        pylab.grid(ls='dotted')
+        if save:
+            if figname is None:
+                figname = self.fitspath.replace('.fits', '.png')
+            pylab.savefig(figname, dpi=dpi)
+            pylab.close()
+        else:
+            pylab.show()
