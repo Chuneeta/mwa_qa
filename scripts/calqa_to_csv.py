@@ -10,6 +10,10 @@ parser.add_argument('json', type=Path, nargs='+',
                     help='MWA metrics json files')
 parser.add_argument('--out', dest='outfile', default=None,
                     help='Name of ouput csvfile')
+parser.add_argument('--filter', dest='filter', action='store_true', default=False,
+                    help='If set, a filtering will be performed to clean up the data')
+parser.add_argument('--drop', dest='drop', action='store_true', default=False,
+                    help='If set, will drop the columns used for filtering the data')
 args = parser.parse_args()
 
 main_keys = ['OBSID', 'STATUS', 'UNUSED_BLS', 'UNUSED_ANTS',
@@ -42,10 +46,23 @@ for i, json in enumerate(args.json):
 
 if args.outfile is None:
     outfile = 'calqa_combined.csv'
-elif outfile.split('.')[-1] != 'csv':
-    outfile += '.csv'
+elif args.outfile.split('.')[-1] != 'csv':
+    outfile = args.outfile + '.csv'
+else:
+    outfile = args.outfile
 
 df = df.dropna(subset=['OBSID']).set_index('OBSID')
 df.index = df.index.astype(int)
 df.sort_index()
+if args.filter:
+    # dropping obsids which fail to pass the calibration process
+    df.drop(df[df['STATUS'] == 'FAIL'].index, inplace=True)
+    df.drop(df[df['UNUSED_BLS'] > 30].index, inplace=True)
+    df.drop(df[df['UNUSED_ANTS'] > 30].index, inplace=True)
+    df.drop(df[df['UNUSED_CHS'] > 30].index, inplace=True)
+    df.drop(df[df['NON_CONVERGED_CHS'] > 30].index, inplace=True)
+if args.drop:
+    # dropping the above columns as well
+    df.drop(subset=['STATUS', 'UNUSED_BLS',
+            'UNUSED_ANTS', 'NON_CONVERGED_CHS'])
 df.to_csv(outfile)
