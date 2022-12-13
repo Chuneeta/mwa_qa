@@ -45,7 +45,8 @@ setup_args = {
                 'scripts/plot_calqa.py', 'scripts/plot_imgqa.py',
                 'scripts/plot_visqa.py', 'scripts/plot_caljson.py',
                 'scripts/plot_prepvisqa.py', 'scripts/run_combineqa.py',
-                'scripts/calqa_to_csv.py', 'scripts/imgqa_to_csv.py']
+                'scripts/calqa_to_csv.py', 'scripts/imgqa_to_csv.py',
+                'scripts/merge_csvfiles.py']
 }
 
 if __name__ == '__main__':
