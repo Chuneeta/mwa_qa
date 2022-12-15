@@ -1,8 +1,10 @@
-from mwa_qa.read_uvfits import UVfits
+import unittest
+
+import numpy as np
 from astropy.io import fits
 from scipy import signal
-import numpy as np
-import unittest
+
+from mwa_qa.read_uvfits import UVfits
 
 uvfits = '/Users/ridhima/Documents/mwa/calibration/mwa_qa/test_files/1061315688_cal.uvfits'
 uvfits_hex = '/Users/ridhima/Documents/mwa/calibration/mwa_qa/test_files/1320411840_hyp_cal.uvfits'
@@ -16,6 +18,12 @@ class TestUVfits(unittest.TestCase):
     def test__init__(self):
         uvf = UVfits(uvfits)
         self.assertEqual(uvf.uvfits_path, uvfits)
+        self.assertEqual(uvf.data_array.shape, (219456, 1, 1, 768, 4, 3))
+        np.testing.assert_almost_equal(uvf.data_array[0, 0, :],
+                                       np.array([44222.17 + 5.2869609e-08j,
+                                                 40545.06 - 7.9596754e-07j,
+                                                 0. + 0.0000000e+00j,
+                                                 -1498.523+2.7612256e+02j]), decimal=2)
         self.assertEqual(uvf.Nfreqs, 768)
         self.assertEqual(uvf.Npols, 4)
         self.assertEqual(uvf.Ntimes, 27)
@@ -59,8 +67,8 @@ class TestUVfits(unittest.TestCase):
         vis_hdu = hdu['PRIMARY']
         data = uvf._data_for_antpairs(vis_hdu, [(0, 0)])
         self.assertEqual(data.shape, (27, 1, 768, 4))
-        expected = data0[0][5][0, 0, :, :, 0] + \
-            data0[0][5][0, 0, :, :, 1] * 1j
+        expected = data0[0][5][0, 0, :, :, 0] +
+        data0[0][5][0, 0, :, :, 1] * 1j
         np.testing.assert_almost_equal(data[0, 0, :, :], expected)
 
     def test__flag_for_antpairs(self):
@@ -74,8 +82,8 @@ class TestUVfits(unittest.TestCase):
         uvf = UVfits(uvfits)
         data = uvf.data_for_antpairs([(0, 0)])
         self.assertEqual(data.shape, (27, 1, 768, 4))
-        expected = data0[0][5][0, 0, :, :, 0] + \
-            data0[0][5][0, 0, :, :, 1] * 1j
+        expected = data0[0][5][0, 0, :, :, 0] +
+        data0[0][5][0, 0, :, :, 1] * 1j
         np.testing.assert_almost_equal(data[0, 0, :, :], expected)
 
     def test_flag_for_antpairs(self):
@@ -88,8 +96,8 @@ class TestUVfits(unittest.TestCase):
         uvf = UVfits(uvfits)
         data = uvf.data_for_antpair((0, 0))
         self.assertEqual(data.shape, (27, 768, 4))
-        expected = data0[0][5][0, 0, :, :, 0] + \
-            data0[0][5][0, 0, :, :, 1] * 1j
+        expected = data0[0][5][0, 0, :, :, 0] +
+        data0[0][5][0, 0, :, :, 1] * 1j
         np.testing.assert_almost_equal(data[0, :, :], expected)
 
     def test_flag_for_antpair(self):
