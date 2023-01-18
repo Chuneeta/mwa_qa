@@ -44,33 +44,34 @@ class PrepvisMetrics(object):
         for p in ['XX', 'YY']:
             # taking the maximum rms out of the timestamps
             rms_amp_ant = np.nanmean(
-            autos_amps_rms_ant[:, :, pol_dict[p]], axis=0)
-            autos_amps_rms_freq[:, :, pol_dict[p]], axis = 0)
-            self.metrics[p]['RMS_AMP_ANT']=rms_amp_ant
-            self.metrics[p]['RMS_AMP_FREQ']=rms_amp_freq
-            self.metrics[p]['MXRMS_AMP_ANT']=np.nanmax(rms_amp_ant)
-            self.metrics[p]['MNRMS_AMP_ANT']=np.nanmin(rms_amp_ant)
-            self.metrics[p]['MXRMS_AMP_FREQ']=np.nanmax(
+                autos_amps_rms_ant[:, :, pol_dict[p]], axis=0)
+            rms_amp_freq = np.nanmean(
+                autos_amps_rms_freq[:, :, pol_dict[p]], axis=0)
+            self.metrics[p]['RMS_AMP_ANT'] = rms_amp_ant
+            self.metrics[p]['RMS_AMP_FREQ'] = rms_amp_freq
+            self.metrics[p]['MXRMS_AMP_ANT'] = np.nanmax(rms_amp_ant)
+            self.metrics[p]['MNRMS_AMP_ANT'] = np.nanmin(rms_amp_ant)
+            self.metrics[p]['MXRMS_AMP_FREQ'] = np.nanmax(
                 rms_amp_freq)
-            self.metrics[p]['MNRMS_AMP_FREQ']=np.nanmin(
+            self.metrics[p]['MNRMS_AMP_FREQ'] = np.nanmin(
                 rms_amp_freq)
             # finding outliers in antennas
-            threshold_ant_high=np.nanmedian(
+            threshold_ant_high = np.nanmedian(
                 rms_amp_freq) + 3 * np.nanstd(rms_amp_freq)
-            threshold_ant_low=np.nanmedian(
+            threshold_ant_low = np.nanmedian(
                 rms_amp_freq) - 3 * np.nanstd(rms_amp_freq)
-            inds_rms_ant=np.where((rms_amp_freq < threshold_ant_low) | (
+            inds_rms_ant = np.where((rms_amp_freq < threshold_ant_low) | (
                 rms_amp_freq > threshold_ant_high))
             if len(inds_rms_ant) == 0:
-                self.metrics[p]['POOR_ANTENNAS']=[]
-                self.metrics[p]['NPOOR_ANTENNAS']=0
+                self.metrics[p]['POOR_ANTENNAS'] = []
+                self.metrics[p]['NPOOR_ANTENNAS'] = 0
             else:
-                self.metrics[p]['POOR_ANTENNAS']=inds_rms_ant[0]
-                self.metrics[p]['NPOOR_ANTENNAS']=len(
+                self.metrics[p]['POOR_ANTENNAS'] = inds_rms_ant[0]
+                self.metrics[p]['NPOOR_ANTENNAS'] = len(
                     inds_rms_ant[0])
 
-    def write_to(self, outfile = None):
+    def write_to(self, outfile=None):
         if outfile is None:
-            outfile=self.uvfits_path.replace(
+            outfile = self.uvfits_path.replace(
                 '.uvfits', '_prepvis_metrics.json')
         ju.write_metrics(self.metrics, outfile)
