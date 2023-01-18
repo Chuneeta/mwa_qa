@@ -43,9 +43,9 @@ setup_args = {
                 'scripts/run_visqa.py', 'scripts/run_prepvisqa.py',
                 'scripts/plot_ants.py', 'scripts/plot_reds.py',
                 'scripts/plot_calqa.py', 'scripts/plot_imgqa.py',
-                'scripts/plot_visqa.py', 'scripts/plot_caljson.py',
-                'scripts/plot_prepvisqa.py', 'scripts/calqa_to_csv.py',
-                'scripts/imgqa_to_csv.py', 'scripts/merge_csvfiles.py']
+                'scripts/plot_visqa.py', 'scripts/plot_prepvisqa.py',
+                'scripts/calqa_to_csv.py', 'scripts/imgqa_to_csv.py',
+                'scripts/merge_csvfiles.py']
 }
 
 if __name__ == '__main__':
