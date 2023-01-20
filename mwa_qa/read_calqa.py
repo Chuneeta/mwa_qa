@@ -1,5 +1,5 @@
 from mwa_qa import json_utils as ju
-from mpl_toolkits.axes_grid.inset_locator import (
+from mpl_toolkits.axes_grid1.inset_locator import (
     inset_axes, InsetPosition, mark_inset)
 import numpy as np
 import pylab
