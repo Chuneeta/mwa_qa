@@ -207,6 +207,7 @@ class PrepvisMetrics(object):
         self.metrics['NFREQS'] = self.uvf.Nfreqs
         self.metrics['NPOLS'] = self.uvf.Npols
         self.metrics['OBSID'] = self.uvf.obsid
+        self.metrics['ANNUMBERS'] = self.uvf.antenna_numbers
         self.metrics['XX'] = OrderedDict()
         self.metrics['YY'] = OrderedDict()
 
@@ -251,6 +252,7 @@ class PrepvisMetrics(object):
         percent_bdants = len(self.metrics['BAD_ANTS']) / nants * 100
         self.metrics['BAD_ANTS_PERCENT'] = percent_bdants
         self.metrics['STATUS'] = 'GOOD' if percent_bdants < 50 else 'BAD'
+        self.metrics['THRESHOLD'] = threshold
 
     def write_to(self, outfile=None):
         if outfile is None:
