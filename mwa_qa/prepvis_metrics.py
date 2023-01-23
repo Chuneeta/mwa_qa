@@ -223,35 +223,42 @@ class PrepvisMetrics(object):
         autos_amps_norm = autos_amps / np.nanmedian(autos_amps, axis=0)
         # finding misbehaving antennas
         for p in ['XX', 'YY']:
-            # taking the maximum rms out of the timestamps
-            rms_amp_ant = np.nanmean(
-            autos_amps_rms_ant[:, :, pol_dict[p]], axis=0)
-            autos_amps_rms_freq[:, :, pol_dict[p]], axis = 0)
-            self.metrics[p]['RMS_AMP_ANT']=rms_amp_ant
-            self.metrics[p]['RMS_AMP_FREQ']=rms_amp_freq
-            self.metrics[p]['MXRMS_AMP_ANT']=np.nanmax(rms_amp_ant)
-            self.metrics[p]['MNRMS_AMP_ANT']=np.nanmin(rms_amp_ant)
-            self.metrics[p]['MXRMS_AMP_FREQ']=np.nanmax(
-                rms_amp_freq)
-            self.metrics[p]['MNRMS_AMP_FREQ']=np.nanmin(
-                rms_amp_freq)
-            # finding outliers in antennas
-            threshold_ant_high=np.nanmedian(
-                rms_amp_freq) + 3 * np.nanstd(rms_amp_freq)
-            threshold_ant_low=np.nanmedian(
-                rms_amp_freq) - 3 * np.nanstd(rms_amp_freq)
-            inds_rms_ant=np.where((rms_amp_freq < threshold_ant_low) | (
-                rms_amp_freq > threshold_ant_high))
-            if len(inds_rms_ant) == 0:
-                self.metrics[p]['POOR_ANTENNAS']=[]
-                self.metrics[p]['NPOOR_ANTENNAS']=0
-            else:
-                self.metrics[p]['POOR_ANTENNAS']=inds_rms_ant[0]
-                self.metrics[p]['NPOOR_ANTENNAS']=len(
-                    inds_rms_ant[0])
+            bad_ants = []
+            _, bd_inds = self.flag_occupancy(
+                autos_amps_norm[:, :, pol_dict[p]])
+            if len(bd_inds) > 0:
+                bad_ants.append(self.uvf.antenna_numbers[bd_inds])
+            autos_amps_norm[bd_inds, :, pol_dict[p]] = np.nan
+            # calculating root mean square
+            rms = self.calculate_rms(
+                autos_amps_norm[:, :, pol_dict[p]])
+            # calculating modifed z-score
+            modz_dict, bd_inds = self.iterative_mod_zscore(
+                autos_amps_norm[:, :, pol_dict[p]], threshold=threshold, niter=niter)
+            bd_inds_flatten = [
+                elm for lt in bd_inds for elm in lt if len(lt) > 0]
+            if len(bd_inds) > 0:
+                bad_ants.append(self.uvf.antenna_numbers[bd_inds_flatten])
 
-    def write_to(self, outfile = None):
+            # writing stars to metrics instance
+            self.metrics[p]['RMS'] = rms
+            self.metrics[p]['MODZ_SCORE'] = modz_dict
+            self.metrics[p]['BAD_ANTS'] = list(
+                itertools.chain.from_iterable(bad_ants))
+
+        # combining bad antennas from both pols to determine if the observation
+        # should be considered for processing or not.
+        # If %bad_ants > 50, obs is discarded
+        self.metrics['BAD_ANTS'] = np.unique(
+            self.metrics['XX']['BAD_ANTS'] + self.metrics['YY']['BAD_ANTS'])
+        nants = self.metrics['NANTS'] - len(ex_annumbers)
+        percent_bdants = len(self.metrics['BAD_ANTS']) / nants * 100
+        self.metrics['BAD_ANTS_PERCENT'] = percent_bdants
+        self.metrics['STATUS'] = 'GOOD' if percent_bdants < 50 else 'BAD'
+        self.metrics['THRESHOLD'] = threshold
+
+    def write_to(self, outfile=None):
         if outfile is None:
-            outfile=self.uvfits_path.replace(
+            outfile = self.uvfits_path.replace(
                 '.uvfits', '_prepvis_metrics.json')
         ju.write_metrics(self.metrics, outfile)
