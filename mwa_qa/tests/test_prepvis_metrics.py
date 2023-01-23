@@ -124,69 +124,88 @@ class TestPrepvisMetrics(unittest.TestCase):
                                                             36768.977-4.26175504e-08j, 35622.582-3.10633048e-08j,
                                                             24658.205+5.37580824e-08j, 22323.727-1.01629825e-08j,
                                                             23036.38 + 3.13644151e-08j, 21217.994+5.46110925e-08j,
-                                                            28355.236+9.70865557e-08j, 29699.135-2.46702836e-08j]))
+                                                            28355.236+9.70865557e-08j, 29699.135-2.46702836e-08j]), decimal=2)
 
     def test_calculate_mod_zscore(self):
         vis = PrepvisMetrics(uvfits)
         autos = vis.autos(manual_flags=True)
         modz = vis.calculate_mod_zscore(autos[10, :, :, 0])
-        np.testing.assert_equal(modz[0:10], np.array([0.49903008-1.9951631e-12j,  0.46797398-1.2897820e-11j,
-                                                      1.258051 - 1.1984893e-11j,  1.0161792 - 7.7919494e-12j,
-                                                      -1.2551366 + 4.1197675e-12j, -1.6941957 - 3.9573054e-12j,
-                                                      -1.5720448 + 2.2617418e-12j, -1.9231831 + 5.4186829e-12j,
-                                                      -0.3979257 + 1.2848046e-11j, -0.14511508-1.3222220e-11j]))
+        np.testing.assert_almost_equal(modz[0:10], np.array([0.49903008-1.9951631e-12j,  0.46797398-1.2897820e-11j,
+                                                             1.258051 - 1.1984893e-11j,  1.0161792 - 7.7919494e-12j,
+                                                             -1.2551366 + 4.1197675e-12j, -1.6941957 - 3.9573054e-12j,
+                                                             -1.5720448 + 2.2617418e-12j, -1.9231831 + 5.4186829e-12j,
+                                                             -0.3979257 + 1.2848046e-11j, -0.14511508-1.3222220e-11j]), decimal=4)
 
     def test_iterative_mod_zscore(self):
-        pass
-    # def test_initialize_metrics_dict(self):
-    #     vis = PrepvisMetrics(uvfits)
-    #     vis._initialize_metrics_dict()
-    #     self.assertEqual(list(vis.metrics.keys()), [
-    #         'NANTS', 'NTIMES', 'NFREQS', 'NPOLS', 'OBSID', 'XX', 'YY'])
-    #     self.assertEqual(vis.metrics['NANTS'], 128)
-    #     self.assertEqual(vis.metrics['NFREQS'], 768)
-    #     self.assertEqual(vis.metrics['NPOLS'], 4)
-    #     self.assertEqual(vis.metrics['NTIMES'], 27)
-    #     self.assertTrue(isinstance(
-    #         vis.metrics['XX'], OrderedDict))
-    #     self.assertTrue(isinstance(
-    #         vis.metrics['YY'], OrderedDict))
+        vis = PrepvisMetrics(uvfits)
+        autos = vis.autos(manual_flags=True)
+        modz, inds = vis.iterative_mod_zscore(autos[10, :, :, 0], 3, 10)
+        np.testing.assert_almost_equal(modz[0][0:10], np.array([0.49903008-1.9951631e-12j,  0.46797398-1.2897820e-11j,
+                                                                1.258051 - 1.1984893e-11j,  1.0161792 - 7.7919494e-12j,
+                                                                -1.2551366 + 4.1197675e-12j, -1.6941957 - 3.9573054e-12j,
+                                                                -1.5720448 + 2.2617418e-12j, -1.9231831 + 5.4186829e-12j,
+                                                                -0.3979257 + 1.2848046e-11j, -0.14511508-1.3222220e-11j]))
+        np.testing.assert_almost_equal(inds[0], np.array([17, 76, 80]))
 
-    # def test_run_metrics(self):
-    #     vis=PrepvisMetrics(uvfits)
-    #     vis.run_metrics()
-    #     self.assertEqual(list(vis.metrics.keys()), [
-    #         'NANTS', 'NTIMES', 'NFREQS', 'NPOLS', 'OBSID', 'XX', 'YY'])
-    #     self.assertEqual(list(vis.metrics['XX'].keys()),
-    #                      ['RMS_AMP_ANT', 'RMS_AMP_FREQ', 'MXRMS_AMP_ANT',
-    #                       'MNRMS_AMP_ANT', 'MXRMS_AMP_FREQ', 'MNRMS_AMP_FREQ',
-    #                       'POOR_ANTENNAS', 'NPOOR_ANTENNAS'])
-    #     self.assertEqual(list(vis.metrics['YY'].keys()),
-    #                      ['RMS_AMP_ANT', 'RMS_AMP_FREQ', 'MXRMS_AMP_ANT',
-    #                       'MNRMS_AMP_ANT', 'MXRMS_AMP_FREQ', 'MNRMS_AMP_FREQ',
-    #                       'POOR_ANTENNAS', 'NPOOR_ANTENNAS'])
-    #     np.testing.assert_equal(vis.metrics
-    #                             ['XX']['MXRMS_AMP_ANT'], np.nan)
-    #     np.testing.assert_equal(vis.metrics
-    #                             ['XX']['MNRMS_AMP_ANT'], np.nan)
-    #     self.assertTrue(np.all(vis.metrics['XX']['RMS_AMP_ANT']))
-    #     np.testing.assert_equal(vis.metrics
-    #                 )            ['XX']['MXRMS_AMP_FREQ'], np.nan)
-    #     np.testing.assert_equal(vis.metrics
-    #                             ['XX']['MXRMS_AMP_FREQ'], np.nan)
-    #     self.assertTrue(np.all(vis.metrics['XX']['RMS_AMP_FREQ']))
-    #     self.assertTrue(np.all(vis.metrics['XX']['RMS_AMP_FREQ']))
-    #     np.testing.assert_equal(vis.metrics
-    #                             ['XX']['POOR_ANTENNAS'], np.array([]))
-    #     self.assertEqual(vis.metrics['XX']['NPOOR_ANTENNAS'], 0)
+    def test_initialize_metrics_dict(self):
+        vis = PrepvisMetrics(uvfits)
+        vis._initialize_metrics_dict()
+        self.assertTrue(list(vis.metrics.keys()), [
+                        'NANTS', 'NTIMES', 'NFREQS', 'NPOLS', 'OBSID', 'ANNUMBERS', 'XX', 'YY'])
+        self.assertEqual(vis.metrics['NANTS'], 128)
+        self.assertEqual(vis.metrics['NTIMES'], 55)
+        self.assertEqual(vis.metrics['NFREQS'], 768)
+        self.assertEqual(vis.metrics['NPOLS'], 4)
+        self.assertEqual(vis.metrics['OBSID'], 'high_season1_2456545')
+        np.testing.assert_equal(vis.metrics['ANNUMBERS'], np.array([0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,
+                                                                    13,  14,  15,  16,  17,  18,  19,  20,  21,  22,  23,  24,  25,
+                                                                    26,  27,  28,  29,  30,  31,  32,  33,  34,  35,  36,  37,  38,
+                                                                    39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  51,
+                                                                    52,  53,  54,  55,  56,  57,  58,  59,  60,  61,  62,  63,  64,
+                                                                    65,  66,  67,  68,  69,  70,  71,  72,  73,  74,  75,  76,  77,
+                                                                    78,  79,  80,  81,  82,  83,  84,  85,  86,  87,  88,  89,  90,
+                                                                    91,  92,  93,  94,  95,  96,  97,  98,  99, 100, 101, 102, 103,
+                                                                    104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116,
+                                                                    117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127]))
+        self.assertTrue(isinstance(vis.metrics['XX'], OrderedDict))
+        self.assertTrue(isinstance(vis.metrics['YY'], OrderedDict))
 
-    # def test_write_to(self):
-    #     vis=PrepvisMetrics(uvfits)
-    #     vis._initialize_metrics_dict()
-    #     outfile=uvfits.replace('.uvfits', '_prepvis_metrics.json')
-    #     vis.write_to()
-    #     self.assertTrue(os.path.exists(outfile))
-    #     os.system('rm -rf {}'.format(outfile))
-    #     outfile='metrics.json'
-    #     vis.write_to(outfile=outfile)
-    #     self.assertTrue(os.path.exists(outfile))
+    def test_run_metrics(self):
+        vis = PrepvisMetrics(uvfits)
+        vis.run_metrics()
+        self.assertEqual(list(vis.metrics.keys()), ['NANTS', 'NTIMES', 'NFREQS', 'NPOLS', 'OBSID',
+                         'ANNUMBERS', 'XX', 'YY', 'BAD_ANTS', 'BAD_ANTS_PERCENT', 'STATUS', 'THRESHOLD'])
+        self.assertEqual(vis.metrics['THRESHOLD'], 3)
+        np.testing.assert_equal(
+            vis.metrics['BAD_ANTS'], np.array([17, 76, 80]))
+        self.assertEqual(vis.metrics['BAD_ANTS_PERCENT'], 2.34375)
+        self.assertEqual(vis.metrics['STATUS'], 'GOOD')
+        self.assertEqual(list(vis.metrics['XX'].keys()), [
+                         'RMS', 'MODZ_SCORE', 'BAD_ANTS'])
+        self.assertEqual(list(vis.metrics['YY'].keys()), [
+                         'RMS', 'MODZ_SCORE', 'BAD_ANTS'])
+        self.assertTrue((vis.metrics['XX']['BAD_ANTS'] == [76, 80, 17]))
+        self.assertTrue((vis.metrics['YY']['BAD_ANTS'] == [76, 17]))
+        np.testing.assert_almost_equal(vis.metrics['XX']['RMS'][0:10], np.array(
+            [0.98502, 0.98553336, 1.0920447, 1.0620629, 0.73594517, 0.6742143,
+             0.6892578, 0.6414309, 0.8617734, 0.8987404]))
+        np.testing.assert_almost_equal(vis.metrics['XX']['MODZ_SCORE'][0][0:10], np.array(
+            [0.44427395,  0.45195827,  1.2281251,  1.0092522, -1.3470997,
+             -1.7959414, -1.6857036, -2.033683, -0.44826028, -0.17769146]))
+        np.testing.assert_almost_equal(vis.metrics['YY']['RMS'][0:10], np.array(
+            [0.8551952, 0.93147486, 1.0507381, 1.0109979, 0.858264,
+             0.7061106, 0.70077044, 0.7349987, 0.85218024, 1.0480894]))
+        np.testing.assert_almost_equal(vis.metrics['YY']['MODZ_SCORE'][0][0:10], np.array(
+            [-0.4171582,  0.05907506,  0.8022736,  0.55377096, -0.38284403,
+             -1.3313679, -1.3563856, -1.1527667, -0.43960702,  0.77399105]))
+
+    def test_write_to(self):
+        vis = PrepvisMetrics(uvfits)
+        vis._initialize_metrics_dict()
+        outfile = uvfits.replace('.uvfits', '_prepvis_metrics.json')
+        vis.write_to()
+        self.assertTrue(os.path.exists(outfile))
+        os.system('rm -rf {}'.format(outfile))
+        outfile = 'metrics.json'
+        vis.write_to(outfile=outfile)
+        self.assertTrue(os.path.exists(outfile))
