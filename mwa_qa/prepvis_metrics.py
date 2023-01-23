@@ -239,7 +239,6 @@ class PrepvisMetrics(object):
                 elm for lt in bd_inds for elm in lt if len(lt) > 0]
             if len(bd_inds) > 0:
                 bad_ants.append(self.uvf.antenna_numbers[bd_inds_flatten])
-            print(bad_ants)
 
             # writing stars to metrics instance
             self.metrics[p]['RMS'] = rms
