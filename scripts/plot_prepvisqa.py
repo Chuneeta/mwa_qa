@@ -24,46 +24,68 @@ parser.add_argument('--dpi', dest='dpi', default=100,
 
 args = parser.parse_args()
 metrics = ut.load_json(args.json)
-antennas = np.arange(metrics['NANTS'])
-freqs = np.arange(metrics['NFREQS'])
-poor_ants_xx = metrics['XX']['POOR_ANTENNAS']
-poor_ants_yy = metrics['YY']['POOR_ANTENNAS']
+antennas = metrics['ANNUMBERS']
+nants = metrics['NANTS']
+poor_ants_xx = metrics['XX']['BAD_ANTS']
+poor_ants_yy = metrics['YY']['BAD_ANTS']
 obsid = metrics['OBSID']
+threshold = metrics['THRESHOLD']
 if len(obsid.split('_')) == 1:
     titlename = obsid
 else:
     titlename = ''.join(filter(str.isdigit, args.json))
+
+# plotting RMS
 fig = pylab.figure(figsize=(7, 5))
-fig.suptitle(titlename, size=15)
-ax = pylab.subplot(211)
-ax.scatter(freqs, metrics['XX']['RMS_AMP_ANT'], marker='.',
-           color='indianred', alpha=0.8, label='XX')
-ax.scatter(freqs, metrics['YY']['RMS_AMP_ANT'], marker='.',
-           color='dodgerblue', alpha=0.8, label='YY')
-ax.grid()
-ax.legend()
-ax.set_xlabel('Frequency Channel')
-ax.set_ylabel('RMS(ant)')
-ax.tick_params(labelsize=10, direction='in', length=4, width=2)
-ax = pylab.subplot(212)
-ax.scatter(antennas, metrics['XX']['RMS_AMP_FREQ'], marker='o',
-           color='indianred', s=30, alpha=0.8, label='XX')
-ax.scatter(antennas, metrics['YY']['RMS_AMP_FREQ'], marker='o',
-           color='dodgerblue', s=15, alpha=0.8, label='YY')
-ax.scatter(poor_ants_xx, np.array(metrics['XX']['RMS_AMP_FREQ'])
-           [poor_ants_xx], s=100, marker='o', edgecolor='red',
+fig.suptitle(titlename, size=13)
+ax = pylab.subplot(111)
+ax.scatter(antennas, metrics['XX']['RMS'], marker='.',
+           color='dodgerblue', s=100, alpha=0.8, label='XX')
+ax.scatter(antennas, metrics['YY']['RMS'], marker='.',
+           color='indianred', s=100, alpha=0.8, label='YY')
+ax.scatter(poor_ants_xx, np.array(metrics['XX']['RMS'])
+           [poor_ants_xx], s=100, marker='o', edgecolor='blue',
            facecolor='None')
-ax.scatter(poor_ants_yy, np.array(metrics['YY']['RMS_AMP_FREQ'])
-           [poor_ants_yy], s=150, marker='o', edgecolor='blue',
+ax.scatter(poor_ants_yy, np.array(metrics['YY']['RMS'])
+           [poor_ants_yy], s=150, marker='o', edgecolor='red',
            facecolor='None')
 ax.grid(ls='dotted')
+ax.legend()
 ax.set_xlabel('Antenna Number')
-ax.set_ylabel('RMS(freq)')
+ax.set_ylabel('RMS')
 ax.tick_params(labelsize=10, direction='in', length=4, width=2)
-pylab.subplots_adjust(hspace=0.3, left=0.15)
 if args.save:
     if args.figname is None:
         figname = args.json.replace('.json', '_rms.png')
+    else:
+        if args.figname.split('.')[-1] != 'png':
+            print(args.figname)
+            figname = args.figname + '.png'
+        else:
+            figname = args.figname
+
+    pylab.savefig(figname, dpi=args.dpi)
+    pylab.close()
+else:
+    pylab.show()
+
+# plotting modified zscore
+fig = pylab.figure(figsize=(7, 5))
+fig.suptitle(titlename, size=13)
+ax = pylab.subplot(111)
+ax.scatter(antennas, np.abs(metrics['XX']['MODZ_SCORE']["0"]), marker='.',
+           color='dodgerblue', s=100, alpha=0.8, label='XX')
+ax.scatter(antennas, np.abs(metrics['YY']['MODZ_SCORE']["0"]), marker='.',
+           color='indianred', s=100, alpha=0.8, label='YY')
+ax.axhline(threshold, linestyle='dashed', color='green', linewidth=2)
+ax.grid(ls='dotted')
+ax.legend()
+ax.set_xlabel('Antenna Number')
+ax.set_ylabel('Modified zscore')
+ax.tick_params(labelsize=10, direction='in', length=4, width=2)
+if args.save:
+    if args.figname is None:
+        figname = args.json.replace('.json', '_modz.png')
     else:
         if args.figname.split('.')[-1] != 'png':
             print(args.figname)
