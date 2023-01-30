@@ -25,7 +25,7 @@ parser.add_argument('--dpi', dest='dpi', default=100,
 args = parser.parse_args()
 print(args)
 m = Metafits(args.metafits)
-anpos_dict = m.anpos_dict()
+anpos_dict = m._anpos_dict()
 ankeys = list(anpos_dict.keys())
 # plotting the antenna positions
 fig = pylab.figure()
