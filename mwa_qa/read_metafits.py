@@ -20,9 +20,9 @@ class Metafits(object):
             self.lst = hdr['LST']
             self.ha = hdr['HA']
             self.az_alt = (hdr['AZIMUTH'], hdr['ALTITUDE'])
-            self.pointing_center = (hdr['RA'], hdr['DEC'])
+            self.pointing_centre = (hdr['RA'], hdr['DEC'])
             self.phase_centre = (hdr['RAPHASE'], hdr['DECPHASE'])
-            self.filname = hdr['FILENAME']
+            self.filename = hdr['FILENAME']
             self.start_gpstime = hdr['GPSTIME']
             self.exposure = hdr['EXPOSURE']
             self.integration = hdr['INTTIME']
@@ -38,7 +38,7 @@ class Metafits(object):
                 self.eorfield = 'EoR1'
             else:
                 self.eorfield = 'Unknown'
-            self.delay_array = hdr['DELAYS']
+            self.delays = hdr['DELAYS']
             tdata = hdu['TILEDATA'].data
             self._check_data(tdata)
             tdata = tdata[self.pol_index(tdata)::2]
@@ -52,20 +52,24 @@ class Metafits(object):
             flavors = tdata['Length']
             self.cable_type = [fl.split('_')[0] for fl in flavors]
             self.cable_length = [float(fl.split('_')[1]) for fl in flavors]
-            self.BFTtemps = tdata['BFTemps']
+            self.BFTemps = tdata['BFTemps']
             self.flag_array = tdata['Flag']
-            self.baseline_array = np.unique(np.stack(
-                (np.tile(self.annumbers, self.Nants), np.repeat(self.annumbers, self.Nants))))
-            bl_indxs = np.unique(np.stack(
-                (np.tile(np.arange(self.Nants), self.Nants), np.repeat(np.arange(self.Nants), self.Nants))))
+            self.baseline_array = np.sort(np.stack(
+                (np.tile(self.annumbers, self.Nants), np.repeat(self.annumbers, self.Nants)), axis=1), axis=1)
+            self.baseline_array = self.baseline_array[np.unique(
+                self.baseline_array, axis=0, return_index=True)[1]]
+            bl_indxs = np.sort(np.stack((np.tile(np.arange(self.Nants), self.Nants), np.repeat(
+                np.arange(self.Nants), self.Nants)), axis=1), axis=1)
+            bl_indxs = bl_indxs[np.unique(
+                bl_indxs, axis=0, return_index=True)[1]]
             self.baseline_lengths = np.linalg.norm(
-                self.antenna_positions[bl_indxs[0]] - self.antenna_positions[bl_indxs[1]], axis=1)
+                self.antenna_positions[bl_indxs[:, 0]] - self.antenna_positions[bl_indxs[:, 1]], axis=1)
 
-    def pol_index(self, fits_rec):
+    def pol_index(self, data):
         """
         Returns the polarizations index from the fits record
         """
-        inds = np.where(fits_rec['Pol'] == self.pol)
+        inds = np.where(data['Pol'] == self.pol)
         return inds[0][0]
 
     def _check_data(self, data):
@@ -97,20 +101,88 @@ class Metafits(object):
         Returns length of the given baseline or antpair
         - antpair : Tuple of Antenna numbers
         """
-        pos0 = self.anpos_for(antpair[0])
-        pos1 = self.anpos_for(antpair[1])
-        return np.sqrt((pos0[0] - pos1[0]) ** 2 + (pos0[1] - pos1[1]) ** 2)
+        ind = np.where((self.baseline_array[:, 0] == antpair[0]) & (
+            self.baseline_array[:, 1] == antpair[1]))
+        if (len(ind[0])) == 0:
+            raise ValueError('Given antenna pair does not exist.')
+        else:
+            return self.baseline_lengths[ind[0][0]]
 
-    def baseline_lengths(self):
+    def baselines_greater_than(self, baseline_cut):
         """
-        Returns dictionary of tile pairs or baseline as keys and
-        their corresponding lengths as values
+        Returns tile pairs/ baselines greater than the given cut
+        - baseline_cut : Baseline length cut in metres
         """
-        annumbers = self.annumbers()
-        baseline_dict = OrderedDict()
-        for i in range(len(annumbers)):
-            for j in range(i + 1, len(annumbers)):
-                baseline_dict[(annumbers[i], annumbers[j])] = \
-                    self.baseline_length_for(
-                    (annumbers[i], annumbers[j]))
-        return baseline_dict
+        return self.baseline_array[np.where(self.baseline_lengths > baseline_cut)[0]]
+
+    def baselines_less_than(self, baseline_cut):
+        """
+        Returns tile pairs/ baselines greater than the given cut
+        - baseline_cut : Baseline length cut in metres
+        """
+        return self.baseline_array[np.where(self.baseline_lengths < baseline_cut)[0]]
+
+    def _anpos_dict(self):
+        anpos = self.antenna_positions
+        annumbers = self.annumbers
+        anpos_dict = OrderedDict()
+        for i, ant in enumerate(annumbers):
+            anpos_dict[ant] = anpos[i].tolist()
+        return anpos_dict
+
+    def group_antpairs(self, bl_tol):
+        angroups = OrderedDict()
+        anpos_dict = self._anpos_dict()
+        ankeys = list(anpos_dict.keys())
+        delta_z = np.abs(np.array(list(anpos_dict.values()))[
+            :, 2] - np.mean(list(anpos_dict.values()), axis=0)[2])
+        is_flat = np.all(delta_z < bl_tol)
+        p_m = (-1, 0, 1)
+        if is_flat:
+            eps = [[dx, dy] for dx in p_m for dy in p_m]
+        else:
+            eps = [[dx, dy, dz] for dx in p_m for dy in p_m for dz in p_m]
+
+        def _check_neighbours(delta):
+            for ep in eps:
+                nkey = (delta[0] + ep[0], delta[1] + ep[1], delta[2] + ep[2])
+                if nkey in angroups:
+                    return nkey
+
+        for i, ant1 in enumerate(ankeys):
+            for j, ant2 in enumerate(ankeys[i + 1:]):
+                antpair = (ant1, ant2)
+                delta = tuple(np.round(
+                    1.0 * (np.array(anpos_dict[ant2]) -
+                           np.array(anpos_dict[ant1]))
+                    / bl_tol).astype(int))
+                nkey = _check_neighbours(delta)
+                if nkey is None:
+                    nkey = _check_neighbours(tuple([-d for d in delta]))
+                    if nkey is None:
+                        antpair = (ant2, ant1)
+                if nkey is not None:
+                    angroups[nkey].append(antpair)
+                else:
+                    # new baseline
+                    if delta[0] <= 0 or (delta[0] == 0 and delta[1] <= 0) or \
+                        (delta[0] == 0 and delta[1] == 0 and
+                         delta[2] <= 0):
+                        delta = tuple([-d for d in delta])
+                        antpair = (ant2, ant1)
+                    angroups[delta] = [antpair]
+        return angroups
+
+    def redundant_antpairs(self, bl_tol=2e-1):
+        # keeping only redundant pairs
+        angroups = self.group_antpairs(bl_tol=bl_tol)
+        ankeys = list(angroups.keys())
+        for akey in ankeys:
+            if len(angroups[akey]) == 1:
+                del angroups[akey]
+        # sort keys by shortest baseline length
+        sorted_keys = [akey for (length, akey) in sorted(
+            zip([np.linalg.norm(akey) for akey in angroups.keys()],
+                angroups.keys()))]
+        reds = OrderedDict([(key, angroups[key]) for key in sorted_keys])
+        return reds
