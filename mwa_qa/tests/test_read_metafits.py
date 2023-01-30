@@ -1,254 +1,144 @@
-from mwa_qa import read_metafits as rm
+
+from mwa_qa.read_metafits import Metafits
+from mwa_qa.data import DATA_PATH
 from collections import OrderedDict
 import unittest
 import numpy as np
 import astropy
-
-# metafits = '../../test_files/test_1061315688.metafits'
-# hdu = astropy.io.fits.open(metafits)[1].data
-# hdr = astropy.io.fits.open(metafits)[0].header
-# nants = int(len(hdu) / 2)
-# antnums = [hdu[i][1] for i in range(1, len(hdu), 2)]
-# ants = [hdu[i][3] for i in range(1, len(hdu), 2)]
-# expected_btemps = [hdu[i][13] for i in range(1, len(hdu), 2)]
-# antpairs = []
-# for i, ant1 in enumerate(antnums):
-#     for ant2 in antnums[i+1:]:
-#         antpairs.append((ant1, ant2))
+import os
 
 
-# class TestMetafits(unittest.TestCase):
-#     def test_init__(self):
-#         m = rm.Metafits(metafits, 'X')
-#         self.assertEqual(m.metafits, metafits)
-#         m = rm.Metafits(metafits, 'X')
-#         self.assertEqual(m.pol, 'X')
-#         m = rm.Metafits(metafits, 'y')
-#         self.assertEqual(m.pol, 'Y')
-
-#     def test_read_data(self):
-#         m = rm.Metafits(metafits, 'X')
-#         data = m._read_data()
-#         self.assertTrue((data == hdu).all())
-
-#     def test_check_data(self):
-#         m = rm.Metafits(metafits, 'X')
-#         data = m._read_data()
-#         with self.assertRaises(Exception):
-#             m._check_data(data[0])
-#         with self.assertRaises(Exception):
-#             tempered_data = data[0:3:2]
-#             m._check_data(tempered_data)
-#         with self.assertRaises(Exception):
-#             m.check_data(data[0:3])
-
-#     def test_pol_index(self):
-#         m = rm.Metafits(metafits, 'X')
-#         ind = m._pol_index(hdu, 'X')
-#         self.assertEqual(ind, 1)
-
-#     def test_mdata(self):
-#         m = rm.Metafits(metafits, 'X')
-#         data = m.mdata()
-#         self.assertTrue((data == hdu[1::2]).all())
-
-#     def test_mhdr(self):
-#         m = rm.Metafits(metafits, 'X')
-#         mhdr = m.mhdr()
-#         self.assertTrue(mhdr == hdr)
-
-#     def test_nchans(self):
-#         m = rm.Metafits(metafits, 'X')
-#         nchans = m.nchans()
-#         self.assertEqual(nchans, 768)
-
-#     def test_frequencies(self):
-#         m = rm.Metafits(metafits, 'X')
-#         frequencies = m.frequencies()
-#         self.assertEqual(len(frequencies), hdr['NCHANS'])
-#         expected_frequencies = np.linspace(131 * 1.28, 154 * 1.28, 768)
-#         self.assertTrue((frequencies == expected_frequencies).all())
-
-#     def test_obs_time(self):
-#         m = rm.Metafits(metafits, 'X')
-#         obs_time = m.obs_time()
-#         self.assertEqual(obs_time, hdr['DATE-OBS'])
-
-#     def test_int_time(self):
-#         m = rm.Metafits(metafits, 'X')
-#         int_time = m.int_time()
-#         self.assertEqual(int_time, hdr['INTTIME'])
-
-#     def test_exposure(self):
-#         m = rm.Metafits(metafits, 'X')
-#         exposure = m.exposure()
-#         self.assertEqual(exposure, hdr['EXPOSURE'])
-
-#     def test_start_gpstime(self):
-#         m = rm.Metafits(metafits, 'X')
-#         start_gpstime = m.start_gpstime()
-#         self.assertEqual(start_gpstime, hdr['GPSTIME'])
-
-#     def test_stop_gpstime(self):
-#         m = rm.Metafits(metafits, 'X')
-#         stop_gpstime = m.stop_gpstime()
-#         self.assertEqual(stop_gpstime, hdr['GPSTIME'] + hdr['EXPOSURE'])
-
-#     def test_eor_field(self):
-#         m = rm.Metafits(metafits, 'X')
-#         eor_field = m.eor_field()
-#         self.assertEqual(eor_field, 'EoR0')
-
-#     def test_az_alt(self):
-#         m = rm.Metafits(metafits, 'X')
-#         az_alt = m.az_alt()
-#         self.assertTrue(az_alt, (hdr['AZIMUTH'], hdr['ALTITUDE']))
-
-#     def test_ha(self):
-#         m = rm.Metafits(metafits, 'X')
-#         ha = m.ha()
-#         self.assertEqual(ha, hdr['HA'])
-
-#     def test_lst(self):
-#         m = rm.Metafits(metafits, 'X')
-#         lst = m.lst()
-#         self.assertEqual(lst, hdr['LST'])
-
-#     def test_phase_centre(self):
-#         m = rm.Metafits(metafits, 'X')
-#         phase_centre = m.phase_centre()
-#         self.assertEqual(phase_centre, (hdr['RAPHASE'], hdr['DECPHASE']))
-
-#     def test_pointing(self):
-#         m = rm.Metafits(metafits, 'X')
-#         pointing = m.pointing()
-#         self.assertEqual(pointing, (hdr['RA'], hdr['DEC']))
-
-#     def test_delays(self):
-#         m = rm.Metafits(metafits, 'X')
-#         delays = m.delays()
-#         self.assertEqual(delays, hdr['DELAYS'])
-
-#     def test_annumbers(self):
-#         m = rm.Metafits(metafits, 'X')
-#         annumbers = m.annumbers()
-#         self.assertEqual(annumbers[0:3],  [hdu[0][1], hdu[2][1], hdu[4][1]])
-
-#     def test_annames(self):
-#         m = rm.Metafits(metafits, 'X')
-#         annames = m.annames()
-#         self.assertEqual(annames[0:3], [hdu[0][3], hdu[2][3], hdu[4][3]])
-
-#     def test_ind_for_annumber(self):
-#         m = rm.Metafits(metafits, 'X')
-#         ant_ind = m.ind_for_annumber(hdu[0][1])
-#         self.assertEqual(ant_ind, 0)
-#         ant_ind = m.ind_for_annumber(hdu[2][1])
-#         self.assertEqual(ant_ind, 1)
-
-#     def test_ind_for_anname(self):
-#         m = rm.Metafits(metafits, 'X')
-#         ant_name = m.ind_for_anname(hdu[0][3])
-#         self.assertEqual(ant_name, 0)
-#         ant_name = m.ind_for_anname(hdu[2][3])
-#         self.assertEqual(ant_name, 1)
-
-#     def test_anpos(self):
-#         m = rm.Metafits(metafits, 'X')
-#         antpos = m.anpos()
-#         expected = np.array([[-101.52999878, -585.67498779,  375.21200562],
-#                              [415.00799561, -575.55700684,  373.37399292],
-#                              [604.56799316, -489.94299316,  372.90701294]])
-#         np.testing.assert_almost_equal(antpos[0:3, :], expected)
-
-#     def test_anpos_for(self):
-#         m = rm.Metafits(metafits, 'X')
-#         antpos = m.anpos_for(74)
-#         self.assertTrue(len(antpos) == 3)
-#         np.testing.assert_almost_equal(np.array(antpos), np.array(
-#             [415.00799561, -575.55700684,  373.37399292]))
-
-#     def test_baseline_length_for(self):
-#         m = rm.Metafits(metafits, 'X')
-#         baseline_length = m.baseline_length_for((75, 74))
-#         self.assertEqual(baseline_length, 516.6370807265803)
-
-#     def test_group_antpairs(self):
-#         m = rm.Metafits(metafits, 'X')
-#         angroups = m.group_antpairs(bl_tol=2e-1)
-#         self.assertTrue(isinstance(angroups, OrderedDict))
-#         keys = list(angroups.keys())
-#         self.assertTrue(len(keys) == 8100)
-#         self.assertEqual(keys[0], (2583, 51, -9))
-#         self.assertEqual(angroups[keys[0]], [(74, 75)])
-
-#     def test_redundant_baselines(self):
-#         m = rm.Metafits(metafits, 'X')
-#         reds = m.redundant_antpairs()
-#         keys = list(reds.keys())
-#         self.assertTrue(len(keys) == 27)
-#         self.assertTrue(keys[0], (20, -5, 0))
-#         self.assertEqual(reds[keys[0]], [(26, 12), (2, 1)])
-
-#     def test_baseline_lengths(self):
-#         m = rm.Metafits(metafits, 'X')
-#         baseline_lengths = m.baseline_lengths()
-#         bls = nants * (nants - 1) / 2
-#         self.assertEqual(len(list(baseline_lengths.keys())), int(bls))
-#         self.assertEqual(list(baseline_lengths.keys()), antpairs)
-#         self.assertEqual(baseline_lengths[(75, 74)], 516.6370807265803)
-
-#     def test_baselines_greater_than(self):
-#         m = rm.Metafits(metafits, 'X')
-#         bls = m.baselines_greater_than(600)
-#         self.assertEqual(list(bls.keys())[0:1], [(75, 73)])
-#         self.assertEqual(list(bls.values())[0:1], [712.5580601060333])
-
-#     def test_baselines_less_than(self):
-#         m = rm.Metafits(metafits, 'X')
-#         bls = m.baselines_less_than(600)
-#         self.assertEqual(list(bls.keys())[0:1], [(75, 74)])
-#         self.assertEqual(list(bls.values())[0:1], [516.6370807265803])
-
-#     def test_cable_flavors(self):
-#         m = rm.Metafits(metafits, 'X')
-#         ctypes, clengths = m._cable_flavors()
-#         self.assertTrue(len(ctypes) == nants)
-#         self.assertTrue(len(clengths) == nants)
-#         self.assertEqual(ctypes[0:3], ['LMR400', 'RG6', 'LMR400'])
-#         self.assertEqual(clengths[0:3], [524.0, 150.0, 400.0])
-
-#     def test_cable_length_for(self):
-#         m = rm.Metafits(metafits, 'X')
-#         clength = m.cable_length_for(74)
-#         self.assertEqual(clength, 150.0)
-
-#     def test_cable_type_for(self):
-#         m = rm.Metafits(metafits, 'X')
-#         ctype = m.cable_type_for(74)
-#         self.assertEqual(ctype, 'RG6')
-
-#     def test_receivers(self):
-#         m = rm.Metafits(metafits, 'X')
-#         receivers = m.receivers()
-#         self.assertEqual(receivers[0:3], [10, 10, 10])
-
-#     def test_receiver_for(self):
-#         m = rm.Metafits(metafits, 'X')
-#         receiver = m.receiver_for(74)
-#         self.assertEqual(receiver, 10)
-
-#     def test_annumbers_for_receiver(self):
-#         m = rm.Metafits(metafits, 'X')
-#         antnums = m.annumbers_for_receiver(10)
-#         self.assertTrue((antnums[0:3] == [75, 74, 73]).all())
-
-#     def test_btemps(self):
-#         m = rm.Metafits(metafits, 'X')
-#         btemps = m.btemps()
-#         self.assertEqual(len(btemps), nants)
-#         np.testing.assert_almost_equal(btemps, expected_btemps)
+metafits = os.path.join(DATA_PATH, '1061320816.metafits')
 
 
-# if __name__ == '__main__':
-#     unittest.main()
+class Test_Metatits(unittest.TestCase):
+    def test_init_(self):
+        m = Metafits(metafits)
+        self.assertEqual(m.lst, 18.9166285558464)
+        self.assertEqual(m.metafits, metafits)
+        self.assertEqual(m.pol, 'X')
+        self.assertEqual(m.ha, '-25:01:07.44')
+        self.assertEqual(m.pointing_centre,
+                         (3.695130501331718, -25.9613652035765))
+        self.assertEqual(m.phase_centre, (0.0, -27.0))
+        self.assertEqual(m.filename, 'high_season1_2456528')
+        self.assertEqual(m.eorfield, 'EoR0')
+        self.assertEqual(m.exposure, 112)
+        self.assertEqual(m.integration, 0.5)
+        self.assertEqual(m.obs_time, '2013-08-23T19:20:00')
+        self.assertEqual(m.Nants, 128)
+        self.assertEqual(m.Nchans, 768)
+        np.testing.assert_almost_equal(m.frequency_array[0:4], np.array(
+            [167.68, 167.71838331, 167.75676662, 167.79514993]))
+        self.assertEqual(m.delays, '6,4,2,0,6,4,2,0,6,4,2,0,6,4,2,0')
+        self.assertEqual(m.antenna_positions.shape, (128, 3))
+        np.testing.assert_almost_equal(
+            m.antenna_positions[0], np.array([-101.53, -585.675,  375.212]), decimal=3)
+        self.assertEqual(len(m.annames), 128)
+        np.testing.assert_equal(m.annames[0:4], np.array(
+            ['Tile104', 'Tile103', 'Tile102', 'Tile101']))
+        self.assertEqual(len(m.annumbers), 128)
+        np.testing.assert_equal(m.annumbers[0:4], np.array([75, 74, 73, 72]))
+        self.assertEqual(len(m.tile_ids), 128)
+        np.testing.assert_equal(
+            m.tile_ids[0:4], np.array([104, 103, 102, 101]))
+        self.assertEqual(len(m.receiver_ids), 128)
+        np.testing.assert_equal(
+            m.receiver_ids[0:4], np.array([10, 10, 10, 10]))
+        self.assertEqual(len(m.cable_type), 128)
+        np.testing.assert_equal(
+            m.cable_type[0:4], np.array(['EL', 'EL', 'EL', 'EL']))
+        self.assertEqual(len(m.cable_length), 128)
+        np.testing.assert_almost_equal(
+            m.cable_length[0:4], np.array([-756.49, -1191.96, -900.98, -904.71]))
+        self.assertEqual(len(m.BFTemps), 128)
+        np.testing.assert_almost_equal(
+            m.BFTemps[0:4], np.array([16.6807, 16.8456, 16.2807, 16.1456]), decimal=4)
+        self.assertEqual(len(m.flag_array), 128)
+        np.testing.assert_equal(
+            m.flag_array[0:4], np.array([0, 0, 0, 0]))
+        self.assertEqual(len(m.baseline_array), 8256)
+        np.testing.assert_equal(
+            m.baseline_array[0:4], np.array([[0, 0], [0, 1], [0, 2], [0, 3]]))
+        self.assertEqual(len(m.baseline_lengths), 8256)
+        np.testing.assert_almost_equal(
+            m.baseline_lengths[0:4], np.array([0., 516.6403, 712.5618, 737.1464]), decimal=4)
+
+    def test_pol_index(self):
+        m = Metafits(metafits)
+        hdu = astropy.io.fits.open(metafits)
+        self.assertEqual(m.pol_index(hdu['TILEDATA'].data), 1)
+
+    def test_check_data(self):
+        m = Metafits(metafits)
+        hdu = astropy.io.fits.open(metafits)
+        m._check_data(hdu['TILEDATA'].data)
+
+    def test_antenna_position_for(self):
+        m = Metafits(metafits)
+        np.testing.assert_almost_equal(m.antenna_position_for(
+            0), np.array([265.814, -149.785,  377.011]), decimal=3)
+
+    def test_baseline_length_for(self):
+        m = Metafits(metafits)
+        self.assertEqual(m.baseline_length_for((0, 0)), 0.0)
+        self.assertAlmostEqual(
+            m.baseline_length_for((0, 1)), 516.6403, places=4)
+
+    def test_baselines_greater_than(self):
+        m = Metafits(metafits)
+        bls = m.baselines_greater_than(500)
+        self.assertEqual(len(bls), 5147)
+        np.testing.assert_equal(bls[0:4], np.array([[0, 1],
+                                                    [0, 2],
+                                                    [0, 3],
+                                                    [0, 4]]))
+        bls = m.baselines_less_than(500)
+        self.assertEqual(len(bls), 8256 - 5147)
+        np.testing.assert_equal(bls[0:4], np.array([[0, 0],
+                                                    [0, 6],
+                                                    [0, 7],
+                                                    [0, 8]]))
+
+    def test_antpos_dict(self):
+        m = Metafits(metafits)
+        antpos = m._anpos_dict()
+        self.assertEqual(len(list(antpos.keys())), 128)
+        self.assertTrue((list(antpos.keys()) == [75, 74, 73, 72, 79, 78, 77, 76, 51, 50, 49,
+                                                 48, 55, 54, 53, 52, 123, 122, 121, 120, 127,
+                                                 126, 125, 124, 115, 114, 113, 112, 119, 118,
+                                                 117, 116, 11, 10, 9, 8, 15, 14, 13, 12, 3, 2,
+                                                 1, 0, 7, 6, 5, 4, 67, 66, 65, 64, 71, 70, 69,
+                                                 68, 59, 58, 57, 56, 63, 62, 61, 60, 91, 90, 89,
+                                                 88, 95, 94, 93, 92, 83, 82, 81, 80, 87, 86, 85,
+                                                 84, 107, 106, 105, 104, 111, 110, 109, 108, 99,
+                                                 98, 97, 96, 103, 102, 101, 100, 19, 18, 17, 16,
+                                                 23, 22, 21, 20, 27, 26, 25, 24, 31, 30, 29, 28,
+                                                 43, 42, 41, 40, 47, 46, 45, 44, 35, 34, 33, 32,
+                                                 39, 38, 37, 36]))
+        self.assertTrue((antpos[0] == [265.8139953613281, -
+                        149.78500366210938, 377.010986328125]))
+
+    def test_group_antpairs(self):
+        m = Metafits(metafits)
+        ant_groups = m.group_antpairs(bl_tol=1)
+        self.assertEqual(len(ant_groups), 7747)
+        self.assertTrue((ant_groups[(120, -199, 1)] == [(33, 34)]))
+
+    def test_redundant_antpairs(self):
+        m = Metafits(metafits)
+        reds = m.redundant_antpairs()
+        self.assertEqual(len(list(reds.keys())), 27)
+        self.assertTrue((list(reds.keys()) == [(20, -35, 0), (31, 31, 0), (8, -45, 0), (61, 26, 0), (72, -4, 0),
+                                               (45, -85, 1), (96, -24, 0), (63,
+                                                                            88, 0), (84, 84, 0), (71, -101, 1),
+                                               (43, 122, 0), (125, 60,
+                                                              0), (124, 75, 0), (146, 17, 0),
+                                               (117, -102, -1), (153, -42,
+                                                                 0), (105, -121, 1), (48, -161, 1),
+                                               (173, 13, 0), (178, 45,
+                                                              0), (143, 127, 0), (213, 0, 0),
+                                               (212, 108, 0), (210, 191,
+                                                               0), (232, 226, 0), (32, -399, 0),
+                                               (157, -1647, -9)]))
+        self.assertTrue((reds[(20, -35, 0)] == [(26, 12), (2, 1)]))
