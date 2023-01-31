@@ -44,8 +44,8 @@ class Metafits(object):
             tdata = tdata[self.pol_index(tdata)::2]
             self.antenna_positions = np.array(
                 [tdata['North'], tdata['East'], tdata['Height']]).T
-            self.annumbers = tdata['Antenna']
-            self.annames = tdata['TileName']
+            self.antenna_numbers = tdata['Antenna']
+            self.antenna_names = tdata['TileName']
             self.tile_ids = tdata['Tile']
             self.Nants = len(self.tile_ids)
             self.receiver_ids = tdata['Rx']
@@ -55,7 +55,7 @@ class Metafits(object):
             self.BFTemps = tdata['BFTemps']
             self.flag_array = tdata['Flag']
             self.baseline_array = np.sort(np.stack(
-                (np.tile(self.annumbers, self.Nants), np.repeat(self.annumbers, self.Nants)), axis=1), axis=1)
+                (np.tile(self.antenna_numbers, self.Nants), np.repeat(self.antenna_numbers, self.Nants)), axis=1), axis=1)
             self.baseline_array = self.baseline_array[np.unique(
                 self.baseline_array, axis=0, return_index=True)[1]]
             bl_indxs = np.sort(np.stack((np.tile(np.arange(self.Nants), self.Nants), np.repeat(
@@ -93,7 +93,7 @@ class Metafits(object):
         - antnum:	Antenna Number, starts from 1
         """
         antpos = self.antenna_positions
-        ind = np.where(self.annumbers == antnum)
+        ind = np.where(self.antenna_numbers == antnum)
         return antpos[ind[0][0], :]
 
     def baseline_length_for(self, antpair):
@@ -124,9 +124,9 @@ class Metafits(object):
 
     def _anpos_dict(self):
         anpos = self.antenna_positions
-        annumbers = self.annumbers
+        antenna_numbers = self.antenna_numbers
         anpos_dict = OrderedDict()
-        for i, ant in enumerate(annumbers):
+        for i, ant in enumerate(antenna_numbers):
             anpos_dict[ant] = anpos[i].tolist()
         return anpos_dict
 
