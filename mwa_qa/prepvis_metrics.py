@@ -1,4 +1,5 @@
 from mwa_qa.read_uvfits import UVfits
+from mwa_qa.read_metafits import Metafits
 from mwa_qa import json_utils as ju
 from collections import OrderedDict
 import numpy as np
@@ -9,9 +10,11 @@ pol_dict = {'XX': 0, 'YY': 1, 'XY': 2, 'YX': 3}
 
 
 class PrepvisMetrics(object):
-    def __init__(self, uvfits_path):
+    def __init__(self, uvfits_path, metafits_path):
         self.uvfits_path = uvfits_path
-        self.uvf = UVfits(uvfits_path)
+        self.metafits_path = metafits_path
+        self.uvf = UVfits(self.uvfits_path)
+        self.meta = Metafits(self.metafits_path)
 
     def autos(self, manual_flags, ex_annumbers=[]):
         auto_antpairs = self.uvf.auto_antpairs()
@@ -31,7 +34,19 @@ class PrepvisMetrics(object):
         autos[flags] = np.nan
         if len(ex_annumbers) > 0:
             autos[:, ex_annumbers, :, :] = np.nan
+        # applying flags from metafits
+            ind = self.flags_from_metafits()
+            autos[:, ind, :, :] = np.nan
         return autos
+
+    def flags_from_metafits(self):
+        flags = self.meta.flag_array
+        inds = np.where(flags == 1)[0]
+        flag_inds = []
+        if len(inds) > 0:
+            [flag_inds.append(
+                np.where(self.uvf.antenna_numbers == i)[0][0]) for i in inds]
+        return flag_inds
 
     def _evaluate_edge_flags(self):
         edges_ncut = self.uvf.channel_width / 40000.
