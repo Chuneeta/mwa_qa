@@ -6,15 +6,17 @@ import unittest
 import os
 
 uvfits = os.path.join(DATA_PATH, '1062784992.uvfits')
+metafits = os.path.join(DATA_PATH, '1062784992.metafits')
 
 
 class TestPrepvisMetrics(unittest.TestCase):
     def test__init__(self):
-        vis = PrepvisMetrics(uvfits)
+        vis = PrepvisMetrics(uvfits, metafits)
         self.assertTrue(vis.uvfits_path, uvfits)
+        self.assertTrue(vis.metafits_path, metafits)
 
     def test_autos(self):
-        vis = PrepvisMetrics(uvfits)
+        vis = PrepvisMetrics(uvfits, metafits)
         autos = vis.autos(manual_flags=False)
         np.testing.assert_almost_equal(autos[0, 0, 100, :],
                                        np.array([43051.855 + 4.2532739e-07j, 38573.625 + 4.5283093e-07j,
@@ -32,8 +34,13 @@ class TestPrepvisMetrics(unittest.TestCase):
                                        np.array([43051.855 + 4.2532739e-07j, 38573.625 + 4.5283093e-07j,
                                                  -1709.8799+7.0794456e+01j, -1709.8799-7.0794456e+01j]), decimal=3)
 
+    def test_flags_from_metafits(self):
+        vis = PrepvisMetrics(uvfits, metafits)
+        flags = vis.flags_from_metafits()
+        self.assertTrue((flags == [75, 98]))
+
     def test_evaluate_edge_flags(self):
-        vis = PrepvisMetrics(uvfits)
+        vis = PrepvisMetrics(uvfits, metafits)
         flags = vis._evaluate_edge_flags()
         self.assertEqual(flags.shape, (768,))
         inds = np.where(flags == True)
@@ -49,7 +56,7 @@ class TestPrepvisMetrics(unittest.TestCase):
                                                           752, 766, 767]))
 
     def test_plot_mode(self):
-        vis = PrepvisMetrics(uvfits)
+        vis = PrepvisMetrics(uvfits, metafits)
         autos = vis.autos(manual_flags=True)
         data = vis._plot_mode(autos[10, 0, 300, :], mode='amp')
         np.testing.assert_almost_equal(data, np.array(
@@ -79,7 +86,7 @@ class TestPrepvisMetrics(unittest.TestCase):
         pass
 
     def test_flag_occupancy(self):
-        vis = PrepvisMetrics(uvfits)
+        vis = PrepvisMetrics(uvfits, metafits)
         autos = vis.autos(manual_flags=True)
         foccupancy, inds = vis.flag_occupancy(autos[10, :, :, 0])
         np.testing.assert_almost_equal(foccupancy, np.array([100., 100., 100., 100.,
@@ -117,7 +124,7 @@ class TestPrepvisMetrics(unittest.TestCase):
         np.testing.assert_equal(inds[0], np.array([76, 80]))
 
     def test_calculate_rms(self):
-        vis = PrepvisMetrics(uvfits)
+        vis = PrepvisMetrics(uvfits, metafits)
         autos = vis.autos(manual_flags=True)
         rms = vis.calculate_rms(autos[10, :, :, 0])
         np.testing.assert_almost_equal(rms[0:10], np.array([32833.35 + 1.18771766e-08j, 32727.639-4.16548751e-08j,
@@ -127,7 +134,7 @@ class TestPrepvisMetrics(unittest.TestCase):
                                                             28355.236+9.70865557e-08j, 29699.135-2.46702836e-08j]), decimal=2)
 
     def test_calculate_mod_zscore(self):
-        vis = PrepvisMetrics(uvfits)
+        vis = PrepvisMetrics(uvfits, metafits)
         autos = vis.autos(manual_flags=True)
         modz = vis.calculate_mod_zscore(autos[10, :, :, 0])
         np.testing.assert_almost_equal(modz[0:10], np.array([0.49903008-1.9951631e-12j,  0.46797398-1.2897820e-11j,
@@ -137,7 +144,7 @@ class TestPrepvisMetrics(unittest.TestCase):
                                                              -0.3979257 + 1.2848046e-11j, -0.14511508-1.3222220e-11j]), decimal=4)
 
     def test_iterative_mod_zscore(self):
-        vis = PrepvisMetrics(uvfits)
+        vis = PrepvisMetrics(uvfits, metafits)
         autos = vis.autos(manual_flags=True)
         modz, inds = vis.iterative_mod_zscore(autos[10, :, :, 0], 3, 10)
         np.testing.assert_almost_equal(modz[0][0:10], np.array([0.49903008-1.9951631e-12j,  0.46797398-1.2897820e-11j,
@@ -148,7 +155,7 @@ class TestPrepvisMetrics(unittest.TestCase):
         np.testing.assert_almost_equal(inds[0], np.array([17, 76, 80]))
 
     def test_initialize_metrics_dict(self):
-        vis = PrepvisMetrics(uvfits)
+        vis = PrepvisMetrics(uvfits, metafits)
         vis._initialize_metrics_dict()
         self.assertTrue(list(vis.metrics.keys()), [
                         'NANTS', 'NTIMES', 'NFREQS', 'NPOLS', 'OBSID', 'ANNUMBERS', 'XX', 'YY'])
@@ -171,7 +178,7 @@ class TestPrepvisMetrics(unittest.TestCase):
         self.assertTrue(isinstance(vis.metrics['YY'], OrderedDict))
 
     def test_run_metrics(self):
-        vis = PrepvisMetrics(uvfits)
+        vis = PrepvisMetrics(uvfits, metafits)
         vis.run_metrics()
         self.assertEqual(list(vis.metrics.keys()), ['NANTS', 'NTIMES', 'NFREQS', 'NPOLS', 'OBSID',
                          'ANNUMBERS', 'XX', 'YY', 'BAD_ANTS', 'BAD_ANTS_PERCENT', 'STATUS', 'THRESHOLD'])
@@ -200,7 +207,7 @@ class TestPrepvisMetrics(unittest.TestCase):
              -1.3313679, -1.3563856, -1.1527667, -0.43960702,  0.77399105]))
 
     def test_write_to(self):
-        vis = PrepvisMetrics(uvfits)
+        vis = PrepvisMetrics(uvfits, metafits)
         vis._initialize_metrics_dict()
         outfile = uvfits.replace('.uvfits', '_prepvis_metrics.json')
         vis.write_to()
