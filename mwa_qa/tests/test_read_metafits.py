@@ -8,24 +8,24 @@ import astropy
 import os
 
 
-metafits = os.path.join(DATA_PATH, '1061320816.metafits')
+metafits = os.path.join(DATA_PATH, '1062784992.metafits')
 
 
 class Test_Metatits(unittest.TestCase):
     def test_init_(self):
         m = Metafits(metafits)
-        self.assertEqual(m.lst, 18.9166285558464)
+        self.assertEqual(m.lst, 16.3529561118503)
         self.assertEqual(m.metafits, metafits)
         self.assertEqual(m.pol, 'X')
         self.assertEqual(m.ha, '-25:01:07.44')
         self.assertEqual(m.pointing_centre,
-                         (3.695130501331718, -25.9613652035765))
+                         (1.129399085412689, -25.96174344493141))
         self.assertEqual(m.phase_centre, (0.0, -27.0))
-        self.assertEqual(m.filename, 'high_season1_2456528')
+        self.assertEqual(m.filename, 'high_season1_2456545')
         self.assertEqual(m.eorfield, 'EoR0')
         self.assertEqual(m.exposure, 112)
         self.assertEqual(m.integration, 0.5)
-        self.assertEqual(m.obs_time, '2013-08-23T19:20:00')
+        self.assertEqual(m.obs_time, '2013-09-09T18:02:56')
         self.assertEqual(m.Nants, 128)
         self.assertEqual(m.Nchans, 768)
         np.testing.assert_almost_equal(m.frequency_array[0:4], np.array(
@@ -34,11 +34,12 @@ class Test_Metatits(unittest.TestCase):
         self.assertEqual(m.antenna_positions.shape, (128, 3))
         np.testing.assert_almost_equal(
             m.antenna_positions[0], np.array([-101.53, -585.675,  375.212]), decimal=3)
-        self.assertEqual(len(m.annames), 128)
-        np.testing.assert_equal(m.annames[0:4], np.array(
+        self.assertEqual(len(m.antenna_names), 128)
+        np.testing.assert_equal(m.antenna_names[0:4], np.array(
             ['Tile104', 'Tile103', 'Tile102', 'Tile101']))
-        self.assertEqual(len(m.annumbers), 128)
-        np.testing.assert_equal(m.annumbers[0:4], np.array([75, 74, 73, 72]))
+        self.assertEqual(len(m.antenna_numbers), 128)
+        np.testing.assert_equal(
+            m.antenna_numbers[0:4], np.array([75, 74, 73, 72]))
         self.assertEqual(len(m.tile_ids), 128)
         np.testing.assert_equal(
             m.tile_ids[0:4], np.array([104, 103, 102, 101]))
@@ -53,7 +54,7 @@ class Test_Metatits(unittest.TestCase):
             m.cable_length[0:4], np.array([-756.49, -1191.96, -900.98, -904.71]))
         self.assertEqual(len(m.BFTemps), 128)
         np.testing.assert_almost_equal(
-            m.BFTemps[0:4], np.array([16.6807, 16.8456, 16.2807, 16.1456]), decimal=4)
+            m.BFTemps[0:4], np.array([20.1681, 19.9346, 19.4792, 19.8316]), decimal=4)
         self.assertEqual(len(m.flag_array), 128)
         np.testing.assert_equal(
             m.flag_array[0:4], np.array([0, 0, 0, 0]))
