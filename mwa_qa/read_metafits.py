@@ -122,6 +122,28 @@ class Metafits(object):
         """
         return self.baseline_array[np.where(self.baseline_lengths < baseline_cut)[0]]
 
+    def antenna_numbers_for_receiver(self, receiver):
+        """
+        Returns Antenna numbers connected with the given receiver
+        - receiver : receiver number 1-16
+        """
+        inds = np.where(self.receiver_ids == receiver)
+        if len(inds[0]) == 0:
+            raise ValueError("Antenna Number does not exist")
+        else:
+            return self.antenna_numbers[inds[0]]
+
+    def receiver_for_antenna_number(self, antnum):
+        """
+        Returns receiver number for the given Antenna number
+        - antnum : Antenna Number
+        """
+        ind = np.where(self.antenna_numbers == antnum)
+        if len(ind[0]) == 0:
+            raise ValueError("Receiver ID does not exist")
+        else:
+            return self.receiver_ids[ind[0]][0]
+
     def _anpos_dict(self):
         anpos = self.antenna_positions
         antenna_numbers = self.antenna_numbers
