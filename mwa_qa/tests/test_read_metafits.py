@@ -101,6 +101,21 @@ class Test_Metatits(unittest.TestCase):
                                                     [0, 7],
                                                     [0, 8]]))
 
+    def test_antenna_numbers_for_receiver(self):
+        m = Metafits(metafits)
+        antnums = m.antenna_numbers_for_receiver(1)
+        np.testing.assert_equal(
+            antnums, np.array([3, 2, 1, 0, 7, 6, 5, 4]))
+        with self.assertRaises(Exception):
+            m.antenna_number_for_receiver(20)
+
+    def test_receiver_for_antenna_number(self):
+        m = Metafits(metafits)
+        receiver = m.receiver_for_antenna_number(0)
+        np.testing.assert_equal(receiver, np.array(1))
+        with self.assertRaises(Exception):
+            m.receiver_fot_antenna_number(200)
+
     def test_antpos_dict(self):
         m = Metafits(metafits)
         antpos = m._anpos_dict()
