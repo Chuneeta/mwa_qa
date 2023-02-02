@@ -59,7 +59,7 @@ class CalFits(object):
             if self.norm:
                 if ref_antenna is None:
                     ref_antenna = self._iterate_refant()
-                    self.ref_antenna = ref_antenna
+                    self.reference_antenna = ref_antenna
                 else:
                     self.ref_antenna = ref_antenna
                     self._check_refant()
@@ -80,7 +80,7 @@ class CalFits(object):
         Checks if the given reference antenna is flagged due to non-convergence
         or any malfunctioning reports
         """
-        ind = self.gains_ind_for(self.ref_antenna)
+        ind = self.gains_ind_for(self.reference_antenna)
         flag = np.array(self.antenna_flag)[ind]
         assert flag == 0,  "{} seems to be flagged."
         "calibration solutions found, choose a different tile"
@@ -107,7 +107,7 @@ class CalFits(object):
         - data:	Input array of shape( tiles, freq, pols) containing the
                         solutions
         """
-        ref_ind = self.gains_ind_for(self.ref_antenna)
+        ref_ind = self.gains_ind_for(self.reference_antenna)
         refs = []
         for ref in data[ref_ind].reshape((-1, 2, 2)):
             refs.append(np.linalg.inv(ref))
