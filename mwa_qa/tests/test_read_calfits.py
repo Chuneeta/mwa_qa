@@ -49,7 +49,7 @@ class TestCalFits(unittest.TestCase):
         self.assertFalse(c.norm)
         c = CalFits(calfile, norm=True)
         self.assertTrue(c.norm)
-        self.assertTrue(c.ref_antenna == 127)
+        self.assertTrue(c.reference_antenna == 127)
         np.testing.assert_almost_equal(
             c.gain_array[0, 0, 100, :], np.array([0.79296893-0.62239205j,  0.01225656+0.05076904j,
                                                   0.02343749-0.05114198j, -0.44148823-1.04256351j]))
