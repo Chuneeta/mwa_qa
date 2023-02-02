@@ -6,7 +6,7 @@ import copy
 
 
 class CalFits(object):
-    def __init__(self, calfits_path, metafits_path=None, pol='X',
+    def __init__(self, calfits_path, pol='X',
                  norm=False, ref_antenna=None):
         """
         Object takes in a calfile in fits format and extracts
@@ -30,7 +30,6 @@ class CalFits(object):
                         an error.
         """
         self.calfits_path = calfits_path
-        self.metafits_path = metafits_path
         with fits.open(calfits_path) as hdus:
             cal_hdu = hdus['SOLUTIONS']
             time_hdu = hdus['TIMEBLOCKS']
@@ -67,7 +66,7 @@ class CalFits(object):
                 self.gain_array = self.normalized_gains()
             self.amplitudes = np.abs(self.gain_array)
             self.phases = np.angle(self.gain_array)
-            self.Metafits = Metafits(metafits_path, pol=pol)
+            # self.Metafits = Metafits(metafits_path, pol=pol)
             # NOTE:polynomial parameters - only the fitted solutions will
             # have these parameters
             try:
@@ -150,14 +149,13 @@ class CalFits(object):
         gains_t1 = self.gains_for_antnum(antpair[1])
         return gains_t0 * np.conj(gains_t1)
 
-    def gains_for_receiver(self, receiver):
+    def gains_for_receiver(self, metafits_path, receiver):
         """
         Returns the dictionary of gains solutions for all the antennas
         (8 antennas in principles) connected to the given receiver
         """
-        assert self.metafits_path is not None, "metafits file associated"
-        "with this observation is required to extract the receiver information"
-        annumbers = self.Metafits.annumbers_for_receiver(receiver)
+        m = Metafits(metafits_path)
+        annumbers = m.antenna_numbers_for_receiver(receiver)
         gains0 = self.gains_for_antnum(annumbers[0])
         _sh = gains0.shape
         gains_array = np.zeros(
