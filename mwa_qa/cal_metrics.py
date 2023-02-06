@@ -13,7 +13,7 @@ pol_dict = {'XX': 0, 'XY': 1, 'YX': 2, 'YY':	3}
 
 class CalMetrics(object):
     def __init__(self, calfits_path, metafits_path=None, pol='X',
-                 norm=True, ref_antenna=None):
+                 norm=False, ref_antenna=None):
         """
         Object that takes in .fits containing the calibration solutions
         file readable by astropy and initializes them as global
@@ -28,7 +28,7 @@ class CalMetrics(object):
         - norm: Boolean, If True, the calibration solutions will be
                 normlaized else unnormlaized solutions will be used.
                 Default is set to False
-        - ref_antenna:	Reference antenna number. If norm is True,
+        - reference_antenna:	Reference antenna number. If norm is True,
                         a reference antenna is require for normalization.
                         By default it uses the last antenna in the array.
                         If the last antenna is flagged, it will return
@@ -36,7 +36,7 @@ class CalMetrics(object):
         """
         self.calfits_path = calfits_path
         self.metafits_path = metafits_path
-        self.CalFits = CalFits(calfits_path, metafits_path=metafits_path,
+        self.CalFits = CalFits(calfits_path,
                                pol=pol, norm=norm, ref_antenna=ref_antenna)
         self.Metafits = Metafits(metafits_path, pol)
 
@@ -65,7 +65,7 @@ class CalMetrics(object):
             variances[:, i, :] = self.variance_for_antpair(bl)
         return variances
 
-    def skewness_across_uvcut(self, uv_cut, norm=True):
+    def skewness_across_uvcut(self, uv_cut):
         """
         Evaluates the Pearson skewness 3 * (mean - median) / std across the
         variances averaged over baseliness shorter than the given
@@ -178,13 +178,12 @@ class CalMetrics(object):
         """
         self.metrics = OrderedDict()
         # assuming hyperdrive outputs 4 polarizations
-        receivers = np.unique(sorted(self.get_receivers()))
         self.metrics['POLS'] = list(pol_dict.keys())
         self.metrics['OBSID'] = self.CalFits.obsid
         self.metrics['UVCUT'] = self.CalFits.uvcut
         self.metrics['M_THRESH'] = self.CalFits.m_thresh
         if self.CalFits.norm:
-            self.metrics['REF_ANTNUM'] = self.CalFits.ref_antenna
+            self.metrics['REF_ANTENNA'] = self.CalFits.reference_antenna
         self.metrics['NTIME'] = self.CalFits.Ntime
         self.metrics['START_FREQ'] = self.CalFits.frequency_array[0]
         self.metrics['CH_WIDTH'] = self.CalFits.frequency_array[1] - \
@@ -203,7 +202,10 @@ class CalMetrics(object):
 
     def run_metrics(self, dly_cut=2000, sigma=2):
         self._initialize_metrics_dict()
-        gain_amps = self.CalFits.amplitudes
+        gains = self.CalFits.gains_array
+        # normalizing gains by median across antenna
+        gains_normalized = gains / np.nanmedian(gains, axis=1)
+        gain_amps = np.abs(gains_normlaized)
         # metrics across antennas
         var_amp_ant = np.nanvar(gain_amps, axis=1)
         rms_amp_ant = np.sqrt(np.nanmean(gain_amps ** 2, axis=1))
