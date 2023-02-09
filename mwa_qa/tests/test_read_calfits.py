@@ -48,8 +48,9 @@ class TestCalFits(unittest.TestCase):
             c.baseline_weights, hdu['BASELINES'].data)
         self.assertFalse(c.norm)
         c = CalFits(calfile, norm=True)
+
         self.assertTrue(c.norm)
-        self.assertTrue(c.ref_antenna == 127)
+        self.assertTrue(c.reference_antenna == 127)
         np.testing.assert_almost_equal(
             c.gain_array[0, 0, 100, :], np.array([0.79296893-0.62239205j,  0.01225656+0.05076904j,
                                                   0.02343749-0.05114198j, -0.44148823-1.04256351j]))
@@ -131,30 +132,10 @@ class TestCalFits(unittest.TestCase):
         np.testing.assert_almost_equal(np.max(delays), 12467.447916666668)
         self.assertEqual(delays[0], -12499.999999999998)
 
-    def test_filter_nans(self):
-        c = CalFits(calfile)
-        gains = c.gain_array
-        nonans_inds, nans_inds = c._filter_nans(gains[0, 0, :, 0])
-        self.assertEqual(len(nonans_inds), 647)
-        self.assertEqual(len(nans_inds), 768 - 647)
-        np.testing.assert_almost_equal(nans_inds, np.array(
-            [0,   1,  16,  30,  31,  32,  33,  48,  62,  63,  64,  65,  80,
-             94,  95,  96,  97, 112, 126, 127, 128, 129, 144, 158, 159, 160,
-             161, 176, 190, 191, 192, 193, 208, 222, 223, 224, 225, 240, 254,
-             255, 256, 257, 272, 286, 287, 288, 289, 304, 318, 319, 320, 321,
-             324, 336, 350, 351, 352, 353, 368, 382, 383, 384, 385, 400, 414,
-             415, 416, 417, 432, 446, 447, 448, 449, 464, 478, 479, 480, 481,
-             496, 510, 511, 512, 513, 528, 542, 543, 544, 545, 560, 574, 575,
-             576, 577, 592, 606, 607, 608, 609, 624, 638, 639, 640, 641, 656,
-             670, 671, 672, 673, 688, 702, 703, 704, 705, 720, 734, 735, 736,
-             737, 752, 766, 767]))
-
     def test_gains_fft(self):
         c = CalFits(calfile)
-        fft_gains = c.gains_fft()
+        fft_gains = c.fft_gains()
         self.assertEqual(fft_gains.shape, (1, 128, 768, 4))
         np.testing.assert_almost_equal(fft_gains[0, 0, 100, :],
-                                       np.array([-0.41472297+0.04339564j,
-                                                0.00608647-0.33740265j,
-                                                 0.10985828-0.18691477j,
-                                                 -0.03172375-0.53670078j]))
+                                       np.array([-0.25229746-0.15715837j,  0.08903429-0.06886878j,
+                                                 -0.0102906 - 0.11353449j, -0.07726732+0.18713528j]))
