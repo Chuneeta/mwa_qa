@@ -1,4 +1,5 @@
 from mwa_qa.read_metafits import Metafits
+from scipy.interpolate import CubicSpline
 from scipy import signal
 from astropy.io import fits
 import numpy as np
@@ -173,28 +174,22 @@ class CalFits(object):
         delays = np.fft.fftfreq(len(self.frequency_array), df)
         return np.fft.fftshift(delays)
 
-    def _filter_nans(self, data):
-        nonans_inds = np.where(~np.isnan(data))[0]
-        nans_inds = np.where(np.isnan(data))[0]
-        return nonans_inds, nans_inds
+    def interpolate_gains(self, x, x_new, y):
+        f = CubicSpline(x, y)
+        return f(x_new)
 
-    def gains_fft(self):
-        # going to discard first two frequency channel
+    def fft_gains(self):
         _sh = self.gain_array.shape
         fft_data = np.zeros(_sh, dtype=self.gain_array.dtype)
-        window = self.blackmanharris(len(self.frequency_array))
+        window = self.blackmanharris(self.Nchan)
         for t in range(_sh[0]):
             for i in range(_sh[1]):
                 for j in range(_sh[3]):
                     try:
-                        nonans_inds, nans_inds = self._filter_nans(
-                            self.gain_array[t, i, :, j])
-                        d_fft = np.fft.fft(
-                            self.gain_array[t, i, nonans_inds, j] *
-                            window[nonans_inds])
-                        fft_data[t, i, nonans_inds,
-                                 j] = np.fft.fftshift(d_fft)
-                        fft_data[t, i, nans_inds, j] = np.nan
+                        inds = np.where(~np.isnan(self.gain_array[t, i, :, j]))
+                        d_fft = np.fft.fft(self.interpolate_gains(
+                            inds[0], np.arange(self.Nchan), self.gain_array[t, i, inds[0], j]) * window)
+                        fft_data[t, i, :, j] = np.fft.fftshift(d_fft)
                     except ValueError:
                         fft_data[t, i, :, j] = np.nan
         return fft_data
