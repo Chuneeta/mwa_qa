@@ -67,8 +67,7 @@ class TestUVfits(unittest.TestCase):
         vis_hdu = hdu['PRIMARY']
         data = uvf._data_for_antpairs(vis_hdu, [(0, 0)])
         self.assertEqual(data.shape, (27, 1, 768, 4))
-        expected = data0[0][5][0, 0, :, :, 0] +
-        data0[0][5][0, 0, :, :, 1] * 1j
+        expected = data0[0][5][0, 0, :, :, 0] + data0[0][5][0, 0, :, :, 1] * 1j
         np.testing.assert_almost_equal(data[0, 0, :, :], expected)
 
     def test__flag_for_antpairs(self):
@@ -82,8 +81,7 @@ class TestUVfits(unittest.TestCase):
         uvf = UVfits(uvfits)
         data = uvf.data_for_antpairs([(0, 0)])
         self.assertEqual(data.shape, (27, 1, 768, 4))
-        expected = data0[0][5][0, 0, :, :, 0] +
-        data0[0][5][0, 0, :, :, 1] * 1j
+        expected = data0[0][5][0, 0, :, :, 0] + data0[0][5][0, 0, :, :, 1] * 1j
         np.testing.assert_almost_equal(data[0, 0, :, :], expected)
 
     def test_flag_for_antpairs(self):
@@ -96,8 +94,7 @@ class TestUVfits(unittest.TestCase):
         uvf = UVfits(uvfits)
         data = uvf.data_for_antpair((0, 0))
         self.assertEqual(data.shape, (27, 768, 4))
-        expected = data0[0][5][0, 0, :, :, 0] +
-        data0[0][5][0, 0, :, :, 1] * 1j
+        expected = data0[0][5][0, 0, :, :, 0] + data0[0][5][0, 0, :, :, 1] * 1j
         np.testing.assert_almost_equal(data[0, :, :], expected)
 
     def test_flag_for_antpair(self):
