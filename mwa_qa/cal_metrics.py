@@ -12,8 +12,8 @@ pol_dict = {'XX': 0, 'XY': 1, 'YX': 2, 'YY':	3}
 
 
 class CalMetrics(object):
-    def __init__(self, calfits_path, metafits_path=None, pol='X',
-                 norm=False, ref_antenna=None):
+    def __init__(self, calfits_path, metafits_path, pol='X',
+                 norm=True, ref_antenna=None):
         """
         Object that takes in .fits containing the calibration solutions
         file readable by astropy and initializes them as global
@@ -38,7 +38,7 @@ class CalMetrics(object):
         self.metafits_path = metafits_path
         self.CalFits = CalFits(calfits_path,
                                pol=pol, norm=norm, ref_antenna=ref_antenna)
-        self.Metafits = Metafits(metafits_path, pol)
+        self.MetaFits = Metafits(metafits_path, pol=pol)
 
     def variance_for_antpair(self, antpair):
         """
@@ -58,7 +58,7 @@ class CalMetrics(object):
         - uv_cut:	Baseline cut in metres, will use only baselines
         shorter than the given value- norm
         """
-        baselines = self.Metafits.baselines_less_than(uv_cut)
+        baselines = self.MetaFits.baselines_less_than(uv_cut)
         _sh = self.CalFits.gain_array.shape
         variances = np.zeros((_sh[0], len(baselines), 4))
         for i, bl in enumerate(baselines):
@@ -80,53 +80,7 @@ class CalMetrics(object):
         vmedian = np.nanmedian(variances, axis=1)
         vstd = np.nanstd(variances, axis=1)
         skewness = 3 * (vmean - vmedian) / vstd
-        return skewness
-
-    def get_receivers(self, n=16):
-        """
-        Returns the receivers connected to the various tiles in the array
-        - n:	Number of receivers in the array. Optional, enabled if
-                If metafits is not provided. Default is 16.
-        """
-        if self.Metafits.metafits is None:
-            receivers = list(np.arange(1, n + 1))
-        else:
-            receivers = self.Metafits.receivers()
-        return receivers
-
-    def smooth_calibration_precisions(self, window_length, polyorder):
-        cal_precisions = self.CalFits.convergence
-        _sh = cal_precisions.shape
-        sm_cal_precisions = np.copy(cal_precisions)
-        for t in range(_sh[0]):
-            inds_nnans = np.where(~np.isnan(cal_precisions[t, :]))[0]
-            inds_nans = np.where(np.isnan(cal_precisions[t, :]))[0]
-            sm_cal_precisions[t, inds_nnans] = savgol_filter(
-                cal_precisions[t, inds_nnans], window_length, polyorder)
-            sm_cal_precisions[t, inds_nans] = np.nan
-        return sm_cal_precisions
-
-    def apply_gaussian_filter1D_fft(self, sigma):
-        gains_fft = self.CalFits.gains_fft()
-        _sh = gains_fft.shape
-        # we will be using only xx and yy polarizations
-        gains_fft_sm = np.zeros(
-            (_sh[0], _sh[1], _sh[2], 2))
-        for t in range(_sh[0]):
-            for i in range(_sh[1]):
-                gains_fft_xx = np.abs(gains_fft[t, i, :, 0])
-                gains_fft_yy = np.abs(gains_fft[t, i, :, 3])
-                inds_nnans_xx = np.where(~np.isnan(gains_fft_xx))[0]
-                inds_nnans_yy = np.where(~np.isnan(gains_fft_yy))[0]
-                inds_nans_xx = np.where(np.isnan(gains_fft_xx))[0]
-                inds_nans_yy = np.where(np.isnan(gains_fft_yy))[0]
-                gains_fft_sm[t, i, inds_nnans_xx, 0] = gaussian_filter1d(
-                    gains_fft_xx[inds_nnans_xx], sigma)
-                gains_fft_sm[t, i, inds_nnans_yy, 1] = gaussian_filter1d(
-                    gains_fft_yy[inds_nnans_yy], sigma)
-                gains_fft_sm[t, i, inds_nans_xx, 0] = np.nan
-                gains_fft_sm[t, i, inds_nans_yy, 1] = np.nan
-        return gains_fft_sm
+        return np.nanmax(skewness, axis=0)
 
     def unused_baselines_percent(self):
         inds_nan = np.where(np.isnan(self.CalFits.baseline_weights))[0]
@@ -158,16 +112,16 @@ class CalMetrics(object):
         warnings.filterwarnings("ignore")
         pols = list(pol_dict.keys())
         ntimes = self.CalFits.Ntime
-        receivers = np.unique(sorted(self.get_receivers()))
-        nants = len(self.Metafits.annumbers_for_receiver(receivers[0]))
-        rcv_chisq = np.zeros((len(receivers), ntimes, nants, len(pols)))
+        receivers = np.unique(self.MetaFits.receiver_ids)
+        nants = len(self.MetaFits.antenna_numbers_for_receiver(receivers[0]))
+        rcv_chisq = np.zeros((len(receivers), nants, len(pols)))
         for i, r in enumerate(receivers):
-            rcv_gains = self.CalFits.gains_for_receiver(r)
-            rcv_amps = np.abs(rcv_gains)
+            rcv_gains = self.CalFits.gains_for_receiver(self.metafits_path, r)
+            rcv_amps = np.nanmean(np.abs(rcv_gains), axis=0)
             # ignoring zero division
             np.seterr(divide='ignore', invalid='ignore')
-            rcv_amps_mean = np.nanmean(rcv_amps, axis=1)
-            chisq = np.nansum(((rcv_amps - rcv_amps_mean) / rcv_amps), axis=2)
+            rcv_amps_mean = np.nanmean(rcv_amps, axis=0)
+            chisq = np.nansum(((rcv_amps - rcv_amps_mean) / rcv_amps), axis=1)
             rcv_chisq[i] = chisq
         return rcv_chisq
 
@@ -178,7 +132,7 @@ class CalMetrics(object):
         """
         self.metrics = OrderedDict()
         # assuming hyperdrive outputs 4 polarizations
-        self.metrics['POLS'] = list(pol_dict.keys())
+        self.metrics['POLS'] = ['XX', 'YY']
         self.metrics['OBSID'] = self.CalFits.obsid
         self.metrics['UVCUT'] = self.CalFits.uvcut
         self.metrics['M_THRESH'] = self.CalFits.m_thresh
@@ -200,69 +154,65 @@ class CalMetrics(object):
         except AttributeError:
             pass
 
-    def run_metrics(self, dly_cut=2000, sigma=2):
+    def run_metrics(self, ant_threshold=10):
         self._initialize_metrics_dict()
-        gains = self.CalFits.gains_array
+        gains = self.CalFits.gain_array
+        fft_gains = self.CalFits.fft_gains()
         # normalizing gains by median across antenna
-        gains_normalized = gains / np.nanmedian(gains, axis=1)
-        gain_amps = np.abs(gains_normlaized)
-        # metrics across antennas
-        var_amp_ant = np.nanvar(gain_amps, axis=1)
-        rms_amp_ant = np.sqrt(np.nanmean(gain_amps ** 2, axis=1))
-        rmsvar_amp_ant = np.sqrt(np.nanmean(
-            np.nanmean(var_amp_ant, axis=0) ** 2, axis=0))
+        gain_amps = np.abs(gains)
+        _sh = gain_amps.shape
         # metrics amplitude across frequency
-        var_amp_freq = np.nanvar(gain_amps, axis=2)
-        rms_amp_freq = np.sqrt(np.nanmean(gain_amps ** 2, axis=2))
-        rmsvar_amp_freq = np.sqrt(np.nanmean(
-            np.nanmean(var_amp_freq, axis=0) ** 2, axis=0))
-        # skewness across ucvut
+        rms_amp_freq = np.sqrt(np.nanmean(gain_amps ** 2, axis=2) / _sh[2])
+        # skewness
         skewness = self.skewness_across_uvcut(self.metrics['UVCUT'])
-        mskewness = np.nanmean(skewness, axis=0)
         # receiver metrics
         rcv_chisq = self.receiver_metrics()
-        mrcv_chisq = np.nanmean(np.nanmean(rcv_chisq, axis=1), axis=1)
+        mrcv_chisq = np.nanmax(rcv_chisq, axis=1)
         vmrcv_chisq = np.nanvar(mrcv_chisq, axis=0)
-        # delay spectrum
-        delays = self.CalFits.delays()
-        smfft_spectrum = self.apply_gaussian_filter1D_fft(sigma)
-        # convergence metrics
-        convergence_var = self.convergence_variance()
-        # writing metrics to json file
-        self.metrics['UNUSED_BLS'] = self.unused_baselines_percent()
-        self.metrics['UNUSED_CHS'] = self.unused_channels_percent()
-        self.metrics['UNUSED_ANTS'] = self.unused_antennas_percent()
-        self.metrics['NON_CONVERGED_CHS'] = self.non_converging_percent()
-        self.metrics['CONVERGENCE'] = self.CalFits.convergence
-        self.metrics['CONVERGENCE_VAR'] = convergence_var
-        # metrics for each pols
-        for i, p in enumerate(['XX', 'YY']):
-            self.metrics[p]['SKEWNESS_UVCUT'] = mskewness[pol_dict[p]]
-            self.metrics[p]['AMPVAR_ANT'] = var_amp_ant[:, :, pol_dict[p]]
-            self.metrics[p]['AMPRMS_ANT'] = rms_amp_ant[:, :, pol_dict[p]]
-            self.metrics[p]['RMS_AMPVAR_ANT'] = rmsvar_amp_ant[pol_dict[p]]
-            self.metrics[p]['AMPVAR_FREQ'] = var_amp_freq[:, :, pol_dict[p]]
-            self.metrics[p]['AMPRMS_FREQ'] = rms_amp_freq[:, :, pol_dict[p]]
-            self.metrics[p]['RMS_AMPVAR_FREQ'] = rmsvar_amp_freq[pol_dict[p]]
-            # delay spectra
-            self.metrics[p]['DFFT'] = np.abs(smfft_spectrum[:, :, :, i])
-            self.metrics[p]['DFFT_POWER'] = np.nansum(
-                np.abs(smfft_spectrum[:, :, :, i]))
-            inds_pos = np.where(delays > dly_cut)[0]
-            inds_neg = np.where(delays < -1 * dly_cut)[0]
-            self.metrics[p]['DFFT_POWER_HIGH_PKPL'] = np.nansum(
-                np.abs(smfft_spectrum[:, :, inds_pos, i]))
-            self.metrics[p]['DFFT_POWER_HIGH_NKPL'] = np.nansum(
-                np.abs(smfft_spectrum[:, :, inds_neg, i]))
-            self.metrics[p]['RECEIVER_CHISQVAR'] = vmrcv_chisq[pol_dict[p]]
 
-        # determining if the solutions passes the metrics basics tests
-        status = 'FAIL' if np.sqrt(
-            convergence_var) > self.CalFits.m_thresh else 'PASS'
-        self.metrics['STATUS'] = status
-        if status == 'FAIL':
-            self.metrics['FAILURE_REASON'] = 'Converging results did not pass the requirement STD(CONV_RESULTS) [{}] < M_THRESH [{}]'.format(
-                np.sqrt(convergence_var), self.metrics['M_THRESH'])
+        for p in ['XX', 'YY']:
+            rms_amp_freq_p = np.nanmean(rms_amp_freq, axis=0)[:, pol_dict[p]]
+            # calculating modified zscore
+            rms_median = np.nanmedian(rms_amp_freq_p)
+            rms_modz = (rms_amp_freq_p - rms_median) / \
+                (np.nanmedian(np.abs(rms_amp_freq_p - rms_median)))
+            # determining misbehaving antennas using modified z-score
+            inds = np.where((rms_modz < -1 * ant_threshold)
+                            | (rms_modz > ant_threshold))
+            bad_ants1 = self.CalFits.antenna[inds[0]]
+            # determining misbehaving antennas from FFT data
+            fft_amps = np.abs(np.nanmean(
+                fft_gains[:, :, :, pol_dict[p]], axis=0))
+            fft_power = np.nansum(fft_amps, axis=1)
+            fft_power_median = np.nanmedian(fft_power)
+            fft_power_modz = (fft_power - fft_power_median) / \
+                (np.nanmedian(np.abs(fft_power - fft_power_median)))
+            inds = np.where((fft_power_modz < -1 * ant_threshold)
+                            | (fft_power_modz > ant_threshold))
+            bad_ants2 = self.CalFits.antenna[inds[0]]
+            bad_ants = np.unique(bad_ants1.tolist() + bad_ants2.tolist())
+
+            # writing to metrics dict
+            self.metrics[p]['RMS'] = rms_amp_freq_p
+            self.metrics[p]['RMS_MODZ'] = rms_modz
+            self.metrics[p]['BAD_ANTS'] = bad_ants
+            self.metrics[p]['SKEWNESS'] = skewness[pol_dict[p]]
+            self.metrics[p]['DFFT_POWER'] = np.nansum(fft_amps)
+
+        self.metrics['PERCENT_UNUSED_BLS'] = self.unused_baselines_percent()
+        self.metrics['BAD_ANTS'] = np.unique(
+            self.metrics['XX']['BAD_ANTS'].tolist() + self.metrics['XX']['BAD_ANTS'].tolist())
+        self.metrics['PERCENT_NONCONVERGED_CHS'] = self.non_converging_percent()
+        self.metrics['PERCENT_BAD_ANTS'] = len(
+            self.metrics['BAD_ANTS']) / self.MetaFits.Nants * 100
+        self.metrics['RMS_CONVERGENCE'] = np.sqrt(np.nanmean(
+            self.CalFits.convergence ** 2) / len(self.CalFits.convergence))
+        self.metrics['SKEWNESS'] = np.nanmax(
+            [self.metrics['XX']['SKEWNESS'], self.metrics['YY']['SKEWNESS']])
+        self.metrics['RECEIVER_VAR'] = np.nanmax(
+            [vmrcv_chisq[pol_dict['XX']], vmrcv_chisq[pol_dict['YY']]])
+        self.metrics['DFFT_POWER'] = np.nanmean([self.metrics['XX']['DFFT_POWER'],
+                                                 self.metrics['YY']['DFFT_POWER']])
 
     def write_to(self, outfile=None):
         if outfile is None:
