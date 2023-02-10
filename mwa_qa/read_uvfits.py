@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from scipy.interpolate import CubicSpline
 from scipy import signal
 from astropy.io import fits
 import numpy as np
@@ -28,8 +29,7 @@ class UVfits(object):
             self.Nbls = len(self.baseline_array)
             self.obsid = vis_hdu.header["OBJECT"]
             assert self.Nbls == vis_hdu.header["GCOUNT"]
-            self.unique_baselines = np.sort(
-                np.unique(self.baseline_array))
+            self.unique_baselines = np.unique(self.baseline_array)
             self.Nbls = len(self.unique_baselines)
             self.channel_width = vis_hdu.header['CDELT4']
 
@@ -47,7 +47,7 @@ class UVfits(object):
             assert self.antpairs.shape[0] == self.Nbls
 
             self.freq_array = make_fits_axis_array(vis_hdu, 4)
-            self.Nfreqs = len(self.freq_array)
+            self.Nchan = len(self.freq_array)
 
             self.polarization_array = np.int32(
                 make_fits_axis_array(vis_hdu, 3))
@@ -68,7 +68,7 @@ class UVfits(object):
     def debug(self):
         print(
             f"Ntimes={self.Ntimes}, Nbls={self.Nblts}, \
-			Nfreqs={self.Nfreqs}, Npols={self.Npols}")
+			Nfreqs={self.Nchan}, Npols={self.Npols}")
 
     def auto_antpairs(self):
         return [(ap[0], ap[1]) for ap in
@@ -94,9 +94,9 @@ class UVfits(object):
         blt_idxs = np.sort(np.concatenate([
             self.blt_idxs_for_antpair(antpair) for antpair in antpairs]))
         reals = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 0].reshape(
-            (self.Ntimes, Npairs, self.Nfreqs, self.Npols))
+            (self.Ntimes, Npairs, self.Nchan, self.Npols))
         imags = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 1].reshape(
-            (self.Ntimes, Npairs, self.Nfreqs, self.Npols))
+            (self.Ntimes, Npairs, self.Nchan, self.Npols))
         return reals + 1j * imags
 
     def _flag_for_antpairs(self, vis_hdu, antpairs, weight_limit=5):
@@ -110,7 +110,7 @@ class UVfits(object):
         # weights are clauculate (1/PFB_GAINS * Nf * Nt)
         flags = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 2] < weight_limit
         return flags.reshape(
-            (self.Ntimes, Npairs, self.Nfreqs, self.Npols))
+            (self.Ntimes, Npairs, self.Nchan, self.Npols))
 
     def data_for_antpairs(self, antpairs):
         """
@@ -164,7 +164,7 @@ class UVfits(object):
 				  --num-channels {} \
 					{}".format(self.uvfits_path,
                 'test.npy', self.Ntimes, self.Nbls,
-                self.Nfreqs, bl_str)
+                self.Nchan, bl_str)
         os.system(command)
         d_array = np.load('test.npy')
         os.system('rm -rf test.npy')
@@ -178,38 +178,6 @@ class UVfits(object):
 
     def blackmanharris(self, n):
         return signal.windows.blackmanharris(n)
-
-    def delays(self):
-        # Evaluates geometric delay (fourier conjugate of frequency)
-        dfreq = self.freq_array[1] - self.freq_array[0]
-        delays = np.fft.fftfreq(self.Nfreqs, dfreq)
-        return np.fft.fftshift(delays * 1e9)
-
-    def fft_data_for_antpair(self, antpair, apply_flag=True):
-        data = self.data_for_antpair(antpair)
-        if apply_flag:
-            flag = self.flag_for_antpair(antpair)
-            data[flag] = np.nan
-        fft_data = copy.deepcopy(data)
-        _sh = data.shape
-        for t in range(_sh[0]):
-            for p in range(_sh[2]):
-                nonan_inds = np.where(~np.isnan(data[t, :, p]))[0]
-                window = self.blackmanharris(len(nonan_inds))
-                fft_data[t, nonan_inds, p] = np.fft.fftshift(
-                    np.fft.fft(data[t, nonan_inds, p] * window))
-                nan_inds = np.where(np.isnan(data[t, :, p]))
-                if len(nan_inds) > 0:
-                    fft_data[t, nan_inds[0], p] = np.nan
-        return fft_data
-
-    def fft_data_for_antpairs(self, antpairs, apply_flag=True):
-        fft_data = np.zeros((self.Ntimes, len(antpairs),
-                            self.Nfreqs, self.Npols), dtype=np.complex64)
-        for i, antpair in enumerate(antpairs):
-            fft_data[:, i, :, :] = self.fft_data_for_antpair(
-                antpair, apply_flag=apply_flag)
-        return fft_data
 
     def group_antpairs(self, antenna_positions, bl_tol):
         angroups = OrderedDict()
@@ -269,3 +237,44 @@ class UVfits(object):
                 angroups.keys()))]
         reds = OrderedDict([(key, angroups[key]) for key in sorted_keys])
         return reds
+
+    def delays(self):
+        # Evaluates geometric delay (fourier conjugate of frequency)
+        dfreq = self.freq_array[1] - self.freq_array[0]
+        delays = np.fft.fftfreq(self.Nchan, dfreq)
+        return np.fft.fftshift(delays * 1e9)
+
+    def interpolate_data(self, x, x_new, y):
+        f = CubicSpline(x, y)
+        return f(x_new)
+
+    def fft_data_for_antpair(self, antpair, apply_flag=True):
+        data = self.data_for_antpair(antpair)
+        flags = self.flag_for_antpair(antpair)
+        dflag = data * ~flags
+        if apply_flag:
+            flag = self.flag_for_antpair(antpair)
+            data[flag] = np.nan
+        fft_data = copy.deepcopy(data)
+        _sh = data.shape
+        for t in range(_sh[0]):
+            for p in range(_sh[2]):
+                try:
+                    inds = np.where(dflag[t, :, p] != 0.)[0]
+                    window = self.blackmanharris(self.Nchan)
+                    d_int = self.interpolate_data(
+                        inds, np.arange(self.Nchan), dflag[t, inds, p])
+                    d_fft = np.fft.fft(self.interpolate_data(
+                        inds, np.arange(self.Nchan), dflag[t, inds, p]) * window)
+                    fft_data[t, :, p] = np.fft.fftshift(d_fft)
+                except ValueError:
+                    fft_data[t, :, p] = np.nan
+        return fft_data
+
+    def fft_data_for_antpairs(self, antpairs, apply_flag=True):
+        fft_data = np.zeros((self.Ntimes, len(antpairs),
+                            self.Nchan, self.Npols), dtype=np.complex64)
+        for i, antpair in enumerate(antpairs):
+            fft_data[:, i, :, :] = self.fft_data_for_antpair(
+                antpair, apply_flag=apply_flag)
+        return fft_data
