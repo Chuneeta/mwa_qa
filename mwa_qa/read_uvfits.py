@@ -44,7 +44,8 @@ class UVfits(object):
                 (self.ant_1_array, self.ant_2_array), axis=1)
             self.antpairs = np.sort(
                 np.unique(self.antpairs, axis=0))
-            assert self.antpairs.shape[0] == self.Nbls
+            self.antpairs = [tuple(antp) for antp in self.antpairs]
+            assert len(self.antpairs) == self.Nbls
 
             self.freq_array = make_fits_axis_array(vis_hdu, 4)
             self.Nchan = len(self.freq_array)
