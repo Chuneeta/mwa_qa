@@ -15,7 +15,7 @@ class VisMetrics(object):
         self.metrics = OrderedDict()
         self.metrics['NANTS'] = self.uvf.Nants
         self.metrics['NTIMES'] = self.uvf.Ntimes
-        self.metrics['NFREQS'] = self.uvf.Nfreqs
+        self.metrics['NFREQS'] = self.uvf.Nchan
         self.metrics['NPOLS'] = self.uvf.Npols
         self.metrics['OBSID'] = self.uvf.obsid
         self.metrics['REDUNDANT'] = OrderedDict([
