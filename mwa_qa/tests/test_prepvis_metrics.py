@@ -158,10 +158,10 @@ class TestPrepvisMetrics(unittest.TestCase):
         vis = PrepvisMetrics(uvfits, metafits)
         vis._initialize_metrics_dict()
         self.assertTrue(list(vis.metrics.keys()), [
-                        'NANTS', 'NTIMES', 'NFREQS', 'NPOLS', 'OBSID', 'ANNUMBERS', 'XX', 'YY'])
+                        'NANTS', 'NTIMES', 'NCHAN', 'NPOLS', 'OBSID', 'ANNUMBERS', 'XX', 'YY'])
         self.assertEqual(vis.metrics['NANTS'], 128)
         self.assertEqual(vis.metrics['NTIMES'], 55)
-        self.assertEqual(vis.metrics['NFREQS'], 768)
+        self.assertEqual(vis.metrics['NCHAN'], 768)
         self.assertEqual(vis.metrics['NPOLS'], 4)
         self.assertEqual(vis.metrics['OBSID'], 'high_season1_2456545')
         np.testing.assert_equal(vis.metrics['ANNUMBERS'], np.array([0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,
@@ -180,7 +180,7 @@ class TestPrepvisMetrics(unittest.TestCase):
     def test_run_metrics(self):
         vis = PrepvisMetrics(uvfits, metafits)
         vis.run_metrics()
-        self.assertEqual(list(vis.metrics.keys()), ['NANTS', 'NTIMES', 'NFREQS', 'NPOLS', 'OBSID',
+        self.assertEqual(list(vis.metrics.keys()), ['NANTS', 'NTIMES', 'NCHAN', 'NPOLS', 'OBSID',
                          'ANNUMBERS', 'XX', 'YY', 'BAD_ANTS', 'BAD_ANTS_PERCENT', 'STATUS', 'THRESHOLD'])
         self.assertEqual(vis.metrics['THRESHOLD'], 3)
         np.testing.assert_equal(

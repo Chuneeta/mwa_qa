@@ -1,9 +1,11 @@
 from mwa_qa.read_image import Image
+from mwa_qa.data import DATA_PATH
+import os
 from astropy.io import fits
 import unittest
 import numpy as np
 
-image = '../../test_files/1061315688_calibrated-XX-image.fits'
+image = os.path.join(DATA_PATH, 'wsclean_1088806248_XX.fits')
 hdu = fits.open(image)
 data = hdu[0].data
 hdr = hdu[0].header
@@ -24,7 +26,7 @@ class TestImage(unittest.TestCase):
         img = Image(image)
         self.assertEqual(img.fitspath, image)
         self.assertEqual(img.pix_box, [100, 100])
-        self.assertEqual(img.image_ID, 1061315688)
+        self.assertEqual(img.image_ID, 1088806248)
         self.assertEqual(img.obsdate, hdr['DATE-OBS'])
         self.assertEqual(img.image_size, [_sh[2], _sh[3]])
         self.assertEqual(img.xcellsize, np.abs(hdr['CDELT1']))
@@ -50,7 +52,7 @@ class TestImage(unittest.TestCase):
     def test_src_pix(self):
         img = Image(image)
         src_pix = img.src_pix(srcpos1)
-        self.assertEqual(src_pix, (1527, 2121))
+        self.assertEqual(src_pix, (503, 1097))
         src_pix = img.src_pix(srcpos2)
         self.assertEqual(src_pix, (np.nan, np.nan))
 
@@ -58,18 +60,18 @@ class TestImage(unittest.TestCase):
         img = Image(image)
         src_flux = img.src_flux(srcpos1)
         np.testing.assert_almost_equal(
-            src_flux[0], 9.296637, decimal=4)
+            src_flux[0],  12.478443, decimal=4)
         np.testing.assert_almost_equal(
-            src_flux[1], 1.9123037369524847, decimal=4)
+            src_flux[1], 2.421341605808424, decimal=4)
         np.testing.assert_almost_equal(
-            src_flux[2], 2.7584093, decimal=4)
+            src_flux[2], 3.2465136, decimal=4)
         src_flux = img.src_flux(srcpos1, deconvol=True)
         np.testing.assert_almost_equal(
-            src_flux[0], 10.905096047396066, decimal=4)
+            src_flux[0], 13.432215458267166, decimal=4)
         np.testing.assert_almost_equal(
-            src_flux[1], 1.7746786728571757, decimal=4)
+            src_flux[1], 2.438110629663905, decimal=4)
         np.testing.assert_almost_equal(
-            src_flux[2], 0.00593149258694896, decimal=4)
+            src_flux[2], 0.016412654321857456, decimal=4)
         src_flux = img.src_flux(srcpos2)
         np.testing.assert_almost_equal(src_flux[0], np.nan)
         np.testing.assert_almost_equal(src_flux[1], np.nan)
@@ -89,8 +91,8 @@ class TestImage(unittest.TestCase):
         img = Image(image)
         gauss_par = img.fit_gaussian(srcpos1, 1)
         np.testing.assert_almost_equal(
-            gauss_par[0], 10.905096047396066, decimal=4)
+            gauss_par[0], 13.432215458267166, decimal=4)
         np.testing.assert_almost_equal(
-            gauss_par[1], 1.7746786728571757, decimal=4)
+            gauss_par[1], 2.438110629663905, decimal=4)
         np.testing.assert_almost_equal(
-            gauss_par[2], 0.00593149258694896, decimal=4)
+            gauss_par[2], 0.016412654321857456, decimal=4)
