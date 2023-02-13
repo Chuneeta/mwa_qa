@@ -58,8 +58,8 @@ class PrepvisMetrics(object):
             raise ValueError(
                 'Channel width/frequency resolution not supported')
         Ncoarse_chans = 32
-        nbands = np.split(np.zeros((self.uvf.Nfreqs), dtype=bool),
-                          int(self.uvf.Nfreqs / Ncoarse_chans))
+        nbands = np.split(np.zeros((self.uvf.Nchan), dtype=bool),
+                          int(self.uvf.Nchan / Ncoarse_chans))
         flags = []
         for band in nbands:
             band[flag_chans] = True
@@ -220,7 +220,7 @@ class PrepvisMetrics(object):
         self.metrics = OrderedDict()
         self.metrics['NANTS'] = self.uvf.Nants
         self.metrics['NTIMES'] = self.uvf.Ntimes
-        self.metrics['NFREQS'] = self.uvf.Nfreqs
+        self.metrics['NCHAN'] = self.uvf.Nchan
         self.metrics['NPOLS'] = self.uvf.Npols
         self.metrics['OBSID'] = self.uvf.obsid
         self.metrics['ANNUMBERS'] = self.uvf.antenna_numbers
