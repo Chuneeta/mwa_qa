@@ -59,10 +59,9 @@ if args.save:
         figname = args.json.replace('.json', '_rms.png')
     else:
         if args.figname.split('.')[-1] != 'png':
-            print(args.figname)
-            figname = args.figname + '.png'
+            figname = args.figname + '_rms.png'
         else:
-            figname = args.figname
+            figname = args.figname.replace('.png', '_rms.png')
 
     pylab.savefig(figname, dpi=args.dpi)
     pylab.close()
@@ -88,10 +87,9 @@ if args.save:
         figname = args.json.replace('.json', '_modz.png')
     else:
         if args.figname.split('.')[-1] != 'png':
-            print(args.figname)
-            figname = args.figname + '.png'
+            figname = args.figname + '_modz.png'
         else:
-            figname = args.figname
+            figname = args.figname.replace('.png', '_modz.png')
 
     pylab.savefig(figname, dpi=args.dpi)
     pylab.close()
