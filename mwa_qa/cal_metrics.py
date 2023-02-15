@@ -197,6 +197,7 @@ class CalMetrics(object):
             self.metrics[p]['RMS_MODZ'] = rms_modz
             self.metrics[p]['BAD_ANTS'] = bad_ants
             self.metrics[p]['SKEWNESS'] = skewness[pol_dict[p]]
+            self.metrics[p]['DFFT_AMPS'] = fft_amps
             self.metrics[p]['DFFT_POWER'] = np.nansum(fft_amps)
 
         self.metrics['PERCENT_UNUSED_BLS'] = self.unused_baselines_percent()
