@@ -229,6 +229,8 @@ class PrepvisMetrics(object):
 
     def run_metrics(self, manual_flags=True, ex_annumbers=[], threshold=3, niter=10):
         self._initialize_metrics_dict()
+        # summing over visibilities
+        data = self.uvf.data_for_antpairs(self.uvf.antpairs)
         # auto correlations
         autos = self.autos(manual_flags=manual_flags,
                            ex_annumbers=ex_annumbers)
@@ -254,18 +256,18 @@ class PrepvisMetrics(object):
                 elm for lt in bd_inds for elm in lt if len(lt) > 0]
             if len(bd_inds) > 0:
                 bad_ants.append(self.uvf.antenna_numbers[bd_inds_flatten])
-
             # writing stars to metrics instance
             self.metrics[p]['RMS'] = rms
             self.metrics[p]['MODZ_SCORE'] = modz_dict
             self.metrics[p]['BAD_ANTS'] = list(
                 itertools.chain.from_iterable(bad_ants))
-
+            # avergaing over the visibilities
+            self.metrics[p]['SUM'] = np.nanmean(data[:, :, :, pol_dict[p]])
+        
         # combining bad antennas from both pols to determine if the observation
         # should be considered for processing or not.
         # If %bad_ants > 50, obs is discarded
-        self.metrics['BAD_ANTS'] = np.unique(
-            self.metrics['XX']['BAD_ANTS'] + self.metrics['YY']['BAD_ANTS'])
+        self.metrics['BAD_ANTS'] = np.unique(self.metrics['XX']['BAD_ANTS'] + self.metrics['YY']['BAD_ANTS'])
         nants = self.metrics['NANTS'] - len(ex_annumbers)
         percent_bdants = len(self.metrics['BAD_ANTS']) / nants * 100
         self.metrics['BAD_ANTS_PERCENT'] = percent_bdants
