@@ -230,7 +230,7 @@ class PrepvisMetrics(object):
     def run_metrics(self, manual_flags=True, ex_annumbers=[], threshold=3, niter=10):
         self._initialize_metrics_dict()
         # summing over visibilities
-        data = self.uvf.data_for_antpairs(self.uvf.antpairs)
+        data = self.uvf.data_for_antpairs(self.uvf.antpairs[0:4000])
         # auto correlations
         autos = self.autos(manual_flags=manual_flags,
                            ex_annumbers=ex_annumbers)
@@ -262,7 +262,7 @@ class PrepvisMetrics(object):
             self.metrics[p]['BAD_ANTS'] = list(
                 itertools.chain.from_iterable(bad_ants))
             # avergaing over the visibilities
-            self.metrics[p]['SUM'] = np.nanmean(data[:, :, :, pol_dict[p]])
+            self.metrics[p]['MEAN'] = np.nanmean(np.abs(data[:, :, :, pol_dict[p]]))
         
         # combining bad antennas from both pols to determine if the observation
         # should be considered for processing or not.
