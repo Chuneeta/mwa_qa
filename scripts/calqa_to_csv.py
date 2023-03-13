@@ -16,10 +16,9 @@ parser.add_argument('--drop', dest='drop', action='store_true', default=False,
                     help='If set, will drop the columns used for filtering the data')
 args = parser.parse_args()
 
-main_keys = ['OBSID', 'STATUS', 'UNUSED_BLS', 'UNUSED_ANTS',
-             'UNUSED_CHS', 'NON_CONVERGED_CHS', 'CONVERGENCE_VAR']
-pol_keys = ['SKEWNESS_UVCUT', 'RMS_AMPVAR_FREQ', 'RMS_AMPVAR_ANT', 'DFFT_POWER',
-            'DFFT_POWER_HIGH_PKPL', 'DFFT_POWER_HIGH_NKPL', 'RECEIVER_CHISQVAR']
+main_keys = ['OBSID', 'PERCENT_UNUSED_BLS', 'PERCENT_BAD_ANTS', 'PERCENT_NONCONVERGED_CHS',
+             'RMS_CONVERGENCE', 'SKEWNESS', 'RECEIVER_VAR', 'DFFT_POWER']
+pol_keys = ['SKEWNESS', 'DFFT_POWER']
 
 # creating dataframe
 
@@ -56,13 +55,13 @@ df.index = df.index.astype(int)
 df.sort_index()
 if args.filter:
     # dropping obsids which fail to pass the calibration process
-    df.drop(df[df['STATUS'] == 'FAIL'].index, inplace=True)
-    df.drop(df[df['UNUSED_BLS'] > 30].index, inplace=True)
-    df.drop(df[df['UNUSED_ANTS'] > 30].index, inplace=True)
-    df.drop(df[df['UNUSED_CHS'] > 30].index, inplace=True)
-    df.drop(df[df['NON_CONVERGED_CHS'] > 30].index, inplace=True)
+    #df.drop(df[df['STATUS'] == 'FAIL'].index, inplace=True)
+    df.drop(df[df['PERCENT_UNUSED_BLS'] > 30].index, inplace=True)
+    df.drop(df[df['PERCENT_BAD_ANTS'] > 30].index, inplace=True)
+    #df.drop(df[df['UNUSED_CHS'] > 30].index, inplace=True)
+    df.drop(df[df['PERCENT_NONCONVERGED_CHS'] > 30].index, inplace=True)
 if args.drop:
     # dropping the above columns as well
-    df.drop(subset=['STATUS', 'UNUSED_BLS',
-            'UNUSED_ANTS', 'NON_CONVERGED_CHS'])
+    df.drop(columns=['PERCENT_UNUSED_BLS', 'PERCENT_BAD_ANTS',
+            'PERCENT_NONCONVERGED_CHS'], inplace=True)
 df.to_csv(outfile)
