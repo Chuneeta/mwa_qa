@@ -27,13 +27,15 @@ def read_csv(csvfile):
 
 
 df_csv = read_csv(args.csvfiles[0]).data
-for csv in args.csvfiles:
+
+for csv in args.csvfiles[1::]:
     print(csv)
     df1_csv = read_csv(csv)
     df_csv = pd.merge(df_csv, df1_csv.data,
                       left_index=True, right_index=True)
 
-print(df_csv)
+df_csv.index.name = 'OBSID'
+
 # saving dataframe
 if args.out is None:
     outfile = 'combined_qa.csv'
