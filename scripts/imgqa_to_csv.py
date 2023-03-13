@@ -58,8 +58,10 @@ for i, json in enumerate(args.json):
 
 if args.outfile is None:
     outfile = 'imgqa_combined.csv'
-elif outfile.split('.')[-1] != 'csv':
+elif args.outfile.split('.')[-1] != 'csv':
     outfile += '.csv'
+else:
+    outfile = args.outfile
 
 df = df.dropna(subset=['IMAGE_ID']).set_index('IMAGE_ID')
 df.index = df.index.astype(int)
