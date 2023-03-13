@@ -33,7 +33,7 @@ setup_args = {
     'packages':     ['mwa_qa'],
     'package_dir':  {'mwa_qa': 'mwa_qa'},
     'package_data': {'mwa_qa': data_files},
-    'install_requires': ['numpy>=1.16.5', 'numpy<1.23.0', 'scipy',
+    'install_requires': ['numpy', 'scipy',
                          'astropy>3.0.0', 'matplotlib>=2.2',
                          'python_dateutil>=2.6.0',
                          'pytest'],
