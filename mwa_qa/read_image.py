@@ -17,7 +17,7 @@ class Image(object):
         with fits.open(self.fitspath) as hdus:
             img_hdu = hdus['PRIMARY']
 
-            self.data_array = img_hdu.data.squeeze()
+            self.data_array = img_hdu.data
             self.header = img_hdu.header
             try:
                 self.image_ID = img_hdu.header['OBJECT']
@@ -47,7 +47,8 @@ class Image(object):
             self.rms = np.sqrt(np.nanmean(self.data_array ** 2))
             self.std = np.nanstd(self.data_array)
             self.polarization = img_hdu.header['CRVAL4']
-            region = self.data_array[0:self.pix_box[0], 0:self.pix_box[1]]
+            region = self.data_array[0, 0,
+                                     0:self.pix_box[0], 0:self.pix_box[1]]
             self.mean_across_box = np.nanmean(region)
             self.std_across_box = np.nanstd(region)
             self.rms_across_box = np.sqrt(np.nanmean(region ** 2))
@@ -104,7 +105,7 @@ class Image(object):
             l_axis = np.arange(self.image_size[0])
             m_axis = np.arange(self.image_size[1])
             ll, mm = np.meshgrid(l_axis, m_axis)
-            gauss_data = self.data_array
+            gauss_data = self.data_array.squeeze()
             gauss_data[~select] = 0
             gauss_data = gauss_data.reshape(self.image_size)
             peak_val = np.nanmax(gauss_data)
