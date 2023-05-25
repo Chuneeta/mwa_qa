@@ -43,7 +43,7 @@ class Metafits(object):
             self._check_data(tdata)
             tdata = tdata[self.pol_index(tdata)::2]
             self.antenna_positions = np.array(
-                [tdata['North'], tdata['East'], tdata['Height']]).T
+                [tdata['East'], tdata['North'], tdata['Height']]).T
             self.antenna_numbers = tdata['Antenna']
             self.antenna_names = tdata['TileName']
             self.tile_ids = tdata['Tile']
@@ -146,9 +146,9 @@ class Metafits(object):
 
     def _anpos_dict(self):
         anpos = self.antenna_positions
-        antenna_numbers = self.antenna_numbers
+        tile_ids = self.tile_ids
         anpos_dict = OrderedDict()
-        for i, ant in enumerate(antenna_numbers):
+        for i, ant in enumerate(tile_ids):
             anpos_dict[ant] = anpos[i].tolist()
         return anpos_dict
 
