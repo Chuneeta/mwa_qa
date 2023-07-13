@@ -33,7 +33,7 @@ class Test_Metatits(unittest.TestCase):
         self.assertEqual(m.delays, '6,4,2,0,6,4,2,0,6,4,2,0,6,4,2,0')
         self.assertEqual(m.antenna_positions.shape, (128, 3))
         np.testing.assert_almost_equal(
-            m.antenna_positions[0], np.array([-101.53, -585.675,  375.212]), decimal=3)
+            m.antenna_positions[0], np.array([-585.675, -101.53,  375.212]), decimal=3)
         self.assertEqual(len(m.antenna_names), 128)
         np.testing.assert_equal(m.antenna_names[0:4], np.array(
             ['Tile104', 'Tile103', 'Tile102', 'Tile101']))
@@ -58,9 +58,9 @@ class Test_Metatits(unittest.TestCase):
         self.assertEqual(len(m.flag_array), 128)
         np.testing.assert_equal(
             m.flag_array[0:4], np.array([0, 0, 0, 0]))
-        self.assertEqual(len(m.baseline_array), 8256)
+        self.assertEqual(len(m.antpairs), 8256)
         np.testing.assert_equal(
-            m.baseline_array[0:4], np.array([[0, 0], [0, 1], [0, 2], [0, 3]]))
+            m.antpairs[0:4], np.array([[0, 0], [0, 1], [0, 2], [0, 3]]))
         self.assertEqual(len(m.baseline_lengths), 8256)
         np.testing.assert_almost_equal(
             m.baseline_lengths[0:4], np.array([0., 516.6403, 712.5618, 737.1464]), decimal=4)
@@ -78,7 +78,7 @@ class Test_Metatits(unittest.TestCase):
     def test_antenna_position_for(self):
         m = Metafits(metafits)
         np.testing.assert_almost_equal(m.antenna_position_for(
-            0), np.array([265.814, -149.785,  377.011]), decimal=3)
+            0), np.array([-149.785,  265.814,  377.011]), decimal=3)
 
     def test_baseline_length_for(self):
         m = Metafits(metafits)
@@ -132,29 +132,45 @@ class Test_Metatits(unittest.TestCase):
                                                  23, 22, 21, 20, 27, 26, 25, 24, 31, 30, 29, 28,
                                                  43, 42, 41, 40, 47, 46, 45, 44, 35, 34, 33, 32,
                                                  39, 38, 37, 36]))
-        self.assertTrue((antpos[0] == [265.8139953613281, -
-                        149.78500366210938, 377.010986328125]))
+        self.assertTrue(
+            (antpos[0] == [-149.78500366210938, 265.8139953613281, 377.010986328125]))
 
     def test_group_antpairs(self):
         m = Metafits(metafits)
         ant_groups = m.group_antpairs(bl_tol=1)
         self.assertEqual(len(ant_groups), 7747)
-        self.assertTrue((ant_groups[(120, -199, 1)] == [(33, 34)]))
+        self.assertTrue((ant_groups[(65, -303, 3)] == [(56, 1)]))
 
     def test_redundant_antpairs(self):
         m = Metafits(metafits)
         reds = m.redundant_antpairs()
         self.assertEqual(len(list(reds.keys())), 27)
-        self.assertTrue((list(reds.keys()) == [(20, -35, 0), (31, 31, 0), (8, -45, 0), (61, 26, 0), (72, -4, 0),
-                                               (45, -85, 1), (96, -24, 0), (63,
-                                                                            88, 0), (84, 84, 0), (71, -101, 1),
-                                               (43, 122, 0), (125, 60,
-                                                              0), (124, 75, 0), (146, 17, 0),
-                                               (117, -102, -1), (153, -42,
-                                                                 0), (105, -121, 1), (48, -161, 1),
-                                               (173, 13, 0), (178, 45,
-                                                              0), (143, 127, 0), (213, 0, 0),
-                                               (212, 108, 0), (210, 191,
-                                                               0), (232, 226, 0), (32, -399, 0),
-                                               (157, -1647, -9)]))
-        self.assertTrue((reds[(20, -35, 0)] == [(26, 12), (2, 1)]))
+        self.assertTrue((list(reds.keys()) == [(35, -20, 0),
+                                               (31, 31, 0),
+                                               (45, -8, 0),
+                                               (26, 61, 0),
+                                               (4, -72, 0),
+                                               (85, -45, -1),
+                                               (24, -96, 0),
+                                               (88, 63, 0),
+                                               (84, 84, 0),
+                                               (101, -71, -1),
+                                               (122, 43, 0),
+                                               (60, 125, 0),
+                                               (75, 124, 0),
+                                               (17, 146, 0),
+                                               (102, -117, 1),
+                                               (42, -153, 0),
+                                               (121, -105, -1),
+                                               (161, -48, -1),
+                                               (13, 173, 0),
+                                               (45, 178, 0),
+                                               (127, 143, 0),
+                                               (0, 213, 0),
+                                               (108, 212, 0),
+                                               (191, 210, 0),
+                                               (226, 232, 0),
+                                               (399, -32, 0),
+                                               (1647, -157, 9)]))
+
+        self.assertTrue((reds[(35, -20, 0)] == [(26, 12), (2, 1)]))
