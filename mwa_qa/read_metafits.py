@@ -54,10 +54,10 @@ class Metafits(object):
             self.cable_length = [float(fl.split('_')[1]) for fl in flavors]
             self.BFTemps = tdata['BFTemps']
             self.flag_array = tdata['Flag']
-            self.baseline_array = np.sort(np.stack(
+            self.antpairs = np.sort(np.stack(
                 (np.tile(self.antenna_numbers, self.Nants), np.repeat(self.antenna_numbers, self.Nants)), axis=1), axis=1)
-            self.baseline_array = self.baseline_array[np.unique(
-                self.baseline_array, axis=0, return_index=True)[1]]
+            self.antpairs = self.antpairs[np.unique(
+                self.antpairs, axis=0, return_index=True)[1]]
             bl_indxs = np.sort(np.stack((np.tile(np.arange(self.Nants), self.Nants), np.repeat(
                 np.arange(self.Nants), self.Nants)), axis=1), axis=1)
             bl_indxs = bl_indxs[np.unique(
@@ -101,8 +101,8 @@ class Metafits(object):
         Returns length of the given baseline or antpair
         - antpair : Tuple of Antenna numbers
         """
-        ind = np.where((self.baseline_array[:, 0] == antpair[0]) & (
-            self.baseline_array[:, 1] == antpair[1]))
+        ind = np.where((self.antpairs[:, 0] == antpair[0]) & (
+            self.antpairs[:, 1] == antpair[1]))
         if (len(ind[0])) == 0:
             raise ValueError('Given antenna pair does not exist.')
         else:
@@ -113,14 +113,14 @@ class Metafits(object):
         Returns tile pairs/ baselines greater than the given cut
         - baseline_cut : Baseline length cut in metres
         """
-        return self.baseline_array[np.where(self.baseline_lengths > baseline_cut)[0]]
+        return self.antpairs[np.where(self.baseline_lengths > baseline_cut)[0]]
 
     def baselines_less_than(self, baseline_cut):
         """
         Returns tile pairs/ baselines greater than the given cut
         - baseline_cut : Baseline length cut in metres
         """
-        return self.baseline_array[np.where(self.baseline_lengths < baseline_cut)[0]]
+        return self.antpairs[np.where(self.baseline_lengths < baseline_cut)[0]]
 
     def antenna_numbers_for_receiver(self, receiver):
         """
@@ -146,9 +146,8 @@ class Metafits(object):
 
     def _anpos_dict(self):
         anpos = self.antenna_positions
-        tile_ids = self.tile_ids
         anpos_dict = OrderedDict()
-        for i, ant in enumerate(tile_ids):
+        for i, ant in enumerate(self.antenna_numbers):
             anpos_dict[ant] = anpos[i].tolist()
         return anpos_dict
 
