@@ -100,7 +100,7 @@ class UVfits(object):
             (self.Ntimes, Npairs, self.Nchan, self.Npols))
         return reals + 1j * imags
 
-    def _flag_for_antpairs(self, vis_hdu, antpairs, weight_limit=5):
+    def _flag_for_antpairs(self, vis_hdu, antpairs, weight_limit=0):
         """
         dimensions: [time, bl, freq, pol]
         """
@@ -109,7 +109,7 @@ class UVfits(object):
         blt_idxs = np.sort(np.concatenate([
             self.blt_idxs_for_antpair(antpair) for antpair in antpairs]))
         # weights are clauculate (1/PFB_GAINS * Nf * Nt)
-        flags = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 2] < weight_limit
+        flags = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 2] <= weight_limit
         return flags.reshape(
             (self.Ntimes, Npairs, self.Nchan, self.Npols))
 
@@ -148,28 +148,6 @@ class UVfits(object):
             vis_hdu = hdus['PRIMARY']
             result = self._flag_for_antpairs(vis_hdu, [antpair])
             return result[:, 0, :, :]
-
-    def _amps_phs_array(self, antpairs):
-        # using a rust wrapper to speed things up
-        blt_idxs = np.sort(np.concatenate([
-            self.blt_idxs_for_antpair(pair) for pair in antpairs
-        ]))
-        blt_idxs = blt_idxs[blt_idxs < self.Nbls]
-        bl_str = ''
-        for blt_id in blt_idxs:
-            bl_str += '{} '.format(blt_id)
-        command = "uvfits-rip -u {} \
-				  -o {} \
-				  --num-timesteps {}\
-				  --num-baselines-per-timestep {} \
-				  --num-channels {} \
-					{}".format(self.uvfits_path,
-                'test.npy', self.Ntimes, self.Nbls,
-                self.Nchan, bl_str)
-        os.system(command)
-        d_array = np.load('test.npy')
-        os.system('rm -rf test.npy')
-        return d_array
 
     def amplitude_array(self, antpairs):
         return self._amps_phs_array(antpairs)[:, :, :, 0]
