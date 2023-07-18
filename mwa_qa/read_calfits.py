@@ -15,9 +15,6 @@ class CalFits(object):
         - calfits_path:	Fits file readable by astropy containing
                     calibration solutions (support for hyperdrive
                     output only for now) and related information
-        - metafits_path:	Metafits with extension *.metafits containing
-                    information corresponding to the observation
-                        for which the calibration solutions is derived
         - pol:	Polarization, can be either 'X' or 'Y'. It should be
                 specified so that information associated
                 with the given pol is provided. Default is 'X'
