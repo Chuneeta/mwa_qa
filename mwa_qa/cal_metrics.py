@@ -125,6 +125,57 @@ class CalMetrics(object):
             rcv_chisq[i] = chisq
         return rcv_chisq
 
+    def delay_spectra_bls(self):
+        """
+        Returns FFT transformed of the per-baseline gain solutions sorted in ascending order of
+        the baseline lengths. The sorted baseline lengths also are returned.
+        NOTE: Autocorrelations are excluded
+        """
+
+        fft_gains = self.CalFits.fft_gains()
+        antpairs = self.MetaFits.antpairs
+        cross_bls = np.array(
+            [bl for bl in self.MetaFits.baseline_lengths if bl != 0.0])
+        inds = np.argsort(cross_bls)
+        cross_antpairs = np.array([tuple(antp)
+                                  for antp in antpairs if antp[0] != antp[1]])
+        cross_antpairs_sorted = cross_antpairs[inds]
+        cross_bls_sorted = cross_bls[inds]
+
+        dfft_array = np.zeros(
+            (fft_gains.shape[0], len(cross_antpairs_sorted), fft_gains.shape[2], fft_gains.shape[3]), dtype=fft_gains.dtype)
+
+        for j in range(8128):
+            dfft_array[:, j, :, :] = fft_gains[:, cross_antpairs_sorted[j][0],
+                                               :, :] * np.conj(fft_gains[:, cross_antpairs_sorted[j][1], :, :])
+
+        return cross_bls_sorted, dfft_array
+
+    def delay_spectra_bin(self, gain_array, baseline_lengths, resolution=10):
+        """
+        The input delay spectra is binned accroding to the baseline lengths
+        and the binned results are returned (binned delay spectra, baseline bins)
+        - gain_array: array containing the values to be binned,
+          should be 4-dimensional (ntime,nbls, nfreqs, npols)
+        - baseline_lengths: numpy.ndarray containing the basline lengths in ascending order
+          matching the same ordering as the gain array
+        -resolution: Binning resolution. Default is set to 10.       
+        """
+        bin_edges = np.arange(np.min(baseline_lengths),  np.max(
+            baseline_lengths) + resolution, resolution)
+        dspectra_bin = np.empty((gain_array.shape[0], len(
+            bin_edges), gain_array.shape[2], gain_array.shape[3]))
+        for i in range(len(bin_edges) - 1):
+            bin_low = bin_edges[i]
+            bin_high = bin_edges[i + 1]
+
+            inds = np.where((baseline_lengths >= bin_low) &
+                            (baseline_lengths < bin_high))
+            bin_data = np.nanmean(gain_array[:, inds[0], :, :], axis=1)
+            dspectra_bin[:, i, :, :] = bin_data
+
+        return bin_edges, dspectra_bin
+
     def _initialize_metrics_dict(self):
         """
         Initializes the metric dictionary with some of the default
