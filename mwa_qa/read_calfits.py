@@ -59,8 +59,8 @@ class CalFits(object):
                     ref_antenna = self._iterate_refant()
                     self.reference_antenna = ref_antenna
                 else:
-                    self.ref_antenna = ref_antenna
-                    self._check_refant()
+                    self.reference_antenna = ref_antenna
+                    # self._check_refant()
                 self.gain_array = self.normalized_gains()
             self.amplitudes = np.abs(self.gain_array)
             self.phases = np.angle(self.gain_array)

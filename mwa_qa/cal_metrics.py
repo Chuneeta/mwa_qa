@@ -223,6 +223,7 @@ class CalMetrics(object):
 
         for p in ['XX', 'YY']:
             rms_amp_freq_p = np.nanmean(rms_amp_freq, axis=0)[:, pol_dict[p]]
+            # print(rms_amp_freq_p)
             # calculating modified zscore
             rms_median = np.nanmedian(rms_amp_freq_p)
             rms_modz = (rms_amp_freq_p - rms_median) / \
