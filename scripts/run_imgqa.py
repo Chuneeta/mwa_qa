@@ -14,4 +14,4 @@ parser.add_argument('--out', help='json output path',
 args = parser.parse_args()
 m = ImgMetrics([*map(str, args.fits)])
 m.run_metrics(beam_const=args.const)
-m.write_to(args.out)
+m.write_to(str(args.out) if args.out else None)

@@ -16,4 +16,4 @@ parser.add_argument(
 args = parser.parse_args()
 m = CalMetrics(str(args.soln), str(args.metafits), args.pol)
 m.run_metrics()
-m.write_to(args.out)
+m.write_to(str(args.out) if args.out else None)

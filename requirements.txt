@@ -1,4 +1,13 @@
--r run-requirements.txt
-pytest~=4.6.7 # needed for python 2.7+3.4
-pytest-cov>=2.8.1
-pytest-randomly==1.2.3 # needed for python 2.7+3.4
+pytest
+pytest-cov
+pytest-randomly
+astropy
+matplotlib
+numpy
+pandas
+scipy
+seaborn
+six
+cthulhu
+gspread
+kneed

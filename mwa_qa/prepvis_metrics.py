@@ -49,21 +49,21 @@ class PrepvisMetrics(object):
         return flag_inds
 
     def _evaluate_edge_flags(self):
-        edges_ncut = self.uvf.channel_width / 40000.
-        if edges_ncut == 1:
-            flag_chans = [0, 1, 16, 30, 31]
-        elif edges_ncut == 2:
-            flag_chans = [0, 16, 31]
-        else:
-            raise ValueError(
-                'Channel width/frequency resolution not supported')
-        Ncoarse_chans = 32
-        nbands = np.split(np.zeros((self.uvf.Nchan), dtype=bool),
-                          int(self.uvf.Nchan / Ncoarse_chans))
-        flags = []
-        for band in nbands:
-            band[flag_chans] = True
-            flags.append(band)
+        cchan_bandwidth = 1_280_000
+        edge_bandwidth = 80_000
+        freq_res = self.uvf.channel_width
+        num_chans = self.uvf.Nchan
+        edge_chans = int(edge_bandwidth // freq_res)
+        num_fchans = int(cchan_bandwidth // freq_res)
+        num_cchans = int(num_chans // num_fchans)
+        center_fine_chan = num_fchans // 2
+        # start with all flags true
+        flags = np.full((num_cchans, num_fchans), True)
+        # unflag within edge chans
+        flags[:, edge_chans:-edge_chans] = False
+        # flag center fine chan
+        flags[:, center_fine_chan] = True
+
         return np.array(flags).flatten()
 
     def _plot_mode(self, data, mode):

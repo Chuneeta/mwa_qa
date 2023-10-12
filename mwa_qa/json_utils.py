@@ -32,5 +32,5 @@ def load_json(filename):
 
 
 def json_keys(filename):
-    data = load_metrics(filename)
+    data = load_json(filename)
     return list(data.keys())

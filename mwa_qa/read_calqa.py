@@ -1,6 +1,4 @@
 from mwa_qa import json_utils as ju
-from mpl_toolkits.axes_grid1.inset_locator import (
-    inset_axes, InsetPosition, mark_inset)
 import numpy as np
 import pylab
 import matplotlib as mpl
@@ -158,8 +156,8 @@ class CalQA(object):
         rms_yy = np.array(self.read_pol_key('YY', 'RMS'))
         fig = pylab.figure(figsize=(7, 5))
         fig.suptitle(self.obsid, size=15)
-        pylab.plot(rms_xx, linewidth=2, label='XX', color='dodgerblue')
-        pylab.plot(rms_yy, linewidth=2, label='YY', color='indianred')
+        pylab.semilogy(rms_xx, '.', linewidth=2, label='XX', color='dodgerblue')
+        pylab.semilogy(rms_yy, '.', linewidth=2, label='YY', color='indianred')
         pylab.xlabel('Antenna Number', fontsize=12)
         pylab.ylabel('Amplitude rms', fontsize=12)
         pylab.grid(ls='dotted')

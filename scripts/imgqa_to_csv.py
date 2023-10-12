@@ -56,6 +56,7 @@ for i, json in enumerate(args.json):
 
     df = df.append(row, ignore_index=True)
 
+outfile = args.outfile
 if args.outfile is None:
     outfile = 'imgqa_combined.csv'
 elif args.outfile.split('.')[-1] != 'csv':
