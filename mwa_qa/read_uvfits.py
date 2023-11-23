@@ -24,6 +24,9 @@ class UVfits(object):
         with fits.open(self.uvfits_path) as hdus:
             vis_hdu = hdus['PRIMARY']
 
+            # get the data array
+            self.data_array = vis_hdu.data['DATA'][:, 0, 0, :,
+                                                   :, 0] + 1j * vis_hdu.data['DATA'][:, 0, 0, :, :, 1]
             # the uvfits baseline of each row in the timestep-baseline axis
             self.baseline_array = np.int64(vis_hdu.data["BASELINE"])
             self.Nbls = len(self.baseline_array)
@@ -41,7 +44,7 @@ class UVfits(object):
             self.ant_1_array = (self.baseline_array
                                 - self.ant_2_array) // 256 - 1
             self.antpairs = np.stack(
-                (self.ant_1_array, self.ant_2_array), axis=1)
+                (self.ant_1_array, self.ant_2_array), axis=1) 
             self.antpairs = np.sort(
                 np.unique(self.antpairs, axis=0))
             self.antpairs = [tuple(antp) for antp in self.antpairs]
