@@ -30,10 +30,10 @@ ankeys = list(anpos_dict.keys())
 # plotting the antenna positions
 fig = pylab.figure()
 for k in ankeys:
-    pylab.scatter(anpos_dict[k][0], anpos_dict[k][1],
+    pylab.scatter(anpos_dict[k][1], anpos_dict[k][0],
                   marker=args.marker, c=args.color, s=args.size)
     if args.annot:
-        pylab.annotate(k, (anpos_dict[k][0], anpos_dict[k][1]))
+        pylab.annotate(k, (anpos_dict[k][1], anpos_dict[k][0]))
 pylab.xlabel('East-West (m)')
 pylab.ylabel('North-West (m)')
 pylab.tick_params(labelsize=10, direction='in', length=4, width=2)
