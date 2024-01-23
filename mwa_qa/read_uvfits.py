@@ -44,7 +44,7 @@ class UVfits(object):
             self.ant_1_array = (self.baseline_array
                                 - self.ant_2_array) // 256 - 1
             self.antpairs = np.stack(
-                (self.ant_1_array, self.ant_2_array), axis=1) 
+                (self.ant_1_array, self.ant_2_array), axis=1)
             self.antpairs = np.sort(
                 np.unique(self.antpairs, axis=0))
             self.antpairs = [tuple(antp) for antp in self.antpairs]
