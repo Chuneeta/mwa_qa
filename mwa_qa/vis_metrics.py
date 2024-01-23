@@ -15,6 +15,15 @@ def unique_elm(tup_list):
     return unq_list
 
 
+def converter(input_list, output_list):
+    for elements in input_list:
+        if type(elements) == list:
+            converter(elements, output_list)
+        else:
+            output_list.append(elements)
+    return output_list
+
+
 class VisMetrics(object):
     def __init__(self, uvfits_path):
         self.uvfits_path = uvfits_path
@@ -37,6 +46,7 @@ class VisMetrics(object):
         # redundant baselines
         red_dict = self.uvf.redundant_antpairs()
         red_keys = list(red_dict.keys())
+        self.metrics['REDUNDANT']['RED_GROUPS'] = []
         self.metrics['REDUNDANT']['RED_PAIRS'] = []
         self.metrics['REDUNDANT']['THRESHOLD'] = threshold
         for p in ['XX', 'YY']:
@@ -51,7 +61,9 @@ class VisMetrics(object):
                 # selecting redundant grouos with at least
                 # 10 redundant baselines
                 if len(red_values[i]) > nbl_limit:
-                    self.metrics['REDUNDANT']['RED_PAIRS'].append(key)
+                    self.metrics['REDUNDANT']['RED_GROUPS'].append(key)
+                    self.metrics['REDUNDANT']['RED_PAIRS'].append(
+                        red_values[i])
                     d = self.uvf.data_for_antpairs(red_values[i])
                     f = self.uvf.flag_for_antpairs(red_values[i])
                     d[f] = np.nan
@@ -70,7 +82,8 @@ class VisMetrics(object):
                         self.metrics['REDUNDANT'][p]['POOR_BLS_INDS'].append(
                             inds[0].tolist())
                         if len(inds[0]) > 0:
-                            poor_bls = red_values[i][inds[0][0]]
+                            poor_bls = [red_values[i][inds[0][k]]
+                                        for k in range(len(inds[0]))]
                             self.metrics['REDUNDANT'][p]['POOR_BLS'].append(
                                 poor_bls)
 
@@ -80,7 +93,7 @@ class VisMetrics(object):
                 self.metrics['REDUNDANT']['YY']['POOR_BLS'])
             poor_bls_all = self.metrics['REDUNDANT']['XX']['POOR_BLS'] + \
                 self.metrics['REDUNDANT']['YY']['POOR_BLS']
-            self.metrics['POOR_BLS'] = unique_elm(poor_bls_all)
+            self.metrics['POOR_BLS'] = converter(unique_elm(poor_bls_all), [])
             self.metrics['NPOOR_BLS'] = len(poor_bls_all)
 
     def write_to(self, outfile=None):
