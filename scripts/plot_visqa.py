@@ -58,56 +58,6 @@ else:
     titlename = ''.join(filter(str.isdigit, args.json))
 
 
-modz_gridxx = np.zeros((128, 128))
-modz_gridyy = np.zeros((128, 128))
-modz_gridxx[:, :] = np.nan
-modz_gridyy[:, :] = np.nan
-for i, antp in enumerate(red_pairs):
-    for j, (a1, a2) in enumerate(antp):
-        group_number = search_group(red_pairs, (a1, a2))
-        modz_gridxx[a1, a2] = modz_xx[group_number][j]
-        modz_gridyy[a1, a2] = modz_yy[group_number][j]
-
-ig = pylab.figure(figsize=(10, 5))
-pylab.suptitle('Modified zscore - {}'.format(titlename))
-ax = pylab.subplot(121)
-im = ax.imshow(modz_gridxx, aspect='auto',
-               cmap='viridis', vmin=-3.5, vmax=3.5)
-ax.set_xlabel('Antenna 1')
-ax.set_ylabel('Antenna 2')
-ax.set_title('East West (XX)')
-ax.tick_params(labelsize=10, direction='in', length=4, width=2)
-ax.set_xlim(57, 128)
-ax.set_ylim(57, 128)
-pylab.colorbar(im)
-
-ax = pylab.subplot(122)
-im = ax.imshow(modz_gridyy, aspect='auto',
-               cmap='viridis', vmin=-3.5, vmax=3.5, origin='lower')
-ax.set_xlabel('Antenna 1')
-ax.set_ylabel('Antenna 2')
-ax.tick_params(labelsize=10, direction='in', length=4, width=2)
-ax.set_title('North South (YY)')
-ax.set_xlim(57, 128)
-ax.set_ylim(57, 128)
-pylab.colorbar(im)
-pylab.subplots_adjust(hspace=0.2, left=0.15)
-
-if args.save:
-    if args.figname is None:
-        figname = args.json.replace('.json', '_modzgrid.png')
-    else:
-        if args.figname.split('.')[-1] != 'png':
-            figname = args.figname + '_modzgrid.png'
-        else:
-            figname = args.figname.split('.')[-2] + '_modzgrid.png'
-
-    pylab.savefig(figname, dpi=args.dpi)
-    pylab.close()
-else:
-    pylab.show()
-
-
 # plotting chisq
 fig = pylab.figure(figsize=(7, 5))
 fig.suptitle(titlename, size=15)
@@ -118,10 +68,7 @@ for i in range(len(amp_chisq_xx)):
     if len(inds_xx[i]) > 0:
         ax.semilogy(np.ones(len(inds_xx[i])) * i,
                     np.array(amp_chisq_xx[i])[inds_xx[i]], 'rx')
-    # inds = [np.array(poor_bls_xx[i])
-    # print(inds)
-    # ax.semilogy(np.ones((len(poor_bls_xx[i]))) * i,
-    # amp_chisq_xx[i][np.array(poor_bls_xx[i])[:, 1]], 's', color = 'r', alpha = 0.4)
+
 ax.set_ylabel('CHISQ (XX)')
 ax.grid(ls='dotted')
 ax.set_ylim(10**1.5, 10**5)
@@ -186,6 +133,56 @@ if args.save:
             figname = args.figname + '_modz.png'
         else:
             figname = args.figname.split('.')[-2] + '_modz.png'
+
+    pylab.savefig(figname, dpi=args.dpi)
+    pylab.close()
+else:
+    pylab.show()
+
+# plotting modz grid
+modz_gridxx = np.zeros((128, 128))
+modz_gridyy = np.zeros((128, 128))
+modz_gridxx[:, :] = np.nan
+modz_gridyy[:, :] = np.nan
+for i, antp in enumerate(red_pairs):
+    for j, (a1, a2) in enumerate(antp):
+        group_number = search_group(red_pairs, (a1, a2))
+        modz_gridxx[a1, a2] = modz_xx[group_number][j]
+        modz_gridyy[a1, a2] = modz_yy[group_number][j]
+
+fig = pylab.figure(figsize=(10, 5))
+pylab.suptitle('Modified zscore - {}'.format(titlename))
+ax = pylab.subplot(121)
+im = ax.imshow(modz_gridxx, aspect='auto',
+               cmap='viridis', vmin=-3.5, vmax=3.5)
+ax.set_xlabel('Antenna 1')
+ax.set_ylabel('Antenna 2')
+ax.set_title('East West (XX)')
+ax.tick_params(labelsize=10, direction='in', length=4, width=2)
+ax.set_xlim(57, 128)
+ax.set_ylim(57, 128)
+pylab.colorbar(im)
+
+ax = pylab.subplot(122)
+im = ax.imshow(modz_gridyy, aspect='auto',
+               cmap='viridis', vmin=-3.5, vmax=3.5, origin='lower')
+ax.set_xlabel('Antenna 1')
+ax.set_ylabel('Antenna 2')
+ax.tick_params(labelsize=10, direction='in', length=4, width=2)
+ax.set_title('North South (YY)')
+ax.set_xlim(57, 128)
+ax.set_ylim(57, 128)
+pylab.colorbar(im)
+pylab.subplots_adjust(hspace=0.2, left=0.15)
+
+if args.save:
+    if args.figname is None:
+        figname = args.json.replace('.json', '_modzgrid.png')
+    else:
+        if args.figname.split('.')[-1] != 'png':
+            figname = args.figname + '_modzgrid.png'
+        else:
+            figname = args.figname.split('.')[-2] + '_modzgrid.png'
 
     pylab.savefig(figname, dpi=args.dpi)
     pylab.close()
