@@ -7,11 +7,11 @@ import numpy as np
 pol_dict = {'XX': 0, 'YY': 1, 'XY': 2, 'YX': 3}
 
 
-def unique_elm(tup_list):
+def unique_elm(input_list):
     unq_list = []
-    for tup in tup_list:
-        if tup not in unq_list:
-            unq_list.append(tup)
+    for elm in input_list:
+        if elm not in unq_list:
+            unq_list.append(elm)
     return unq_list
 
 
@@ -22,6 +22,12 @@ def converter(input_list, output_list):
         else:
             output_list.append(elements)
     return output_list
+
+
+def search_group(red_pairs, antp):
+    for i, gp in enumerate(red_pairs):
+        if antp in gp:
+            return i
 
 
 class VisMetrics(object):
@@ -87,14 +93,40 @@ class VisMetrics(object):
                             self.metrics['REDUNDANT'][p]['POOR_BLS'].append(
                                 poor_bls)
 
-            self.metrics['REDUNDANT']['XX']['NPOOR_BLS'] = len(
-                self.metrics['REDUNDANT']['XX']['POOR_BLS'])
-            self.metrics['REDUNDANT']['YY']['NPOOR_BLS'] = len(
-                self.metrics['REDUNDANT']['YY']['POOR_BLS'])
-            poor_bls_all = self.metrics['REDUNDANT']['XX']['POOR_BLS'] + \
-                self.metrics['REDUNDANT']['YY']['POOR_BLS']
-            self.metrics['POOR_BLS'] = converter(unique_elm(poor_bls_all), [])
-            self.metrics['NPOOR_BLS'] = len(poor_bls_all)
+        self.metrics['REDUNDANT']['XX']['NPOOR_BLS'] = len(
+            self.metrics['REDUNDANT']['XX']['POOR_BLS'])
+        self.metrics['REDUNDANT']['YY']['NPOOR_BLS'] = len(
+            self.metrics['REDUNDANT']['YY']['POOR_BLS'])
+        poor_bls_all = self.metrics['REDUNDANT']['XX']['POOR_BLS'] + \
+            self.metrics['REDUNDANT']['YY']['POOR_BLS']
+        self.metrics['POOR_BLS'] = converter(unique_elm(poor_bls_all), [])
+        self.metrics['NPOOR_BLS'] = len(poor_bls_all)
+
+        # finding the antennas contributing to the poor bls
+        modz_gridxx = np.zeros((128, 128))
+        modz_gridyy = np.zeros((128, 128))
+        for i, antp in enumerate(self.metrics['REDUNDANT']['RED_PAIRS']):
+            for j, (a1, a2) in enumerate(antp):
+                group_number = search_group(
+                    self.metrics['REDUNDANT']['RED_PAIRS'], (a1, a2))
+                modz_gridxx[a1, a2] = self.metrics['REDUNDANT']['XX']['MODZ'][group_number][j]
+                modz_gridyy[a1, a2] = self.metrics['REDUNDANT']['YY']['MODZ'][group_number][j]
+
+        modz_xx_sum = np.sum(modz_gridxx, axis=1)
+        modz_yy_sum = np.sum(modz_gridyy, axis=1)
+        lthreshxx_sum = np.nanmean(modz_xx_sum) - 3 * np.nanstd(modz_xx_sum)
+        uthreshxx_sum = np.nanmean(modz_xx_sum) + 3 * np.nanstd(modz_xx_sum)
+        lthreshyy_sum = np.nanmean(modz_yy_sum) - 3 * np.nanstd(modz_yy_sum)
+        uthreshyy_sum = np.nanmean(modz_yy_sum) + 3 * np.nanstd(modz_yy_sum)
+        inds_xx = np.where((modz_xx_sum < lthreshxx_sum) |
+                           (modz_xx_sum > uthreshxx_sum))
+        inds_yy = np.where((modz_yy_sum < lthreshyy_sum) |
+                           (modz_yy_sum > uthreshyy_sum))
+        self.metrics['REDUNDANT']['XX']['POOR_ANTS'] = inds_xx[0].tolist()
+        self.metrics['REDUNDANT']['YY']['POOR_ANTS'] = inds_yy[0].tolist()
+        self.metrics['POOR_ANTS'] = unique_elm(self.metrics['REDUNDANT']['XX']['POOR_ANTS'] +
+                                               self.metrics['REDUNDANT']['YY']['POOR_ANTS'])
+        self.metrics['NPOOR_ANTS'] = len(self.metrics['POOR_ANTS'])
 
     def write_to(self, outfile=None):
         if outfile is None:
