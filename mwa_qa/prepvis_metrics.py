@@ -204,7 +204,8 @@ class PrepvisMetrics(object):
         mod_zscore = self.calculate_mod_zscore(data)
         inds = np.where((mod_zscore < -threshold)
                         | (mod_zscore > threshold))
-        bad_inds.append(inds[0])
+        if len(inds[0]) > 0:
+            bad_inds.append(inds[0].tolist())
         count = 1
         modz_dict[count - 1] = mod_zscore
         while (count <= niter and len(inds[0]) > 0):
@@ -212,8 +213,9 @@ class PrepvisMetrics(object):
             mod_zscore = self.calculate_mod_zscore(data)
             inds = np.where(np.abs(mod_zscore) > threshold)
             modz_dict[count] = mod_zscore
-            bad_inds.append(inds[0])
-            count += 1
+            if len(inds[0]) > 0:
+                bad_inds.append(inds[0].tolist())
+                count += 1
         return modz_dict, np.array(bad_inds).flatten()
 
     def _initialize_metrics_dict(self):
@@ -250,8 +252,7 @@ class PrepvisMetrics(object):
             # calculating modifed z-score
             modz_dict, bd_inds = self.iterative_mod_zscore(
                 autos_amps_norm[:, :, pol_dict[p]], threshold=threshold, niter=niter)
-            bd_inds_flatten = [
-                elm for lt in bd_inds for elm in lt if len(lt) > 0]
+            bd_inds_flatten = np.array(bd_inds)
             if len(bd_inds) > 0:
                 bad_ants.append(self.uvf.antenna_numbers[bd_inds_flatten])
             # writing stars to metrics instance
