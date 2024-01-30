@@ -41,6 +41,7 @@ nant = metrics['NANTS']
 
 # amplitude chisquare
 colors = list(mpl.colors.XKCD_COLORS.values())
+threshold = redundant_met['THRESHOLD']
 amp_chisq_xx = redundant_met['XX']['AMP_CHISQ']
 amp_chisq_yy = redundant_met['YY']['AMP_CHISQ']
 modz_xx = redundant_met['XX']['MODZ']
@@ -112,8 +113,8 @@ ax = pylab.subplot(211)
 for i in range(len(amp_chisq_xx)):
     ax.plot(np.ones((len(amp_chisq_xx[i])))
             * i, modz_xx[i], '.', color=colors[i], alpha=0.7)
-ax.axhline(y=-3.5, ls='dashed', color='red')
-ax.axhline(y=3.5, ls='dashed', color='red')
+ax.axhline(y=-threshold, ls='dashed', color='red')
+ax.axhline(y=threshold, ls='dashed', color='red')
 ax.set_ylabel('MOD ZSCORE (XX)')
 ax.grid(ls='dotted')
 ax.set_ylim(-8, 8)
@@ -125,8 +126,8 @@ for i in range(len(amp_chisq_yy)):
 ax.set_ylabel('MOD ZSCORE (YY)')
 ax.grid(ls='dotted')
 ax.set_ylim(-7, 7)
-ax.axhline(y=-3.5, ls='dashed', color='red')
-ax.axhline(y=3.5, ls='dashed', color='red')
+ax.axhline(y=-threshold, ls='dashed', color='red')
+ax.axhline(y=threshold, ls='dashed', color='red')
 ax.tick_params(labelsize=10, direction='in', length=4, width=2)
 ax.set_xlabel('Group Number')
 pylab.subplots_adjust(hspace=0, left=0.15)
