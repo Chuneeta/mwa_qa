@@ -10,13 +10,18 @@ pol_dict = {'XX': 0, 'YY': 1, 'XY': 2, 'YX': 3}
 
 
 class PrepvisMetrics(object):
-    def __init__(self, uvfits_path, metafits_path):
+    def __init__(self, uvfits_path, metafits_path, ex_annumbers=[], edge_flagging=True, antenna_flags=False, cutoff_threshold=3, niter=10):
         self.uvfits_path = uvfits_path
         self.metafits_path = metafits_path
         self.uvf = UVfits(self.uvfits_path)
         self.meta = Metafits(self.metafits_path)
+        self.ex_annumbers = ex_annumbers
+        self.edge_flagging = edge_flagging
+        self.antenna_flags = antenna_flags
+        self.cutoff_threshold = cutoff_threshold
+        self.niter = niter
 
-    def autos(self, manual_flags, ex_annumbers=[]):
+    def autos(self):
         auto_antpairs = self.uvf.auto_antpairs()
         autos = self.uvf.data_for_antpairs(
             auto_antpairs)  # (only xx and yy pols)
@@ -24,7 +29,7 @@ class PrepvisMetrics(object):
         # flags are properly propages for the autocorrelations, therefore
         # we are mually flagging the band edges and centre frequency only
         # for obsids below 13*
-        if manual_flags:
+        if self.edge_flagging:
             flags = self._evaluate_edge_flags()
             flags = flags[np.newaxis, np.newaxis, :, np.newaxis]
             flags = flags.repeat(_sh[0], axis=0).repeat(
@@ -32,8 +37,8 @@ class PrepvisMetrics(object):
         else:
             flags = np.zeros((_sh), dtype=bool)
         autos[flags] = np.nan
-        if len(ex_annumbers) > 0:
-            autos[:, ex_annumbers, :, :] = np.nan
+        if len(self.ex_annumbers) > 0:
+            autos[:, self.ex_annumbers, :, :] = np.nan
         # applying flags from metafits
             ind = self.flags_from_metafits()
             autos[:, ind, :, :] = np.nan
@@ -80,10 +85,8 @@ class PrepvisMetrics(object):
         else:
             raise ValueError("mode {} is not recognized".format(mode))
 
-    def plot_spectra_across_chan(self, freq_chan, mode='log',
-                                 manual_flags=True, ex_annumbers=[], save=None, figname=None):
-        autos = self.autos(manual_flags=manual_flags,
-                           ex_annumbers=ex_annumbers)
+    def plot_spectra_across_chan(self, freq_chan, mode='log', save=None, figname=None):
+        autos = self.autos()
         _sh = autos.shape
         plot_data = self._plot_mode(
             autos[:, :, freq_chan, :], mode=mode)
@@ -110,10 +113,8 @@ class PrepvisMetrics(object):
         else:
             pylab.show()
 
-    def plot_spectra_across_time(self, timestamp, mode='log',
-                                 manual_flags=True, ex_annumbers=[], save=None, figname=None):
-        autos = self.autos(manual_flags=manual_flags,
-                           ex_annumbers=ex_annumbers)
+    def plot_spectra_across_time(self, timestamp, mode='log', save=None, figname=None):
+        autos = self.autos()
         _sh = autos.shape
         plot_data = self._plot_mode(
             autos[timestamp, :, :, :], mode=mode)
@@ -140,9 +141,9 @@ class PrepvisMetrics(object):
         else:
             pylab.show()
 
-    def plot_spectra_2D(self, annumber, manual_flags=True, mode='log',
+    def plot_spectra_2D(self, annumber, mode='log',
                         save=None, figname=None):
-        autos = self.autos(manual_flags=manual_flags)
+        autos = self.autos()
         plot_data = self._plot_mode(
             autos[:, annumber, :, :], mode=mode)
         fig = pylab.figure(figsize=(8, 7))
@@ -225,15 +226,19 @@ class PrepvisMetrics(object):
         self.metrics['NCHAN'] = self.uvf.Nchan
         self.metrics['NPOLS'] = self.uvf.Npols
         self.metrics['OBSID'] = self.uvf.obsid
-        self.metrics['ANNUMBERS'] = self.uvf.antenna_numbers
+        if self.antenna_flags:
+            self.metrics['ANNUMBERS'] = np.delete(
+                self.uvf.antenna_numbers, self.flags_from_metafits())
+        else:
+            self.metrics['ANNUMBERS'] = self.uvf.antenna_numbers
+        self.metrics['NANTS'] = len(self.metrics['ANNUMBERS'])
         self.metrics['XX'] = OrderedDict()
         self.metrics['YY'] = OrderedDict()
 
-    def run_metrics(self, manual_flags=True, ex_annumbers=[], threshold=3, niter=10):
+    def run_metrics(self):
         self._initialize_metrics_dict()
         # auto correlations
-        autos = self.autos(manual_flags=manual_flags,
-                           ex_annumbers=ex_annumbers)
+        autos = self.autos()
         # amplitude averaged over time
         autos_amps = np.abs(np.nanmean(autos, axis=0))
         # normalizing by the median
@@ -244,17 +249,17 @@ class PrepvisMetrics(object):
             _, bd_inds = self.flag_occupancy(
                 autos_amps_norm[:, :, pol_dict[p]])
             if len(bd_inds) > 0:
-                bad_ants.append(self.uvf.antenna_numbers[bd_inds])
+                bad_ants.append(self.metrics['ANNUMBERS'][bd_inds])
             autos_amps_norm[bd_inds, :, pol_dict[p]] = np.nan
             # calculating root mean square
             rms = self.calculate_rms(
                 autos_amps_norm[:, :, pol_dict[p]])
             # calculating modifed z-score
             modz_dict, bd_inds = self.iterative_mod_zscore(
-                autos_amps_norm[:, :, pol_dict[p]], threshold=threshold, niter=niter)
+                autos_amps_norm[:, :, pol_dict[p]], threshold=self.cutoff_threshold, niter=self.niter)
             bd_inds_flatten = np.array(bd_inds)
             if len(bd_inds) > 0:
-                bad_ants.append(self.uvf.antenna_numbers[bd_inds_flatten])
+                bad_ants.append(self.metrics['ANNUMBERS'][bd_inds_flatten])
             # writing stars to metrics instance
             self.metrics[p]['RMS'] = rms
             self.metrics[p]['MODZ_SCORE'] = modz_dict
@@ -266,11 +271,11 @@ class PrepvisMetrics(object):
         # If %bad_ants > 50, obs is discarded
         self.metrics['BAD_ANTS'] = np.unique(
             self.metrics['XX']['BAD_ANTS'] + self.metrics['YY']['BAD_ANTS'])
-        nants = self.metrics['NANTS'] - len(ex_annumbers)
+        nants = self.metrics['NANTS'] - len(self.ex_annumbers)
         percent_bdants = len(self.metrics['BAD_ANTS']) / nants * 100
         self.metrics['BAD_ANTS_PERCENT'] = percent_bdants
         self.metrics['STATUS'] = 'GOOD' if percent_bdants < 50 else 'BAD'
-        self.metrics['THRESHOLD'] = threshold
+        self.metrics['THRESHOLD'] = self.cutoff_threshold
 
     def write_to(self, outfile=None):
         if outfile is None:
