@@ -31,9 +31,10 @@ def search_group(red_pairs, antp):
 
 
 class VisMetrics(object):
-    def __init__(self, uvfits_path):
+    def __init__(self, uvfits_path, cutoff_threshold=3.5):
         self.uvfits_path = uvfits_path
         self.uvf = UVfits(uvfits_path)
+        self.cutoff_threshold = cutoff_threshold
 
     def _initialize_metrics_dict(self):
         self.metrics = OrderedDict()
@@ -47,14 +48,14 @@ class VisMetrics(object):
         self.metrics['REDUNDANT'] = OrderedDict([
             ('XX', OrderedDict()), ('YY', OrderedDict())])
 
-    def run_metrics(self, nbl_limit=10, threshold=3.5):
+    def run_metrics(self, nbl_limit=10):
         self._initialize_metrics_dict()
         # redundant baselines
         red_dict = self.uvf.redundant_antpairs()
         red_keys = list(red_dict.keys())
         self.metrics['REDUNDANT']['RED_GROUPS'] = []
         self.metrics['REDUNDANT']['RED_PAIRS'] = []
-        self.metrics['REDUNDANT']['THRESHOLD'] = threshold
+        self.metrics['REDUNDANT']['THRESHOLD'] = self.cutoff_threshold
         for p in ['XX', 'YY']:
             self.metrics['REDUNDANT'][p]['POOR_BLS'] = []
             self.metrics['REDUNDANT'][p]['AMP_CHISQ'] = []
@@ -80,7 +81,7 @@ class VisMetrics(object):
                     modz = stats.zscore(amp_chisq)
                     for p in ['XX', 'YY']:
                         inds = np.where(
-                            (modz[:, pol_dict[p]] < -1 * threshold) | (modz[:, pol_dict[p]] > threshold))
+                            (modz[:, pol_dict[p]] < -1 * self.cutoff_threshold) | (modz[:, pol_dict[p]] > self.cutoff_threshold))
                         self.metrics['REDUNDANT'][p]['AMP_CHISQ'].append(
                             amp_chisq[:, pol_dict[p]].tolist())
                         self.metrics['REDUNDANT'][p]['MODZ'].append(
@@ -103,8 +104,8 @@ class VisMetrics(object):
         self.metrics['NPOOR_BLS'] = len(poor_bls_all)
 
         # finding the antennas contributing to the poor bls
-        modz_gridxx = np.zeros((128, 128))
-        modz_gridyy = np.zeros((128, 128))
+        modz_gridxx = np.zeros((self.metrics['NANTS'], self.metrics['NANTS']))
+        modz_gridyy = np.zeros((self.metrics['NANTS'], self.metrics['NANTS']))
         for i, antp in enumerate(self.metrics['REDUNDANT']['RED_PAIRS']):
             for j, (a1, a2) in enumerate(antp):
                 group_number = search_group(
@@ -112,12 +113,17 @@ class VisMetrics(object):
                 modz_gridxx[a1, a2] = self.metrics['REDUNDANT']['XX']['MODZ'][group_number][j]
                 modz_gridyy[a1, a2] = self.metrics['REDUNDANT']['YY']['MODZ'][group_number][j]
 
+        # sigma rule
         modz_xx_sum = np.sum(modz_gridxx, axis=1)
         modz_yy_sum = np.sum(modz_gridyy, axis=1)
-        lthreshxx_sum = np.nanmean(modz_xx_sum) - 3 * np.nanstd(modz_xx_sum)
-        uthreshxx_sum = np.nanmean(modz_xx_sum) + 3 * np.nanstd(modz_xx_sum)
-        lthreshyy_sum = np.nanmean(modz_yy_sum) - 3 * np.nanstd(modz_yy_sum)
-        uthreshyy_sum = np.nanmean(modz_yy_sum) + 3 * np.nanstd(modz_yy_sum)
+        lthreshxx_sum = np.nanmean(
+            modz_xx_sum) - self.cutoff_threshold * np.nanstd(modz_xx_sum)
+        uthreshxx_sum = np.nanmean(
+            modz_xx_sum) + self.cutoff_threshold * np.nanstd(modz_xx_sum)
+        lthreshyy_sum = np.nanmean(
+            modz_yy_sum) - self.cutoff_threshold * np.nanstd(modz_yy_sum)
+        uthreshyy_sum = np.nanmean(
+            modz_yy_sum) + self.cutoff_threshold * np.nanstd(modz_yy_sum)
         inds_xx = np.where((modz_xx_sum < lthreshxx_sum) |
                            (modz_xx_sum > uthreshxx_sum))
         inds_yy = np.where((modz_yy_sum < lthreshyy_sum) |
