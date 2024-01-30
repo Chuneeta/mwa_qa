@@ -24,6 +24,10 @@ parser.add_argument('json', type=str,
                     help='MWA metrics json file')
 parser.add_argument('--save', dest='save', action='store_true',
                     default=None, help='Boolean to allow to save the image')
+parser.add_argument('--limit_min', type=int,
+                    default=None, help='Minimum limit for the antenna grid display. Default is 0.')
+parser.add_argument('--limit_max', type=int,
+                    default=None, help='Maximum limit for the antenna grid display. Default is number of antennas.')
 parser.add_argument('--out', dest='figname', default=None,
                     help='Name of ouput figure name. Default calmetrics')
 parser.add_argument('--dpi', dest='dpi', default=100,
@@ -33,6 +37,7 @@ args = parser.parse_args()
 metrics = ut.load_json(args.json)
 redundant_met = metrics['REDUNDANT']
 obsid = metrics['OBSID']
+nant = metrics['NANTS']
 
 # amplitude chisquare
 colors = list(mpl.colors.XKCD_COLORS.values())
@@ -139,9 +144,13 @@ if args.save:
 else:
     pylab.show()
 
+# antenna limit for 2dd grid
+limit_min = 0 if args.limit_min is None else args.limit_min
+limit_max = nant if args.limit_min is None else args.limit_max
+
 # plotting modz grid
-modz_gridxx = np.zeros((128, 128))
-modz_gridyy = np.zeros((128, 128))
+modz_gridxx = np.zeros((nant, nant))
+modz_gridyy = np.zeros((nant, nant))
 modz_gridxx[:, :] = np.nan
 modz_gridyy[:, :] = np.nan
 for i, antp in enumerate(red_pairs):
@@ -159,8 +168,8 @@ ax.set_xlabel('Antenna 1')
 ax.set_ylabel('Antenna 2')
 ax.set_title('East West (XX)')
 ax.tick_params(labelsize=10, direction='in', length=4, width=2)
-ax.set_xlim(57, 128)
-ax.set_ylim(57, 128)
+ax.set_xlim(limit_min, limit_max)
+ax.set_ylim(limit_min, limit_max)
 pylab.colorbar(im)
 
 ax = pylab.subplot(122)
@@ -170,8 +179,8 @@ ax.set_xlabel('Antenna 1')
 ax.set_ylabel('Antenna 2')
 ax.tick_params(labelsize=10, direction='in', length=4, width=2)
 ax.set_title('North South (YY)')
-ax.set_xlim(57, 128)
-ax.set_ylim(57, 128)
+ax.set_xlim(limit_min, limit_max)
+ax.set_ylim(limit_min, limit_max)
 pylab.colorbar(im)
 pylab.subplots_adjust(hspace=0.2, left=0.15)
 
@@ -191,7 +200,7 @@ else:
 
 # plotting antenna grids
 fig = pylab.figure(figsize=(7, 5))
-ant_grid = np.zeros((128, 128))
+ant_grid = np.zeros((nant, nant))
 for (a1, a2) in poor_bls:
     ant_grid[a1, a2] = 1
 pylab.imshow(ant_grid, aspect='auto', cmap='cubehelix')
