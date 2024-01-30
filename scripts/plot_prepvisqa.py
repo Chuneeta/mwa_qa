@@ -11,6 +11,14 @@ mpl.rcParams['axes.labelweight'] = 'bold'
 mpl.rcParams['axes.titleweight'] = 'bold'
 mpl.rcParams['figure.titleweight'] = 'bold'
 
+
+def get_indices(array1, array2):
+    inds = []
+    for elm in array2:
+        inds.append(np.where(np.array(array1) == elm)[0][0])
+    return inds
+
+
 parser = ArgumentParser(
     description="Plotting antenna positions")
 parser.add_argument('json', type=str,
@@ -28,6 +36,8 @@ antennas = metrics['ANNUMBERS']
 nants = metrics['NANTS']
 poor_ants_xx = metrics['XX']['BAD_ANTS']
 poor_ants_yy = metrics['YY']['BAD_ANTS']
+poor_ants_xx_inds = get_indices(antennas, poor_ants_xx)
+poor_ants_yy_inds = get_indices(antennas, poor_ants_yy)
 obsid = metrics['OBSID']
 threshold = metrics['THRESHOLD']
 if len(obsid.split('_')) == 1:
@@ -44,10 +54,10 @@ ax.scatter(antennas, metrics['XX']['RMS'], marker='.',
 ax.scatter(antennas, metrics['YY']['RMS'], marker='.',
            color='indianred', s=100, alpha=0.8, label='YY')
 ax.scatter(poor_ants_xx, np.array(metrics['XX']['RMS'])
-           [poor_ants_xx], s=100, marker='o', edgecolor='blue',
+           [poor_ants_xx_inds], s=100, marker='o', edgecolor='blue',
            facecolor='None')
 ax.scatter(poor_ants_yy, np.array(metrics['YY']['RMS'])
-           [poor_ants_yy], s=150, marker='o', edgecolor='red',
+           [poor_ants_yy_inds], s=150, marker='o', edgecolor='red',
            facecolor='None')
 ax.grid(ls='dotted')
 ax.legend()
