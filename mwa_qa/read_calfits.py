@@ -79,7 +79,7 @@ class CalFits(object):
         or any malfunctioning reports
         """
         ind = self.gains_ind_for(self.reference_antenna)
-        flag = np.array(self.antenna_flag)[ind]
+        flag = np.array(self.antenna_flags)[ind]
         assert flag == 0,  "{} seems to be flagged."
         "calibration solutions found, choose a different tile"
 

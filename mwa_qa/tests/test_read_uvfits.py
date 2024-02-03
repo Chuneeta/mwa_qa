@@ -5,6 +5,7 @@ import os
 import numpy as np
 from astropy.io import fits
 from scipy import signal
+import os
 
 from mwa_qa.read_uvfits import UVfits
 

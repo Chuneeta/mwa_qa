@@ -258,6 +258,7 @@ class CalMetrics(object):
         self.metrics['PERCENT_NONCONVERGED_CHS'] = self.non_converging_percent()
         self.metrics['PERCENT_BAD_ANTS'] = len(
             self.metrics['BAD_ANTS']) / self.MetaFits.Nants * 100
+        self.metrics['CONVERGENCE'] = self.CalFits.convergence
         self.metrics['RMS_CONVERGENCE'] = np.sqrt(np.nanmean(
             self.CalFits.convergence ** 2) / len(self.CalFits.convergence))
         self.metrics['SKEWNESS'] = np.nanmax(

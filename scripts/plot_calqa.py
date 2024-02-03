@@ -25,6 +25,16 @@ parser.add_argument('--dpi', dest='dpi', default=100,
 
 args = parser.parse_args()
 calqa = CalQA(args.json)
-calqa.plot_rms(save=args.save, figname=args.out, dpi=args.dpi)
-calqa.plot_fft(save=args.save, figname=args.out, dpi=args.dpi)
+if args.out is None:
+    figname_rms = args.json.replace('.json', '_rms.png')
+    figname_fft = args.json.replace('.json', '_fft.png')
+else:
+    if args.out.split('.')[-1] != 'png':
+        figname_rms = args.out + '_rms.png'
+        figname_fft = args.out + '_fft.png'
+    else:
+        figname_rms = args.out.replace('.png', '_rms.png')
+        figname_fft = args.out.replace('.png', '_fft.png')
+calqa.plot_rms(save=args.save, figname=figname_rms, dpi=args.dpi)
+calqa.plot_fft(save=args.save, figname=figname_fft, dpi=args.dpi)
 calqa.plot_average_dspectra(save=args.save, figname=args.out, dpi=args.dpi)

@@ -4,6 +4,7 @@ from matplotlib import cm
 import matplotlib as mpl
 import numpy as np
 import pylab
+import os
 
 mpl.rcParams['axes.linewidth'] = 1.5
 mpl.rcParams['font.weight'] = 'bold'
@@ -29,6 +30,7 @@ parser.add_argument('--out', dest='figname', default=None,
                     help='Name of ouput figure name. Default calmetrics')
 parser.add_argument('--dpi', dest='dpi', default=100,
                     help='Number of dots per inch to use to save the figures')
+parser.add_argument('--title', default=None, help='Plot title')
 
 args = parser.parse_args()
 metrics = ut.load_json(args.json)
@@ -40,10 +42,12 @@ poor_ants_xx_inds = get_indices(antennas, poor_ants_xx)
 poor_ants_yy_inds = get_indices(antennas, poor_ants_yy)
 obsid = metrics['OBSID']
 threshold = metrics['THRESHOLD']
-if len(obsid.split('_')) == 1:
+if args.title:
+    titlename = args.title
+elif len(obsid.split('_')) == 1:
     titlename = obsid
 else:
-    titlename = ''.join(filter(str.isdigit, args.json))
+    titlename = ''.join(filter(str.isdigit, os.path.basename(args.json)))
 
 # plotting RMS
 fig = pylab.figure(figsize=(7, 5))

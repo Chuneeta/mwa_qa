@@ -47,23 +47,28 @@ obsids = []
 for json in args.json:
     print('{} Reading {}'.format(count, json))
     data = ut.load_json(json)
-    obsids.append(data['XX']['IMAGE_ID'])
-    # XX POL
-    rms_all_sxx.append(data['XX']['RMS_ALL'])
-    rms_box_sxx.append(data['XX']['RMS_BOX'])
-    pks_pflux_sxx.append(data['XX']['PKS0023_026']['PEAK_FLUX'])
-    pks_tflux_sxx.append(data['XX']['PKS0023_026']['INT_FLUX'])
-    # YY POL
-    rms_all_syy.append(data['YY']['RMS_ALL'])
-    rms_box_syy.append(data['YY']['RMS_BOX'])
-    pks_pflux_syy.append(data['YY']['PKS0023_026']['PEAK_FLUX'])
-    pks_tflux_syy.append(data['YY']['PKS0023_026']['INT_FLUX'])
-
-    # V POL
-    rms_all_sv.append(data['V']['RMS_ALL'])
-    rms_box_sv.append(data['V']['RMS_BOX'])
-    pks_pflux_sv.append(data['V']['PKS0023_026']['PEAK_FLUX'])
-    pks_tflux_sv.append(data['V']['PKS0023_026']['INT_FLUX'])
+    for l, getter in [
+        (obsids, lambda x: x['XX']['IMAGE_ID']),
+        # XX POL
+        (rms_all_sxx, lambda x: x['XX']['RMS_ALL']),
+        (rms_box_sxx, lambda x: x['XX']['RMS_BOX']),
+        (pks_pflux_sxx, lambda x: x['XX']['PKS0023_026']['PEAK_FLUX']),
+        (pks_tflux_sxx, lambda x: x['XX']['PKS0023_026']['INT_FLUX']),
+        # YY POL
+        (rms_all_syy, lambda x: x['YY']['RMS_ALL']),
+        (rms_box_syy, lambda x: x['YY']['RMS_BOX']),
+        (pks_pflux_syy, lambda x: x['YY']['PKS0023_026']['PEAK_FLUX']),
+        (pks_tflux_syy, lambda x: x['YY']['PKS0023_026']['INT_FLUX']),
+        # V POL
+        (rms_all_sv, lambda x: x['V']['RMS_ALL']),
+        (rms_box_sv, lambda x: x['V']['RMS_BOX']),
+        (pks_pflux_sv, lambda x: x['V']['PKS0023_026']['PEAK_FLUX']),
+        (pks_tflux_sv, lambda x: x['V']['PKS0023_026']['INT_FLUX']),
+    ]:
+        try:
+            l.append(getter(data))
+        except KeyError:
+            l.append(np.nan)
     count += 1
 print('Total number of observations: {}'.format(count))
 
