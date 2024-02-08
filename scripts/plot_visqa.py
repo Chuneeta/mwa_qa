@@ -24,15 +24,18 @@ parser.add_argument('json', type=str,
                     help='MWA metrics json file')
 parser.add_argument('--save', dest='save', action='store_true',
                     default=None, help='Boolean to allow to save the image')
-parser.add_argument('--limit_min', type=int,
-                    default=None, help='Minimum limit for the antenna grid display. Default is 0.')
-parser.add_argument('--limit_max', type=int,
-                    default=None, help='Maximum limit for the antenna grid display. Default is number of antennas.')
+parser.add_argument('--ant_min', type=int,
+                    default=0, help='Minimum limit for the antenna grid display. Default is 0.')
+parser.add_argument('--ant_max', type=int,
+                    default=128, help='Maximum limit for the antenna grid display. Default is number of antennas.')
 parser.add_argument('--out', dest='figname', default=None,
                     help='Name of ouput figure name. Default calmetrics')
 parser.add_argument('--dpi', dest='dpi', default=100,
                     help='Number of dots per inch to use to save the figures')
-
+parser.add_argument('--chisq_min', type=float,
+                    default=10**1.5, help='Minimum limit for the chi sqaure plot. Default is 1e1.5.')
+parser.add_argument('--chisq_max', type=float,
+                    default=10**5, help='Maximum limit for the chi sqaure plot. Default is 1e5.')
 args = parser.parse_args()
 metrics = ut.load_json(args.json)
 redundant_met = metrics['REDUNDANT']
@@ -77,8 +80,9 @@ for i in range(len(amp_chisq_xx)):
 
 ax.set_ylabel('CHISQ (XX)')
 ax.grid(ls='dotted')
-ax.set_ylim(10**1.5, 10**5)
+ax.set_ylim(args.chisq_min, args.chisq_max)
 ax.tick_params(labelsize=10, direction='in', length=4, width=2)
+ax.set_xticklabels('')
 ax = pylab.subplot(212)
 for i in range(len(amp_chisq_yy)):
     ax.semilogy(np.ones((len(amp_chisq_yy[i])))
@@ -88,7 +92,7 @@ for i in range(len(amp_chisq_yy)):
                     np.array(amp_chisq_yy[i])[inds_yy[i]], 'rx')
 ax.set_ylabel('CHISQ (YY)')
 ax.grid(ls='dotted')
-ax.set_ylim(10**1.5, 10**5)
+ax.set_ylim(args.chisq_min, args.chisq_max)
 ax.tick_params(labelsize=10, direction='in', length=4, width=2)
 ax.set_xlabel('Group Number')
 pylab.subplots_adjust(hspace=0, left=0.15)
@@ -145,10 +149,6 @@ if args.save:
 else:
     pylab.show()
 
-# antenna limit for 2dd grid
-limit_min = 0 if args.limit_min is None else args.limit_min
-limit_max = nant if args.limit_min is None else args.limit_max
-
 # plotting modz grid
 modz_gridxx = np.zeros((nant, nant))
 modz_gridyy = np.zeros((nant, nant))
@@ -169,8 +169,8 @@ ax.set_xlabel('Antenna 1')
 ax.set_ylabel('Antenna 2')
 ax.set_title('East West (XX)')
 ax.tick_params(labelsize=10, direction='in', length=4, width=2)
-ax.set_xlim(limit_min, limit_max)
-ax.set_ylim(limit_min, limit_max)
+ax.set_xlim(args.ant_min, args.ant_max)
+ax.set_ylim(args.ant_min, args.ant_max)
 pylab.colorbar(im)
 
 ax = pylab.subplot(122)
@@ -180,8 +180,8 @@ ax.set_xlabel('Antenna 1')
 ax.set_ylabel('Antenna 2')
 ax.tick_params(labelsize=10, direction='in', length=4, width=2)
 ax.set_title('North South (YY)')
-ax.set_xlim(limit_min, limit_max)
-ax.set_ylim(limit_min, limit_max)
+ax.set_xlim(args.ant_min, args.ant_max)
+ax.set_ylim(args.ant_min, args.ant_max)
 pylab.colorbar(im)
 pylab.subplots_adjust(hspace=0.2, left=0.15)
 
