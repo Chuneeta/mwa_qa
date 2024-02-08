@@ -9,6 +9,15 @@ import itertools
 pol_dict = {'XX': 0, 'YY': 1, 'XY': 2, 'YX': 3}
 
 
+def converter(input_list, output_list):
+    for elements in input_list:
+        if type(elements) == list:
+            converter(elements, output_list)
+        else:
+            output_list.append(elements)
+    return output_list
+
+
 class PrepvisMetrics(object):
     def __init__(self, uvfits_path, metafits_path, ex_annumbers=[], edge_flagging=True, antenna_flags=False, cutoff_threshold=3, niter=10):
         self.uvfits_path = uvfits_path
@@ -217,7 +226,7 @@ class PrepvisMetrics(object):
             if len(inds[0]) > 0:
                 bad_inds.append(inds[0].tolist())
                 count += 1
-        return modz_dict, np.array(bad_inds).flatten()
+        return modz_dict, converter(bad_inds, [])
 
     def _initialize_metrics_dict(self):
         self.metrics = OrderedDict()
