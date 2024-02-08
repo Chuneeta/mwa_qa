@@ -28,11 +28,19 @@ class UVfits(object):
             self.data_array = vis_hdu.data['DATA'][:, 0, 0, :,
                                                    :, 0] + 1j * vis_hdu.data['DATA'][:, 0, 0, :, :, 1]
             # the uvfits baseline of each row in the timestep-baseline axis
-            self.baseline_array = np.int64(vis_hdu.data["BASELINE"])
-            self.unique_baselines = np.unique(self.baseline_array)
-            self.ant_2_array = self.baseline_array % 256 - 1
-            self.ant_1_array = (self.baseline_array -
-                                self.ant_2_array) // 256 - 1
+            try:
+                # MWA Observations
+                self.baseline_array = np.int64(vis_hdu.data["BASELINE"])
+                self.unique_baselines = np.unique(self.baseline_array)
+                self.ant_2_array = self.baseline_array % 256 - 1
+                self.ant_1_array = (self.baseline_array -
+                                    self.ant_2_array) // 256 - 1
+
+            # SKA (OSKAR Simualtions)
+            except KeyError:
+                self.ant_1_array = vis_hdu.data['ANTENNA1'].astype(int)
+                self.ant_2_array = vis_hdu.data['ANTENNA2'].astype(int)
+
             self.antpairs = np.stack(
                 (self.ant_1_array, self.ant_2_array), axis=1)
             self.antpairs = np.sort(
@@ -44,16 +52,15 @@ class UVfits(object):
             self.obsid = vis_hdu.header["OBJECT"]
             self.channel_width = vis_hdu.header['CDELT4']
 
-            self.time_array = np.float64(vis_hdu.data["DATE"])
-            self.unique_times = np.sort(np.unique(self.time_array))
-            self.Ntimes = len(self.unique_times)
+            # self.time_array = np.float64(vis_hdu.data["DATE"])
+            # self.unique_times = np.sort(np.unique(self.time_array))
+            self.Ntimes = int(len(self.ant_1_array) / self.Nbls)
             self.freq_array = make_fits_axis_array(vis_hdu, 4)
             self.Nchan = len(self.freq_array)
 
             self.polarization_array = np.int32(
                 make_fits_axis_array(vis_hdu, 3))
             self.Npols = len(self.polarization_array)
-
             self.uvw_array = np.array(np.stack((
                 vis_hdu.data['UU'],
                 vis_hdu.data['VV'],
