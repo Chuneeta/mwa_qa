@@ -29,6 +29,7 @@ class PrepvisMetrics(object):
         self.antenna_flags = antenna_flags
         self.cutoff_threshold = cutoff_threshold
         self.niter = niter
+        self.antenna_numbers = np.unique(self.uvf.auto_antpairs())
 
     def autos(self):
         auto_antpairs = self.uvf.auto_antpairs()
@@ -59,7 +60,7 @@ class PrepvisMetrics(object):
         flag_inds = []
         if len(inds) > 0:
             [flag_inds.append(
-                np.where(self.uvf.antenna_numbers == i)[0][0]) for i in inds]
+                np.where(self.antenna_numbers == i)[0][0]) for i in inds]
         return flag_inds
 
     def _evaluate_edge_flags(self):
@@ -192,6 +193,18 @@ class PrepvisMetrics(object):
         inds = np.where(percent_gddata < 50.)
         return percent_gddata, inds
 
+    def split_annames(self):
+        """
+        Splitting the antenna indeices as per antenna name conventions ('Tile', 'Hex')
+        """
+        annames = self.uvf.ant_names[self.antenna_numbers]
+        first = [i for i in range(len(annames))
+                 if annames[i].startswith('Tile')]
+        second = [i for i in range(len(annames))
+                  if annames[i].startswith('Hex')]
+        # print(first, second)
+        return first, second
+
     def calculate_rms(self, data):
         """
         Calculating root mean square(rms) across freq
@@ -237,14 +250,14 @@ class PrepvisMetrics(object):
         self.metrics['OBSID'] = self.uvf.obsid
         if self.antenna_flags:
             self.metrics['ANNUMBERS'] = np.delete(
-                self.uvf.antenna_numbers, self.flags_from_metafits())
+                self.antenna_numbers, self.flags_from_metafits())
         else:
-            self.metrics['ANNUMBERS'] = self.uvf.antenna_numbers
+            self.metrics['ANNUMBERS'] = self.antenna_numbers
         self.metrics['NANTS'] = len(self.metrics['ANNUMBERS'])
         self.metrics['XX'] = OrderedDict()
         self.metrics['YY'] = OrderedDict()
 
-    def run_metrics(self):
+    def run_metrics(self, split_autos=False):
         self._initialize_metrics_dict()
         # auto correlations
         autos = self.autos()
@@ -263,15 +276,32 @@ class PrepvisMetrics(object):
             # calculating root mean square
             rms = self.calculate_rms(
                 autos_amps_norm[:, :, pol_dict[p]])
-            # calculating modifed z-score
-            modz_dict, bd_inds = self.iterative_mod_zscore(
-                autos_amps_norm[:, :, pol_dict[p]], threshold=self.cutoff_threshold, niter=self.niter)
-            bd_inds_flatten = np.array(bd_inds)
+            if split_autos:
+                # splitting autos by antenna naming conventions
+                first, second = self.split_annames()
+                modz_dict_first, bd_inds_first = self.iterative_mod_zscore(
+                    autos_amps_norm[first, :, pol_dict[p]], threshold=self.cutoff_threshold, niter=self.niter)
+                modz_dict_second, bd_inds_second = self.iterative_mod_zscore(
+                    autos_amps_norm[second, :, pol_dict[p]], threshold=self.cutoff_threshold, niter=self.niter)
+                bd_inds = np.append(np.array(first)[bd_inds_first],
+                                    np.array(second)[bd_inds_second])
+                # bd_inds_flatten = np.array(bd_inds)
+                self.metrics[p]['MODZ_SCORE'] = {}
+                self.metrics[p]['MODZ_SCORE']['FIRST'] = modz_dict_first
+                self.metrics[p]['MODZ_SCORE']['SECOND'] = modz_dict_second
+                self.metrics['ANNUMBERS_FIRST'] = first
+                self.metrics['ANNUMBERS_SECOND'] = second
+            else:
+                # calculating modifed z-score
+                modz_dict, bd_inds = self.iterative_mod_zscore(
+                    autos_amps_norm[:, :, pol_dict[p]], threshold=self.cutoff_threshold, niter=self.niter)
+                bd_inds = np.array(bd_inds)
+                self.metrics[p]['MODZ_SCORE'] = modz_dict
             if len(bd_inds) > 0:
-                bad_ants.append(self.metrics['ANNUMBERS'][bd_inds_flatten])
-            # writing stars to metrics instance
+                bad_ants.append(self.metrics['ANNUMBERS'][bd_inds])
+
+            # writing stars to metrics instanc
             self.metrics[p]['RMS'] = rms
-            self.metrics[p]['MODZ_SCORE'] = modz_dict
             self.metrics[p]['BAD_ANTS'] = list(
                 itertools.chain.from_iterable(bad_ants))
 
