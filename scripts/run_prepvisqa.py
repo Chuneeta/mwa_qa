@@ -17,11 +17,13 @@ parser.add_argument('--niter', type=int, default=10,
                     help='Number of iteration for outlier identification using modified z-score.')
 parser.add_argument('--out', help='json output path', type=str,
                     default=None, required=False)
+parser.add_argument('--split', action='store_true', help='Allow for splitting of autocorrelations based on antennas naming convention',
+                    default=None, required=False)
 
 args = parser.parse_args()
 m = PrepvisMetrics(str(args.uvfits), str(args.metafits),
                    ex_annumbers=args.ex_annumbers, edge_flagging=args.edge_flagging,
                    antenna_flags=args.antenna_flags, cutoff_threshold=args.cutoff_threshold,
                    niter=args.niter)
-m.run_metrics()
+m.run_metrics(args.split)
 m.write_to(args.out)
