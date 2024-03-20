@@ -13,6 +13,8 @@ parser.add_argument('--sigma', dest='sigma', type=float,
                     default=3, help='Sigma for cutoff threshold. Default is 3.')
 parser.add_argument('-o', '--outfile', dest='outfile', help='thresholding cutoffs', type=str,
                     default=None, required=False)
+parser.add_argument('--per_pointing', action='store_true', default=False,
+                    help='If True, will devaluate the tcutoff threshold for the individual pointings. Default is False.')
 parser.add_argument('--plot', action='store_true',
                     help='Plots the distribution of the metrics', default=None)
 parser.add_argument('--save', action='store_true',
@@ -62,50 +64,86 @@ if {'NEW P_WINDOW IONOSUB', 'NEW P_WINDOW SUB'}.issubset(set(df.columns)):
 un_ew_pointings = np.unique(ew_pointings)
 outdata = []
 
+
 for i, fl in enumerate(['NEW P_WINDOW NOSUB',
                         "P_WIN_WEDGE RATIO NOSUB",
                         "P_WINDOW RATIO IONOSUB",
                         "P_WEDGE RATIO IONOSUB"]):
-    outdict = {}
-    outdict['Metric'] = fl
-    print(fl)
-    for pt in np.unique(ew_pointings):
-        inds = np.where(ew_pointings == pt)
-        data = np.array(df[fl])[inds]
+    if args.per_pointing:
+        outdict = {}
+        outdict['Metric'] = fl
+        for pt in np.unique(ew_pointings):
+            inds = np.where(ew_pointings == pt)
+            data = np.array(df[fl])[inds]
+            mean = np.nanmean(data)
+            std = np.nanstd(data)
+            outdict[pt] = tuple((mean - args.sigma *
+                                std, mean + args.sigma*std))
+    else:
+        data = np.array(df[fl])
         mean = np.nanmean(data)
         std = np.nanstd(data)
-        outdict[pt] = tuple((mean - args.sigma *
-                             std, mean + args.sigma*std))
+        outdata.append(tuple((mean - args.sigma *
+                             std, mean + args.sigma*std)))
 
-    outdata.append(outdict)
+    if args.per_pointing:
+        outdata.append(outdict)
 
+outdict = []
 for i, fl in enumerate(["NEW V RMS BOX NOSUB",
                         "PKS INT RATIO VXXYY NOSUB",
                         "PKS INT DIFF XXYY IONOSUB",
                         "NEW XX PKS0023_026 INT IONOSUB RATIO",
                         "NEW YY PKS0023_026 INT IONOSUB RATIO"]):
-    outdict = {}
-    outdict['Metric'] = fl
-    for pt in np.unique(ew_pointings):
-        inds = np.where(ew_pointings == pt)
-        data = np.array(df[fl])[inds]
+    if args.per_pointing:
+        outdict = {}
+        outdict['Metric'] = fl
+        for pt in np.unique(ew_pointings):
+            inds = np.where(ew_pointings == pt)
+            data = np.array(df[fl])[inds]
+            data = data[~np.isnan(data)]
+            if np.all(data):
+                outdict[pt] = (np.nan, np.nan)
+            else:
+                Q1 = np.percentile(data, 25, interpolation='midpoint')
+                Q2 = np.percentile(data, 50, interpolation='midpoint')
+                Q3 = np.percentile(data, 75, interpolation='midpoint')
+                IQR = Q3 - Q1
+                outdict[pt] = tuple((Q1 - 1.5 * IQR, Q1 + 1.5 * IQR))
+    else:
+        data = np.array(df[fl])
         data = data[~np.isnan(data)]
         if np.all(data):
-            outdict[pt] = (np.nan, np.nan)
+            outdata.append((np.nan, np.nan))
         else:
             Q1 = np.percentile(data, 25, interpolation='midpoint')
             Q2 = np.percentile(data, 50, interpolation='midpoint')
             Q3 = np.percentile(data, 75, interpolation='midpoint')
             IQR = Q3 - Q1
-            outdict[pt] = tuple((Q1 - 1.5 * IQR, Q1 + 1.5 * IQR))
-    outdata.append(outdict)
+            outdata.append(tuple((Q1 - 1.5 * IQR, Q1 + 1.5 * IQR)))
+
+    if args.per_pointing:
+        outdata.append(outdict)
 
 if args.outfile is None:
     outfile = args.csvfile.replace('.csv', '_thresholds.csv')
 else:
     outfile = args.outfile
-df_out = pd.DataFrame(data=outdata)
-df_out.to_csv(outfile, index=False)
+
+if args.per_pointing:
+    df_out = pd.DataFrame(data=outdata)
+    df_out.to_csv(outfile, index=False)
+else:
+    df_out = pd.DataFrame(outdata, index=['NEW P_WINDOW NOSUB',
+                                          "P_WIN_WEDGE RATIO NOSUB",
+                                          "P_WINDOW RATIO IONOSUB",
+                                          "P_WEDGE RATIO IONOSUB",
+                                          "NEW V RMS BOX NOSUB",
+                                          "PKS INT RATIO VXXYY NOSUB",
+                                          "PKS INT DIFF XXYY IONOSUB",
+                                          "NEW XX PKS0023_026 INT IONOSUB RATIO",
+                                          "NEW YY PKS0023_026 INT IONOSUB RATIO"], columns=['Lthresh', 'Uthresh'])
+    df_out.to_csv(outfile)
 
 
 def plot_pspecqa():
@@ -124,9 +162,13 @@ def plot_pspecqa():
     pylab.ylabel('Density', fontsize=16)
     pylab.title(labels[0], size=17)
     # pylab.xlim(-20, 30)
-    for i, pt in enumerate(un_ew_pointings):
-        pylab.axvline(x=df_out[pt][0][0], ls='dashed', color=colors[i])
-        pylab.axvline(x=df_out[pt][0][1], ls='dashed', color=colors[i])
+    if args.per_pointing:
+        for i, pt in enumerate(un_ew_pointings):
+            pylab.axvline(x=df_out[pt][0][0], ls='dashed', color=colors[i])
+            pylab.axvline(x=df_out[pt][0][1], ls='dashed', color=colors[i])
+    else:
+        pylab.axvline(x=df_out['Lthresh'][0], ls='dashed', color='red')
+        pylab.axvline(x=df_out['Uthresh'][0], ls='dashed', color='red')
     pylab.tick_params(labelsize=14, direction='out', length=3, width=1)
 
     pylab.subplot(2, 2, 2)
@@ -135,10 +177,14 @@ def plot_pspecqa():
     pylab.xlabel('')
     pylab.title(labels[1], size=17)
     pylab.ylabel('Density', fontsize=16)
-    pylab.xlim(-0.001, 0.07)
-    for i, pt in enumerate(un_ew_pointings):
-        pylab.axvline(x=df_out[pt][1][0], ls='dashed', color=colors[i])
-        pylab.axvline(x=df_out[pt][1][1], ls='dashed', color=colors[i])
+    # pylab.xlim(-0.001, 0.07)
+    if args.per_pointing:
+        for i, pt in enumerate(un_ew_pointings):
+            pylab.axvline(x=df_out[pt][1][0], ls='dashed', color=colors[i])
+            pylab.axvline(x=df_out[pt][1][1], ls='dashed', color=colors[i])
+    else:
+        pylab.axvline(x=df_out['Lthresh'][1], ls='dashed', color='red')
+        pylab.axvline(x=df_out['Uthresh'][1], ls='dashed', color='red')
     pylab.tick_params(labelsize=14, direction='out', length=3, width=1)
 
     pylab.subplot(2, 2, 3)
@@ -147,9 +193,13 @@ def plot_pspecqa():
     pylab.xlabel('')
     pylab.ylabel('Density', fontsize=16)
     pylab.title(labels[2], size=17)
-    for i, pt in enumerate(un_ew_pointings):
-        pylab.axvline(x=df_out[pt][2][0], ls='dashed', color=colors[i])
-        pylab.axvline(x=df_out[pt][2][1], ls='dashed', color=colors[i])
+    if args.per_pointing:
+        for i, pt in enumerate(un_ew_pointings):
+            pylab.axvline(x=df_out[pt][2][0], ls='dashed', color=colors[i])
+            pylab.axvline(x=df_out[pt][2][1], ls='dashed', color=colors[i])
+    else:
+        pylab.axvline(x=df_out['Lthresh'][2], ls='dashed', color='red')
+        pylab.axvline(x=df_out['Uthresh'][2], ls='dashed', color='red')
     pylab.tick_params(labelsize=14, direction='out', length=3, width=1)
     pylab.xlim(0.1, 1.2)
 
@@ -159,9 +209,13 @@ def plot_pspecqa():
     pylab.xlabel('')
     pylab.ylabel('Density', fontsize=16)
     pylab.title(labels[3], size=17)
-    for i, pt in enumerate(un_ew_pointings):
-        pylab.axvline(x=df_out[pt][3][0], ls='dashed', color=colors[i])
-        pylab.axvline(x=df_out[pt][3][1], ls='dashed', color=colors[i])
+    if args.per_pointing:
+        for i, pt in enumerate(un_ew_pointings):
+            pylab.axvline(x=df_out[pt][3][0], ls='dashed', color=colors[i])
+            pylab.axvline(x=df_out[pt][3][1], ls='dashed', color=colors[i])
+    else:
+        pylab.axvline(x=df_out['Lthresh'][3], ls='dashed', color='red')
+        pylab.axvline(x=df_out['Uthresh'][3], ls='dashed', color='red')
     pylab.tick_params(labelsize=14, direction='out', length=3, width=1)
 
     pylab.subplots_adjust(hspace=0.3)
@@ -190,9 +244,13 @@ def plot_imgqa():
     pylab.ylabel('Density', fontsize=16)
     pylab.title(labels[0], size=17)
     # pylab.xlim(-20, 30)
-    for i, pt in enumerate(un_ew_pointings):
-        pylab.axvline(x=df_out[pt][4][0], ls='dashed', color=colors[i])
-        pylab.axvline(x=df_out[pt][4][1], ls='dashed', color=colors[i])
+    if args.per_pointing:
+        for i, pt in enumerate(un_ew_pointings):
+            pylab.axvline(x=df_out[pt][4][0], ls='dashed', color=colors[i])
+            pylab.axvline(x=df_out[pt][4][1], ls='dashed', color=colors[i])
+    else:
+        pylab.axvline(x=df_out['Lthresh'][4], ls='dashed', color='red')
+        pylab.axvline(x=df_out['Uthresh'][4], ls='dashed', color='red')
     pylab.tick_params(labelsize=14, direction='out', length=3, width=1)
 
     pylab.subplot(3, 2, 2)
@@ -202,9 +260,13 @@ def plot_imgqa():
     pylab.title(labels[1], size=17)
     pylab.ylabel('Density', fontsize=16)
     pylab.xlim(-0.001, 0.07)
-    for i, pt in enumerate(un_ew_pointings):
-        pylab.axvline(x=df_out[pt][5][0], ls='dashed', color=colors[i])
-        pylab.axvline(x=df_out[pt][5][1], ls='dashed', color=colors[i])
+    if args.per_pointing:
+        for i, pt in enumerate(un_ew_pointings):
+            pylab.axvline(x=df_out[pt][5][0], ls='dashed', color=colors[i])
+            pylab.axvline(x=df_out[pt][5][1], ls='dashed', color=colors[i])
+    else:
+        pylab.axvline(x=df_out['Lthresh'][5], ls='dashed', color='red')
+        pylab.axvline(x=df_out['Uthresh'][5], ls='dashed', color='red')
     pylab.tick_params(labelsize=14, direction='out', length=3, width=1)
 
     pylab.subplot(3, 2, 3)
@@ -213,9 +275,13 @@ def plot_imgqa():
     pylab.xlabel('')
     pylab.ylabel('Density', fontsize=16)
     pylab.title(labels[2], size=17)
-    for i, pt in enumerate(un_ew_pointings):
-        pylab.axvline(x=df_out[pt][6][0], ls='dashed', color=colors[i])
-        pylab.axvline(x=df_out[pt][6][1], ls='dashed', color=colors[i])
+    if args.per_pointing:
+        for i, pt in enumerate(un_ew_pointings):
+            pylab.axvline(x=df_out[pt][6][0], ls='dashed', color=colors[i])
+            pylab.axvline(x=df_out[pt][6][1], ls='dashed', color=colors[i])
+    else:
+        pylab.axvline(x=df_out['Lthresh'][6], ls='dashed', color='red')
+        pylab.axvline(x=df_out['Uthresh'][6], ls='dashed', color='red')
     pylab.tick_params(labelsize=14, direction='out', length=3, width=1)
     pylab.xlim(0.1, 1.2)
 
@@ -225,9 +291,13 @@ def plot_imgqa():
     pylab.xlabel('')
     pylab.ylabel('Density', fontsize=16)
     pylab.title(labels[3], size=17)
-    for i, pt in enumerate(un_ew_pointings):
-        pylab.axvline(x=df_out[pt][7][0], ls='dashed', color=colors[i])
-        pylab.axvline(x=df_out[pt][7][1], ls='dashed', color=colors[i])
+    if args.per_pointing:
+        for i, pt in enumerate(un_ew_pointings):
+            pylab.axvline(x=df_out[pt][7][0], ls='dashed', color=colors[i])
+            pylab.axvline(x=df_out[pt][7][1], ls='dashed', color=colors[i])
+    else:
+        pylab.axvline(x=df_out['Lthresh'][7], ls='dashed', color='red')
+        pylab.axvline(x=df_out['Uthresh'][7], ls='dashed', color='red')
     pylab.tick_params(labelsize=14, direction='out', length=3, width=1)
 
     pylab.subplot(3, 2, 5)
@@ -236,9 +306,13 @@ def plot_imgqa():
     pylab.xlabel('')
     pylab.ylabel('Density', fontsize=16)
     pylab.title(labels[3], size=17)
-    for i, pt in enumerate(un_ew_pointings):
-        pylab.axvline(x=df_out[pt][8][0], ls='dashed', color=colors[i])
-        pylab.axvline(x=df_out[pt][8][1], ls='dashed', color=colors[i])
+    if args.per_pointing:
+        for i, pt in enumerate(un_ew_pointings):
+            pylab.axvline(x=df_out[pt][8][0], ls='dashed', color=colors[i])
+            pylab.axvline(x=df_out[pt][8][1], ls='dashed', color=colors[i])
+    else:
+        pylab.axvline(x=df_out['Lthresh'][8], ls='dashed', color='red')
+        pylab.axvline(x=df_out['Uthresh'][8], ls='dashed', color='red')
     pylab.tick_params(labelsize=14, direction='out', length=3, width=1)
 
     pylab.subplots_adjust(hspace=0.4, wspace=0.2)
