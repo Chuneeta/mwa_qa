@@ -19,14 +19,23 @@ def make_fits_axis_array(hdu, axis):
 
 
 class UVfits(object):
-    def __init__(self, uvfits_path):
+    def __init__(self, uvfits_path, antenna_convention=0):
         self.uvfits_path = uvfits_path
+        # numbering of antennas, by default, starting number is 0
+        self.antenna_convention = antenna_convention
         with fits.open(self.uvfits_path) as hdus:
             vis_hdu = hdus['PRIMARY']
 
             # get the data array
-            self.data_array = vis_hdu.data['DATA'][:, 0, 0, :,
-                                                   :, 0] + 1j * vis_hdu.data['DATA'][:, 0, 0, :, :, 1]
+            self.data_array = vis_hdu.data['DATA']
+            if self.data_array.ndim == 7:  # tweak of ska additional column
+                self.data_array = vis_hdu.data['DATA'][:, 0, 0, 0, :,
+                                                       :, 0] + 1j * vis_hdu.data['DATA'][:, 0, 0, 0, :, :, 1]
+                self.weights_array = vis_hdu.data['DATA'][:, 0, 0, 0, :, :, 2]
+            else:
+                self.data_array = vis_hdu.data['DATA'][:, 0, 0, :,
+                                                       :, 0] + 1j * vis_hdu.data['DATA'][:, 0, 0, :, :, 1]
+                self.weights_array = vis_hdu.data['DATA'][:, 0, 0, :, :, 2]
             # the uvfits baseline of each row in the timestep-baseline axis
             try:
                 # MWA Observations
@@ -69,7 +78,10 @@ class UVfits(object):
 
             ant_hdu = hdus['AIPS AN']
             self.ant_names = ant_hdu.data["ANNAME"]
-            self.antenna_numbers = ant_hdu.data.field("NOSTA") - 1
+            if self.antenna_convention == 0:
+                self.antenna_numbers = ant_hdu.data.field("NOSTA") - 1
+            else:
+                self.antenna_numbers = ant_hdu.data.field("NOSTA")
             self.antenna_positions = ant_hdu.data.field("STABXYZ")
             self.Nants = len(self.ant_names)
 
@@ -93,68 +105,55 @@ class UVfits(object):
             self.ant_2_array == ant2,
         ))[0]
 
-    def _data_for_antpairs(self, vis_hdu, antpairs):
+    def _data_for_antpairs(self, antpairs):
         """
         dimensions: [time, bl, freq, pol]
         """
-        Npairs = len(antpairs)
         # sorted to traverse in the order on disk to minimize seeks
         blt_idxs = np.sort(np.concatenate([
             self.blt_idxs_for_antpair(antpair) for antpair in antpairs]))
-        reals = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 0].reshape(
-            (self.Ntimes, Npairs, self.Nchan, self.Npols))
-        imags = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 1].reshape(
-            (self.Ntimes, Npairs, self.Nchan, self.Npols))
-        return reals + 1j * imags
-
-    def _flag_for_antpairs(self, vis_hdu, antpairs, weight_limit=0):
-        """
-        dimensions: [time, bl, freq, pol]
-        """
-        Npairs = len(antpairs)
-        # sorted to traverse in the order on disk to minimize seeks
-        blt_idxs = np.sort(np.concatenate([
-            self.blt_idxs_for_antpair(antpair) for antpair in antpairs]))
-        # weights are clauculate (1/PFB_GAINS * Nf * Nt)
-        flags = vis_hdu.data.data[blt_idxs, 0, 0, :, :, 2] <= weight_limit
-        return flags.reshape(
-            (self.Ntimes, Npairs, self.Nchan, self.Npols))
-
-    def data_for_antpairs(self, antpairs):
-        """
-        dimensions: [time, bl, freq, pol]
-        """
-        with fits.open(self.uvfits_path) as hdus:
-            vis_hdu = hdus['PRIMARY']
-            result = self._data_for_antpairs(vis_hdu, antpairs)
-            return result
-
-    def flag_for_antpairs(self, antpairs):
-        """
-        dimensions: [time, bl, freq, pol]
-        """
-        with fits.open(self.uvfits_path) as hdus:
-            vis_hdu = hdus['PRIMARY']
-            result = self._flag_for_antpairs(vis_hdu, antpairs)
-            return result
+        return self.data_array[blt_idxs]
 
     def data_for_antpair(self, antpair):
         """
         dimensions: [time, freq, pol]
         """
-        with fits.open(self.uvfits_path) as hdus:
-            vis_hdu = hdus['PRIMARY']
-            result = self._data_for_antpairs(vis_hdu, [antpair])
-            return result[:, 0, :, :]
+        return self._data_for_antpairs([antpair])
+
+    def data_for_antpairs(self, antpairs):
+        """
+        dimensions: [time, bl, freq, pol]
+        """
+        Npairs = len(antpairs)
+        result = self._data_for_antpairs(antpairs)
+        return result.reshape(
+            (self.Ntimes, Npairs, self.Nchan, self.Npols))
+
+    def _flag_for_antpairs(self, antpairs, weight_limit=0):
+        """
+        dimensions: [time, bl, freq, pol]
+        """
+        # sorted to traverse in the order on disk to minimize seeks
+        blt_idxs = np.sort(np.concatenate([
+            self.blt_idxs_for_antpair(antpair) for antpair in antpairs]))
+        # weights are clauculate (1/PFB_GAINS * Nf * Nt)
+        return self.weights_array[blt_idxs, :, :] <= weight_limit
 
     def flag_for_antpair(self, antpair):
         """
         dimensions: [time, freq, pol]
         """
-        with fits.open(self.uvfits_path) as hdus:
-            vis_hdu = hdus['PRIMARY']
-            result = self._flag_for_antpairs(vis_hdu, [antpair])
-            return result[:, 0, :, :]
+        result = self._flag_for_antpairs([antpair])
+        return result
+
+    def flag_for_antpairs(self, antpairs):
+        """
+        dimensions: [time, bl, freq, pol]
+        """
+        Npairs = len(antpairs)
+        result = self._flag_for_antpairs2(antpairs)
+        return result.reshape(
+            (self.Ntimes, Npairs, self.Nchan, self.Npols))
 
     def amplitude_array(self, antpairs):
         return self._amps_phs_array(antpairs)[:, :, :, 0]
@@ -264,3 +263,17 @@ class UVfits(object):
             fft_data[:, i, :, :] = self.fft_data_for_antpair(
                 antpair, apply_flag=apply_flag)
         return fft_data
+
+    def _plot_mode(self, data, mode):
+        if mode == 'amp':
+            return np.abs(data)
+        elif mode == 'phs':
+            return np.angle(data)
+        elif mode == 'real':
+            return np.real(data)
+
+    def plot_vis(self, antpair, mode='amp'):
+        """
+        Plotting visibilities (amp, phases, delay-filtered)
+        """
+        pass
