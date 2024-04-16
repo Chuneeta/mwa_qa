@@ -2,6 +2,7 @@ from collections import OrderedDict
 from scipy.interpolate import CubicSpline
 from scipy import signal
 from astropy.io import fits
+from astropy import constants as const
 import numpy as np
 import os
 import copy
@@ -70,11 +71,11 @@ class UVfits(object):
             self.polarization_array = np.int32(
                 make_fits_axis_array(vis_hdu, 3))
             self.Npols = len(self.polarization_array)
-            self.uvw_array = np.array(np.stack((
+            self.uvw_array =  -1 * np.array(np.stack((
                 vis_hdu.data['UU'],
                 vis_hdu.data['VV'],
                 vis_hdu.data['WW'],
-            )).T)
+            )).T) * const.c.to("m/s")
 
             ant_hdu = hdus['AIPS AN']
             self.ant_names = ant_hdu.data["ANNAME"]
