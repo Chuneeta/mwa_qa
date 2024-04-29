@@ -13,7 +13,7 @@ class ImgMetrics(object):
         self.images = [Image(img, pix_box=pix_box) for img in images]
 
     def _check_object(self):
-        assert len(self.image) > 0, "At least one image should be specified"
+        assert len(self.images) > 0, "At least one image should be specified"
 
     def pols_from_image(self):
         return [img.polarization for img in self.images]

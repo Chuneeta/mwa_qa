@@ -4,6 +4,7 @@ import os
 from astropy.io import fits
 import unittest
 import numpy as np
+import os
 
 image = os.path.join(DATA_PATH, 'wsclean_1088806248_XX.fits')
 hdu = fits.open(image)

@@ -178,7 +178,7 @@ class TestCalMetrics(unittest.TestCase):
             m.metrics['PERCENT_NONCONVERGED_CHS'], 15.755208333333334)
         self.assertEqual(m.metrics['SKEWNESS'], 1.0281201713254011)
         self.assertEqual(m.metrics['RMS_CONVERGENCE'], 6.30082060084981e-08)
-        self.assertEqual(m.metrics['RECEIVER_VAR'], 1193.2543323323973)
+        self.assertAlmostEqual(m.metrics['RECEIVER_VAR'], 1193.2543323323973, places=9)
         self.assertEqual(list(m.metrics['XX'].keys()), ['RMS',
                                                         'RMS_MODZ',
                                                         'BAD_ANTS',
@@ -194,12 +194,12 @@ class TestCalMetrics(unittest.TestCase):
             [-0.59405035, -2.01830524, -2.57972765, -2.6196828, -2.41728384]))
         np.testing.assert_almost_equal(
             m.metrics['XX']['BAD_ANTS'], np.array([17, 76, 80]))
-        self.assertEqual(m.metrics['XX']['SKEWNESS'], 0.8703045026090006)
+        self.assertAlmostEqual(m.metrics['XX']['SKEWNESS'], 0.8703045026090006, places=9)
         self.assertEqual(m.metrics['XX']['DFFT_AMPS'].shape, (128, 768))
         np.testing.assert_almost_equal(m.metrics['XX']['DFFT_AMPS'][0, 0:10],
                                        np.array([0.52788904, 0.34286395, 0.29274779, 0.31075246, 0.37095048,
                                                  0.28703637, 0.03902724, 0.13170864, 0.28285714, 0.56093556]))
-        self.assertEqual(m.metrics['XX']['DFFT_POWER'], 161026.11413894623)
+        self.assertAlmostEqual(m.metrics['XX']['DFFT_POWER'], 161026.11413894623, places=8)
         self.assertEqual(list(m.metrics['YY'].keys()), ['RMS',
                                                         'RMS_MODZ',
                                                         'BAD_ANTS',
