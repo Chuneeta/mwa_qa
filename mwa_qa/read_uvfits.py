@@ -152,9 +152,35 @@ class UVfits(object):
         dimensions: [time, bl, freq, pol]
         """
         Npairs = len(antpairs)
-        result = self._flag_for_antpairs2(antpairs)
+        result = self._flag_for_antpairs(antpairs)
         return result.reshape(
             (self.Ntimes, Npairs, self.Nchan, self.Npols))
+        
+    def _uvw_for_antpairs(self, antpairs):
+        """
+        dimensions: [uvpoint, 3]
+        """
+        # sorted to traverse in the order on disk to minimize seeks
+        blt_idxs = np.sort(np.concatenate([
+            self.blt_idxs_for_antpair(antpair) for antpair in antpairs]))
+        # weights are clauculate (1/PFB_GAINS * Nf * Nt)
+        return self.uvw_array[blt_idxs, :]
+    
+    def uvw_for_antpair(self, antpair):
+        """
+        dimensions: [time, 3]
+        """
+        result = self._uvw_for_antpairs([antpair])
+        return result
+    
+    def uvw_for_antpairs(self, antpairs):
+        """
+        dimensions: [time, bl, freq, pol]
+        """
+        Npairs = len(antpairs)
+        result = self._uvw_for_antpairs(antpairs)
+        return result.reshape(
+            (self.Ntimes, Npairs, 3))
 
     def amplitude_array(self, antpairs):
         return self._amps_phs_array(antpairs)[:, :, :, 0]
