@@ -7,7 +7,7 @@ import seaborn as sns
 import pylab
 
 parser = ArgumentParser(
-    description="EValuating cutoff thresholds for the different metrics")
+    description="Evaluating cutoff thresholds for the different metrics")
 parser.add_argument('csvfile', type=str, help='QA metric csv file')
 parser.add_argument('--sigma', dest='sigma', type=float,
                     default=3, help='Sigma for cutoff threshold. Default is 3.')
@@ -29,35 +29,37 @@ df.dropna(axis=0, how='any', subset=["OBSID"], inplace=True)
 df.dropna(subset=["EW POINT"], inplace=True)
 ew_pointings = df['EW POINT']
 
-for sub in ['NOSUB', 'SUB', 'IONOSUB']:
-    if {f"NEW P_WEDGE {sub}", f"NEW P_WINDOW {sub}"}.issubset(set(df.columns)):
-        df[f'P_WIN_WEDGE RATIO {sub}'] = df[f"NEW P_WINDOW {sub}"] / \
-            df[f"NEW P_WEDGE {sub}"]
-    if {f"NEW XX PKS0023_026 INT {sub}", f"NEW YY PKS0023_026 INT {sub}"}.issubset(set(df.columns)):
+for sub in ['NOSUB', 'IONOSUB']:
+    if {f"P_WEDGE {sub}", f"P_WINDOW {sub}"}.issubset(set(df.columns)):
+        df[f'P_WIN_WEDGE RATIO {sub}'] = df[f"P_WINDOW {sub}"] / \
+            df[f"P_WEDGE {sub}"]
+    if {f"XX PKS0023_026 INT {sub}", f"YY PKS0023_026 INT {sub}"}.issubset(set(df.columns)):
         df[f'PKS INT DIFF XXYY {sub}'] = np.abs(
-            df[f'NEW XX PKS0023_026 INT {sub}'] - df[f'NEW YY PKS0023_026 INT {sub}'])
-        if {f"NEW V PKS0023_026 INT {sub}"}.issubset(set(df.columns)):
-            df[f'PKS INT RATIO VXXYY {sub}'] = df[f'NEW V PKS0023_026 INT {sub}'] / (
-                df[f'NEW XX PKS0023_026 INT {sub}'] + df[f'NEW XX PKS0023_026 INT {sub}'])
+            df[f'XX PKS0023_026 INT {sub}'] - df[f'YY PKS0023_026 INT {sub}'])
+        if {f"V PKS0023_026 INT {sub}"}.issubset(set(df.columns)):
+            df[f'PKS INT RATIO VXXYY {sub}'] = df[f'V PKS0023_026 INT {sub}'] / (
+                df[f'XX PKS0023_026 INT {sub}'] + df[f'XX PKS0023_026 INT {sub}'])
 
 for sub in ['IONOSUB']:
     for pow in ['WEDGE', 'WINDOW']:
-        if {f"NEW P_{pow} {sub}", f"NEW P_{pow} NOSUB"}.issubset(set(df.columns)):
-            df[f'P_{pow} RATIO {sub}'] = df[f'NEW P_{pow} {sub}'] / \
-                df[f'NEW P_{pow} NOSUB']
-    for pol in ['XX', 'YY', 'V']:
-        if {f"NEW {pol} PKS0023_026 INT {sub}", f"NEW {pol} PKS0023_026 INT NOSUB"}.issubset(set(df.columns)):
-            df[f'NEW {pol} PKS0023_026 INT {sub} RATIO'] = df[f'NEW {pol} PKS0023_026 INT {sub}'] / \
-                df[f'NEW {pol} PKS0023_026 INT NOSUB']
+        if {f"P_{pow} {sub}", f"P_{pow} NOSUB"}.issubset(set(df.columns)):
+            print(f"P_{pow} {sub}", f"P_{pow} NOSUB")
+            df[f'P_{pow} RATIO {sub}'] = df[f'P_{pow} {sub}'] / \
+                df[f'P_{pow} NOSUB']
 
-if {'NEW P_WEDGE IONOSUB', 'NEW P_WEDGE SUB'}.issubset(set(df.columns)):
+    for pol in ['XX', 'YY', 'V']:
+        if {f"{pol} PKS0023_026 INT {sub}", f"{pol} PKS0023_026 INT NOSUB"}.issubset(set(df.columns)):
+            df[f'{pol} PKS0023_026 INT {sub} RATIO'] = df[f'{pol} PKS0023_026 INT {sub}'] / \
+                df[f'{pol} PKS0023_026 INT NOSUB']
+
+if {'P_WEDGE IONOSUB', 'P_WEDGE SUB'}.issubset(set(df.columns)):
     df['P_WEDGE RATIO IONOSUB SUB'] = df['NEW P_WEDGE IONOSUB'] / \
         df['NEW P_WEDGE SUB']
-if {'NEW P_WINDOW IONOSUB', 'NEW P_WINDOW SUB'}.issubset(set(df.columns)):
-    df['P_WINDOW RATIO IONOSUB SUB'] = df['NEW P_WINDOW IONOSUB'] / \
-        df['NEW P_WINDOW SUB']
+if {'P_WINDOW IONOSUB', 'P_WINDOW SUB'}.issubset(set(df.columns)):
+    df['P_WINDOW RATIO IONOSUB SUB'] = df['P_WINDOW IONOSUB'] / \
+        df['P_WINDOW SUB']
 
-# print('\n'.join(df.columns))
+print('\n'.join(df.columns))
 
 # POWER SPECTRUM METRICS
 # splitting by pointings
@@ -65,7 +67,7 @@ un_ew_pointings = np.unique(ew_pointings)
 outdata = []
 
 
-for i, fl in enumerate(['NEW P_WINDOW NOSUB',
+for i, fl in enumerate(['P_WINDOW NOSUB',
                         "P_WIN_WEDGE RATIO NOSUB",
                         "P_WINDOW RATIO IONOSUB",
                         "P_WEDGE RATIO IONOSUB"]):
@@ -90,11 +92,11 @@ for i, fl in enumerate(['NEW P_WINDOW NOSUB',
         outdata.append(outdict)
 
 outdict = []
-for i, fl in enumerate(["NEW V RMS BOX NOSUB",
+for i, fl in enumerate(["V RMS BOX NOSUB",
                         "PKS INT RATIO VXXYY NOSUB",
                         "PKS INT DIFF XXYY IONOSUB",
-                        "NEW XX PKS0023_026 INT IONOSUB RATIO",
-                        "NEW YY PKS0023_026 INT IONOSUB RATIO"]):
+                        "XX PKS0023_026 INT IONOSUB RATIO",
+                        "YY PKS0023_026 INT IONOSUB RATIO"]):
     if args.per_pointing:
         outdict = {}
         outdict['Metric'] = fl
@@ -134,15 +136,15 @@ if args.per_pointing:
     df_out = pd.DataFrame(data=outdata)
     df_out.to_csv(outfile, index=False)
 else:
-    df_out = pd.DataFrame(outdata, index=['NEW P_WINDOW NOSUB',
+    df_out = pd.DataFrame(outdata, index=['P_WINDOW NOSUB',
                                           "P_WIN_WEDGE RATIO NOSUB",
                                           "P_WINDOW RATIO IONOSUB",
                                           "P_WEDGE RATIO IONOSUB",
-                                          "NEW V RMS BOX NOSUB",
+                                          "V RMS BOX NOSUB",
                                           "PKS INT RATIO VXXYY NOSUB",
                                           "PKS INT DIFF XXYY IONOSUB",
-                                          "NEW XX PKS0023_026 INT IONOSUB RATIO",
-                                          "NEW YY PKS0023_026 INT IONOSUB RATIO"], columns=['Lthresh', 'Uthresh'])
+                                          "XX PKS0023_026 INT IONOSUB RATIO",
+                                          "YY PKS0023_026 INT IONOSUB RATIO"], columns=['Lthresh', 'Uthresh'])
     df_out.to_csv(outfile)
 
 
@@ -156,7 +158,7 @@ def plot_pspecqa():
 
     fig = pylab.figure(figsize=(12, 8))
     pylab.subplot(2, 2, 1)
-    sns.kdeplot(df, x='NEW P_WINDOW NOSUB', hue='EW POINT',
+    sns.kdeplot(df, x='P_WINDOW NOSUB', hue='EW POINT',
                 palette='rainbow', common_norm=True)
     pylab.xlabel('')
     pylab.ylabel('Density', fontsize=16)
@@ -238,7 +240,7 @@ def plot_imgqa():
 
     fig = pylab.figure(figsize=(12, 9))
     pylab.subplot(3, 2, 1)
-    sns.kdeplot(df, x='NEW V RMS BOX NOSUB', hue='EW POINT',
+    sns.kdeplot(df, x='V RMS BOX NOSUB', hue='EW POINT',
                 palette='rainbow', common_norm=True)
     pylab.xlabel('')
     pylab.ylabel('Density', fontsize=16)
@@ -286,7 +288,7 @@ def plot_imgqa():
     pylab.xlim(0.1, 1.2)
 
     pylab.subplot(3, 2, 4)
-    sns.kdeplot(df, x='NEW XX PKS0023_026 INT IONOSUB RATIO',
+    sns.kdeplot(df, x='XX PKS0023_026 INT IONOSUB RATIO',
                 hue='EW POINT', palette='rainbow', common_norm=True)
     pylab.xlabel('')
     pylab.ylabel('Density', fontsize=16)
@@ -301,7 +303,7 @@ def plot_imgqa():
     pylab.tick_params(labelsize=14, direction='out', length=3, width=1)
 
     pylab.subplot(3, 2, 5)
-    sns.kdeplot(df, x='NEW YY PKS0023_026 INT IONOSUB RATIO',
+    sns.kdeplot(df, x='YY PKS0023_026 INT IONOSUB RATIO',
                 hue='EW POINT', palette='rainbow', common_norm=True)
     pylab.xlabel('')
     pylab.ylabel('Density', fontsize=16)
