@@ -47,7 +47,7 @@ setup_args = {
                 'scripts/plot_visqa.py', 'scripts/plot_prepvisqa.py',
                 'scripts/calqa_to_csv.py', 'scripts/imgqa_to_csv.py',
                 'scripts/merge_csvfiles.py', 'scripts/gsheet_to_csv.py',
-                'scripts/eval_cutoff_threshold.py']
+                'scripts/eval_cutoff_threshold.py', 'scripts/eval_threshold_ps.py']
 }
 
 if __name__ == '__main__':
