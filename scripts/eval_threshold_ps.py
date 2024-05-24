@@ -218,13 +218,6 @@ for sub in ['SUB']:
 
 dfm['P_WIN_WEDGE RATIO NOSUB'] = dfm['P_WINDOW NOSUB'] / dfm['P_WEDGE NOSUB']
 
-for sub in ['SUB']:
-    for pow in ['WEDGE', 'WINDOW']:
-        if {f"P_{pow} {sub}", f"P_{pow} NOSUB"}.issubset(set(df.columns)):
-            print(f"P_{pow} {sub}", f"P_{pow} NOSUB")
-            df[f'P_{pow} RATIO {sub}'] = df[f'P_{pow} {sub}'] / \
-                df[f'P_{pow} NOSUB']
-
 dfm['P_WIN_WEDGE RATIO NOSUB'] = dfm['P_WINDOW NOSUB'] / dfm['P_WEDGE NOSUB']
 
 if args.outfile is None:
