@@ -55,13 +55,6 @@ def evaluate_threshold(ewp, df):
                 data = np.array(df[fl])[inds]
                 data = data[~np.isnan(data)]
                 if len(data) != 0:
-                    # outdata.append((np.nan, np.nan))
-                    # else:
-                    # Q1 = np.percentile(data, 25, interpolation='midpoint')
-                    # Q2 = np.percentile(data, 50, interpolation='midpoint')
-                    # Q3 = np.percentile(data, 75, interpolation='midpoint')
-                    # IQR = Q3 - Q1
-                    # outdict[pt] = tuple((Q1 - 1.5 * IQR, Q1 + 1.5 * IQR))
                     mean = np.nanmean(data)
                     std = np.nanstd(data)
                     outdict[pt] = tuple((mean - 3 * std, mean + 3 * std))
@@ -69,11 +62,6 @@ def evaluate_threshold(ewp, df):
         else:
             data = np.array(df[fl])
             if len(data) != 0:
-                # Q1 = np.percentile(data, 25, interpolation='midpoint')
-                # Q2 = np.percentile(data, 50, interpolation='midpoint')
-                # Q3 = np.percentile(data, 75, interpolation='midpoint')
-                # IQR = Q3 - Q1
-                # outdata.append(tuple((Q1 - 1.5 * IQR, Q1 + 1.5 * IQR)))
                 mean = np.nanmean(data)
                 std = np.nanstd(data)
                 outdata.append(tuple((mean - 3 * std, mean + 3 * std)))
