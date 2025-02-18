@@ -4,6 +4,7 @@ from scipy import signal
 from astropy.io import fits
 import numpy as np
 import copy
+import os
 
 
 class CalFits(object):
@@ -190,3 +191,18 @@ class CalFits(object):
                     except ValueError:
                         fft_data[t, i, :, j] = np.nan
         return fft_data
+
+    def write_to(self, filename, overwrite=False):
+        """
+        Overwriting gain solutions
+        """
+        hdu = fits.open(self.calfits_path)
+        if os.path.exists(filename):
+            if overwrite:
+                hdu['SOLUTIONS'].data[:, :, :, ::2] = self.gain_array.real
+                hdu['SOLUTIONS'].data[:, :, :, 1::2] = self.gain_array.imag
+                hdu.writeto(filename, overwrite=overwrite)
+            else:
+                raise FileExistsError('{filename} already exists.')
+
+        # need to add change to haser if required
