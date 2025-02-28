@@ -196,13 +196,8 @@ class CalFits(object):
         """
         Overwriting gain solutions
         """
-        hdu = fits.open(self.calfits_path)
-        if os.path.exists(filename):
-            if overwrite:
-                hdu['SOLUTIONS'].data[:, :, :, ::2] = self.gain_array.real
-                hdu['SOLUTIONS'].data[:, :, :, 1::2] = self.gain_array.imag
-                hdu.writeto(filename, overwrite=overwrite)
-            else:
-                raise FileExistsError('{filename} already exists.')
-
-        # need to add change to haser if required
+        with fits.open(self.calfits_path) as hdus:
+            cal_hdu = hdus['SOLUTIONS']
+            cal_hdu.data[:, :, :, ::2] = self.gain_array.real
+            cal_hdu.data[:, :, :, 1::2] = self.gain_array.real
+            hdus.writeto(filename, overwrite=overwrite)
