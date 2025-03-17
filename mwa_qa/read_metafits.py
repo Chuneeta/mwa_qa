@@ -49,7 +49,7 @@ class Metafits(object):
             self.tile_ids = tdata['Tile']
             self.Nants = len(self.tile_ids)
             self.receiver_ids = tdata['Rx']
-            flavors = tdata['Length']
+            flavors = tdata['Flavors']
             self.cable_type = [fl.split('_')[0] for fl in flavors]
             self.cable_length = [float(fl.split('_')[1]) for fl in flavors]
             self.BFTemps = tdata['BFTemps']
