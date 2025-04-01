@@ -51,7 +51,12 @@ class Metafits(object):
             self.receiver_ids = tdata['Rx']
             flavors = tdata['Flavors']
             self.cable_type = [fl.split('_')[0] for fl in flavors]
-            self.cable_length = [float(fl.split('_')[1]) for fl in flavors]
+            self.cable_lengths = []
+            for fl in flavors:
+                try:
+                    self.cable_lengths.append(fl.split('_')[1])
+                except IndexError:
+                    self.cable_lengths.append(' ')
             self.BFTemps = tdata['BFTemps']
             self.flag_array = tdata['Flag']
             self.antpairs = np.sort(np.stack(
