@@ -199,5 +199,5 @@ class CalFits(object):
         with fits.open(self.calfits_path) as hdus:
             cal_hdu = hdus['SOLUTIONS']
             cal_hdu.data[:, :, :, ::2] = self.gain_array.real
-            cal_hdu.data[:, :, :, 1::2] = self.gain_array.real
+            cal_hdu.data[:, :, :, 1::2] = self.gain_array.imag
             hdus.writeto(filename, overwrite=overwrite)

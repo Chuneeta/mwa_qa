@@ -71,7 +71,7 @@ class UVfits(object):
             self.polarization_array = np.int32(
                 make_fits_axis_array(vis_hdu, 3))
             self.Npols = len(self.polarization_array)
-            self.uvw_array =  -1 * np.array(np.stack((
+            self.uvw_array = -1 * np.array(np.stack((
                 vis_hdu.data['UU'],
                 vis_hdu.data['VV'],
                 vis_hdu.data['WW'],
@@ -155,7 +155,7 @@ class UVfits(object):
         result = self._flag_for_antpairs(antpairs)
         return result.reshape(
             (self.Ntimes, Npairs, self.Nchan, self.Npols))
-        
+
     def _uvw_for_antpairs(self, antpairs):
         """
         dimensions: [uvpoint, 3]
@@ -165,14 +165,14 @@ class UVfits(object):
             self.blt_idxs_for_antpair(antpair) for antpair in antpairs]))
         # weights are clauculate (1/PFB_GAINS * Nf * Nt)
         return self.uvw_array[blt_idxs, :]
-    
+
     def uvw_for_antpair(self, antpair):
         """
         dimensions: [time, 3]
         """
         result = self._uvw_for_antpairs([antpair])
         return result
-    
+
     def uvw_for_antpairs(self, antpairs):
         """
         dimensions: [time, bl, freq, pol]
