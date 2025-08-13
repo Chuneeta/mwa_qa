@@ -44,6 +44,7 @@ obsid = metrics['OBSID']
 threshold = metrics['THRESHOLD']
 if args.title:
     titlename = args.title
+
 elif len(obsid.split('_')) == 1:
     titlename = obsid
 else:
