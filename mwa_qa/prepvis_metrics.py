@@ -19,7 +19,7 @@ def converter(input_list, output_list):
 
 
 class PrepvisMetrics(object):
-    def __init__(self, uvfits_path, metafits_path, ex_annumbers=[], edge_flagging=True, antenna_flags=False, cutoff_threshold=3, niter=10):
+    def __init__(self, uvfits_path, metafits_path, ex_annumbers=[], edge_flagging=None, antenna_flags=False, cutoff_threshold=3, niter=10):
         self.uvfits_path = uvfits_path
         self.metafits_path = metafits_path
         self.uvf = UVfits(self.uvfits_path)
@@ -36,6 +36,7 @@ class PrepvisMetrics(object):
         autos = self.uvf.data_for_antpairs(
             auto_antpairs)  # (only xx and yy pols)
         _sh = autos.shape
+
         # flags are properly propages for the autocorrelations, therefore
         # we are mually flagging the band edges and centre frequency only
         # for obsids below 13*
@@ -50,8 +51,8 @@ class PrepvisMetrics(object):
         if len(self.ex_annumbers) > 0:
             autos[:, self.ex_annumbers, :, :] = np.nan
         # applying flags from metafits
-            ind = self.flags_from_metafits()
-            autos[:, ind, :, :] = np.nan
+        ind = self.flags_from_metafits()
+        autos[:, ind, :, :] = np.nan
         return autos
 
     def flags_from_metafits(self):
