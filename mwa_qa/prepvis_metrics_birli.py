@@ -7,6 +7,7 @@ import matplotlib.cm as cm
 import numpy as np
 import pylab
 import itertools
+import os
 
 
 def converter(input_list, output_list):
@@ -21,6 +22,7 @@ def converter(input_list, output_list):
 class PrepvisMetrics(object):
     def __init__(self, data_path, metafits_path, ex_annumbers=[], cutoff_threshold=3, niter=10):
         self.data_path = data_path
+        self.metafits_path = metafits_path
         self.meta = Metafits(metafits_path)
         self.ex_annumbers = ex_annumbers
         self.cutoff_threshold = cutoff_threshold
@@ -35,7 +37,7 @@ class PrepvisMetrics(object):
             self.Nants = hdu['AUTO_POL=XX'].header['N_ANTS']
             self.Nchan = hdu['AUTO_POL=XX'].header['NAXIS1']
 
-    def plot_autos_by_cable_flavors(self, save=None, figname=None):
+    def plot_auto_spectra(self, save=None, figname=None):
         cable_flavors = np.array(self.meta.cable_flavors)
         unq_cable_flavors = np.unique(cable_flavors)
         freqs = self.meta.frequency_array
@@ -90,9 +92,67 @@ class PrepvisMetrics(object):
             pylab.show()
         else:
             if figname is None:
-                figname = self.metafits.split(
-                    '_')[1] + '_autos_spectrums.png'
+                figname = self.metafits_path .strip(
+                    '.metafits') + '_autos_spectrums.png'
+                print(figname)
             pylab.savefig(figname, dpi=100)
+            pylab.clf()
+
+    def plot_auto_spectra_by_flavor(self, pol="xx", save=None, figname=None):
+        # Map pol string to index
+        pol_map = {"xx": 0, "yy": 1, "xy": 2, "yx": 3}
+        if pol not in pol_map:
+            raise ValueError(
+                f"Invalid polarization '{pol}'. Must be one of {list(pol_map.keys())}")
+        pol_idx = pol_map[pol]
+
+        # Metadata
+        cable_flavors = np.array(self.meta.cable_flavors)
+        unq_cable_flavors = np.unique(cable_flavors)
+        freqs = self.meta.frequency_array
+
+        # Color map for antennas (within each flavor)
+        cmap = cm.get_cmap('viridis')
+
+        # Set up figure: one subplot per cable flavor
+        n_flavors = len(unq_cable_flavors)
+        ncols = 2 if n_flavors > 1 else 1
+        nrows = int(np.ceil(n_flavors / ncols))
+        fig, axes = pylab.subplots(nrows, ncols, figsize=(
+            4 * ncols, 3 * nrows), squeeze=False)
+
+        # Loop over cable flavors
+        for ax, cfl in zip(axes.flat, unq_cable_flavors):
+            ants_in_flavor = np.where(cable_flavors == cfl)[0]
+
+            # Assign each antenna in this flavor a color shade
+            for i, ant_idx in enumerate(ants_in_flavor):
+                color = cmap(i / max(1, len(ants_in_flavor) - 1))
+                ax.plot(freqs,
+                        np.log10(
+                            np.abs(self.autos[pol_idx][ant_idx, :]) + 1e-12),
+                        color=color, alpha=0.6)
+
+            ax.set_title(f"Cable Flavor: {cfl} ({pol})", fontsize=10)
+            ax.set_xlabel("Frequency (MHz)", fontsize=9)
+            ax.set_ylabel("Amplitude (log10)", fontsize=9)
+            ax.set_ylim(0.8, 5.2)
+            ax.tick_params(labelsize=8)
+
+        # Hide unused axes if any
+        for ax in axes.flat[n_flavors:]:
+            ax.axis("off")
+
+        pylab.tight_layout()
+
+        if save is None:
+            pylab.show()
+        else:
+            if figname is None:
+                figname = self.metafits_path .strip(
+                    '.metafits') + '_flavor_spectrums_{}.png'.format(pol)
+                pylab.savefig(figname, dpi=150, bbox_inches="tight")
+                pylab.close(fig)
 
     def split_annames(self):
         """
@@ -161,7 +221,9 @@ class PrepvisMetrics(object):
         self.metrics['NCHAN'] = self.Nchan
         self.metrics['NPOLS'] = 4
         self.metrics['OBSID'] = str(self.meta.start_gpstime)
-        self.metrics['ANNUMBERS'] = self.meta.antenna_numbers
+        # phase III annumbers are spread, therefore important to get it sorted
+        # tilenames also should be arrange according if required
+        self.metrics['ANNUMBERS'] = np.sort(self.meta.antenna_numbers)
         self.metrics['NANTS'] = len(self.metrics['ANNUMBERS'])
         self.metrics['XX'] = OrderedDict()
         self.metrics['YY'] = OrderedDict()
@@ -213,14 +275,16 @@ class PrepvisMetrics(object):
                     modz_dict, bd_inds_cfl = self.iterative_mod_zscore(
                         autos_amps_norm[inds], threshold=self.cutoff_threshold, niter=self.niter)
                     self.metrics[p][cfl]['MODZ_SCORE'] = modz_dict
-                    bd_inds = np.append(bd_inds, bd_inds_cfl).astype(int)
+                    bd_inds = np.append(
+                        bd_inds, inds[0][bd_inds_cfl]).astype(int)
                     combined_modz[inds] = modz_dict[0]
                     if len(bd_inds) > 0:
                         self.metrics[p][cfl]['BAD_ANTS'] = self.metrics['ANNUMBERS'][bd_inds]
 
                 bd_inds = np.unique(bd_inds)
                 bd_inds = bd_inds.astype(int)
-
+                self.metrics[p]['MODZ_SCORE'] = {}
+                self.metrics[p]['MODZ_SCORE'][0] = combined_modz
             else:
                 # calculating modifed z-score
                 modz_dict, bd_inds = self.iterative_mod_zscore(
@@ -235,12 +299,10 @@ class PrepvisMetrics(object):
             # writing stars to metrics instanc
             self.metrics[p]['RMS'] = rms
             self.metrics[p]['BAD_ANTS'] = bad_ants.tolist()
-            self.metrics[p]['MOD_ZSCORE'] = {}
-            self.metrics[p]['MOD_ZSCORE'][0] = combined_modz
 
         # combining bad antennas from both pols to determine if the observation
-        self.metrics['BAD_ANTS'] = np.unique(
-            self.metrics['XX']['BAD_ANTS'] + self.metrics['YY']['BAD_ANTS'])
+        self.metrics['BAD_ANTS'] = np.unique(self.metrics['XX']['BAD_ANTS']
+                                             + self.metrics['YY']['BAD_ANTS'])
         nants = self.metrics['NANTS'] - len(self.ex_annumbers)
         percent_bdants = len(self.metrics['BAD_ANTS']) / nants * 100
         self.metrics['BAD_ANTS_PERCENT'] = percent_bdants
