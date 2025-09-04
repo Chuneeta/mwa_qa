@@ -57,12 +57,12 @@ ax = pylab.subplot(111)
 ax.scatter(antennas, metrics['XX']['RMS'], marker='.',
            color='dodgerblue', s=100, alpha=0.8, label='XX')
 ax.scatter(antennas, metrics['YY']['RMS'], marker='.',
-           color='yellowgreen', s=100, alpha=0.8, label='YY')
+           color='salmon', s=100, alpha=0.8, label='YY')
 ax.scatter(poor_ants_xx, np.array(metrics['XX']['RMS'])
            [poor_ants_xx_inds], s=100, marker='o', edgecolor='blue',
            facecolor='None')
 ax.scatter(poor_ants_yy, np.array(metrics['YY']['RMS'])
-           [poor_ants_yy_inds], s=150, marker='o', edgecolor='green',
+           [poor_ants_yy_inds], s=150, marker='o', edgecolor='red',
            facecolor='None')
 ax.grid(ls='dotted')
 ax.legend()
@@ -91,27 +91,28 @@ if 'FIRST' in metrics['XX']['MODZ_SCORE'].keys():
     ax.scatter(metrics['ANNUMBERS_FIRST'], metrics['XX']['MODZ_SCORE']['FIRST']['0'], marker='.',
                color='dodgerblue', s=100, alpha=0.8, label='XX')
     ax.scatter(metrics['ANNUMBERS_FIRST'], metrics['YY']['MODZ_SCORE']['FIRST']['0'], marker='.',
-               color='yellowgreen', s=100, alpha=0.8, label='YY')
+               color='salmon', s=100, alpha=0.8, label='YY')
     ax.scatter(metrics['ANNUMBERS_SECOND'], metrics['XX']['MODZ_SCORE']['SECOND']['0'], marker='.',
                color='dodgerblue', s=100, alpha=0.8)
     ax.scatter(metrics['ANNUMBERS_SECOND'], metrics['YY']['MODZ_SCORE']['SECOND']['0'], marker='.',
-               color='yellowgreen', s=100, alpha=0.8
+               color='salmon', s=100, alpha=0.8
                )
 else:
     ax.scatter(antennas, np.abs(metrics['XX']['MODZ_SCORE']['0']), marker='.',
                color='dodgerblue', s=100, alpha=0.8, label='XX')
     ax.scatter(antennas, np.abs(metrics['YY']['MODZ_SCORE']['0']), marker='.',
-               color='yellowgreen', s=100, alpha=0.8, label='YY')
+               color='salmon', s=100, alpha=0.8, label='YY')
 ax.fill_between(antennas, -threshold -
-                20, -threshold, interpolate=True, color='red', alpha=0.2)
+                20, -threshold, interpolate=True, color='yellow', alpha=0.2)
 ax.fill_between(antennas, threshold,
-                threshold + 20, interpolate=True, color='red', alpha=0.2)
+                threshold + 20, interpolate=True, color='yellow', alpha=0.2)
 # ax.axhline(threshold, linestyle='dashed', color='green', linewidth=2)
 ax.grid(ls='dotted')
-ax.legend()
+ax.legend(loc='upper left')
 ax.set_xlabel('Antenna Number')
 ax.set_ylabel('Modified zscore')
 ax.set_ylim(-10, 10)
+ax.set_xlim(0, 128)
 ax.tick_params(labelsize=10, direction='in', length=4, width=2)
 if args.save:
     if args.figname is None:
