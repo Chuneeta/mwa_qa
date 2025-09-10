@@ -94,7 +94,7 @@ class PrepvisMetrics(object):
             if figname is None:
                 figname = self.metafits_path .strip(
                     '.metafits') + '_autos_spectrums.png'
-                print(figname)
+                print('Saving ', figname)
             pylab.savefig(figname, dpi=100)
             pylab.clf()
 
@@ -151,6 +151,7 @@ class PrepvisMetrics(object):
             if figname is None:
                 figname = self.metafits_path .strip(
                     '.metafits') + '_flavor_spectrums_{}.png'.format(pol)
+                print('Saving ', figname)
                 pylab.savefig(figname, dpi=150, bbox_inches="tight")
                 pylab.close(fig)
 
