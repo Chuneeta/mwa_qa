@@ -1,13 +1,15 @@
-
 from mwa_qa.read_metafits import Metafits
 from mwa_qa import json_utils as ju
 from collections import OrderedDict
 from astropy.io import fits
 import matplotlib.cm as cm
+from scipy import signal
 import numpy as np
+from math import ceil, sqrt
 import pylab
 import itertools
 import os
+import copy
 
 
 def converter(input_list, output_list):
@@ -36,11 +38,34 @@ class PrepvisMetrics(object):
             self.autos = [autos_xx, autos_yy, autos_xy, autos_yx]
             self.Nants = hdu['AUTO_POL=XX'].header['N_ANTS']
             self.Nchan = hdu['AUTO_POL=XX'].header['NAXIS1']
+            self.frequency_array = self.meta.frequency_array
+
+    def blackmanharris(self, n):
+        return signal.windows.blackmanharris(n)
+
+    def delays(self):
+        # Evaluates geometric delay (fourier conjugate of frequency)
+        df = (self.frequency_array[1] - self.frequency_array[0]) * 1e6
+        delays = np.fft.fftfreq(len(self.frequency_array), df)
+        return np.fft.fftshift(delays) * 1e9
+
+    def generate_fft_autos(self, subtract_mean=False):
+        self.fft_autos = copy.deepcopy(self.autos)
+        window = self.blackmanharris(self.Nchan)
+        if subtract_mean:
+            for pol in range(4):
+                mean_subtract_autos = self.autos[pol] - \
+                    np.nanmean(self.autos[pol], axis=0)
+                self.fft_autos[pol] = np.fft.fftshift(np.fft.fft(
+                    mean_subtract_autos * window, axis=1), axes=1)
+        else:
+            for pol in range(4):
+                self.fft_autos[pol] = np.fft.fftshift(np.fft.fft(
+                    self.autos[pol] * window, axis=1), axes=1)
 
     def plot_auto_spectra(self, save=None, figname=None):
         cable_flavors = np.array(self.meta.cable_flavors)
         unq_cable_flavors = np.unique(cable_flavors)
-        freqs = self.meta.frequency_array
 
         # Assign each cable flavor a color
         cmap = cm.get_cmap('viridis', len(unq_cable_flavors))
@@ -53,20 +78,20 @@ class PrepvisMetrics(object):
             color = flavor_to_color[cfl]  # pick color based on cable flavor
 
             # Pol: xx
-            axes[0, 0].plot(freqs, np.log10(np.abs(self.autos[0][ant_idx, :])),
+            axes[0, 0].plot(self.frequency_array, np.log10(np.abs(self.autos[0][ant_idx, :])),
                             color=color, alpha=0.5, label=cfl if ant_idx == 0 else "")
             axes[0, 0].set_ylim(0.8, 5.2)
 
             # Pol: yy
-            axes[0, 1].plot(freqs, np.log10(np.abs(self.autos[1][ant_idx, :])),
+            axes[0, 1].plot(self.frequency_array, np.log10(np.abs(self.autos[1][ant_idx, :])),
                             color=color, alpha=0.5)
             axes[0, 1].set_ylim(0.8, 5.2)
             # Pol: xt
-            axes[1, 0].plot(freqs, np.log10(np.abs(self.autos[2][ant_idx, :])),
+            axes[1, 0].plot(self.frequency_array, np.log10(np.abs(self.autos[2][ant_idx, :])),
                             color=color, alpha=0.5)
             axes[1, 0].set_ylim(0.8, 5.2)
             # Pol: yx
-            axes[1, 1].plot(freqs, np.log10(np.abs(self.autos[3][ant_idx, :])),
+            axes[1, 1].plot(self.frequency_array, np.log10(np.abs(self.autos[3][ant_idx, :])),
                             color=color, alpha=0.7)
             axes[1, 1].set_ylim(0.8, 5.2)
         # Titles and labels
@@ -109,7 +134,6 @@ class PrepvisMetrics(object):
         # Metadata
         cable_flavors = np.array(self.meta.cable_flavors)
         unq_cable_flavors = np.unique(cable_flavors)
-        freqs = self.meta.frequency_array
 
         # Color map for antennas (within each flavor)
         cmap = cm.get_cmap('viridis')
@@ -128,7 +152,7 @@ class PrepvisMetrics(object):
             # Assign each antenna in this flavor a color shade
             for i, ant_idx in enumerate(ants_in_flavor):
                 color = cmap(i / max(1, len(ants_in_flavor) - 1))
-                ax.plot(freqs,
+                ax.plot(self.frequency_array,
                         np.log10(
                             np.abs(self.autos[pol_idx][ant_idx, :]) + 1e-12),
                         color=color, alpha=0.6)
@@ -155,6 +179,87 @@ class PrepvisMetrics(object):
                 pylab.savefig(figname, dpi=150, bbox_inches="tight")
                 pylab.close(fig)
 
+    def plot_fft_autos(self, half_delay=False):
+        # Compute grid shape
+        n_cols = 12  # int(ceil(sqrt(self.Nants)))
+        n_rows = 11  # int(ceil(self.Nants / n_cols))
+        tile_names = self.meta.antenna_names
+        delays = self.delays()
+        if half_delay:
+            n = int(self.Nchan/2 + 1)
+            ext = '_half'
+            min_d, max_d = (delays[n], 6000)
+        else:
+            n = 0
+            ext = ""
+            min_d, max_d = (-6000, 6000)
+        # xx polarization
+        max_amp = self.fft_autos[0][:, n:].max()
+        min_amp = self.fft_autos[0][:, n:].min()
+        fig, axs = pylab.subplots(
+            n_rows, n_cols, figsize=(30, 15), sharex=True)
+        axs = axs.flatten()   # make it 1-D
+
+        for i in range(self.Nants):
+            axs[i].semilogy(delays[n:], np.abs(
+                self.fft_autos[0][i, n:]), 'b-', alpha=0.6)
+            axs[i].set_title(tile_names[i], fontsize=8)
+            axs[i].tick_params(labelsize=6)
+            axs[i].set_ylim(min_amp, max_amp)
+            axs[i].set_xlim(min_d, max_d)
+            axs[i].text(0.07, 0.95,
+                        self.meta.cable_flavors[i],
+                        transform=axs[i].transAxes,
+                        fontsize=4,
+                        verticalalignment='top',
+                        bbox=dict(facecolor='white',
+                                  alpha=0.6, edgecolor='black')
+                        )
+        # Hide unused axes
+        for j in range(i+1, len(axs)):
+            axs[j].axis("off")
+        fig.supxlabel("FFT Amplitude", fontsize=12)
+        fig.supylabel("Delay (ns)", fontsize=12)
+        pylab.tight_layout()
+        pylab.savefig(self.data_path.replace(
+            '.fits', '_fft_autos_xx{}.png'.format(ext)), dpi=200)
+        pylab.close()
+
+        # yy polarization
+        max_amp = self.fft_autos[3][:, n:].max()
+        min_amp = self.fft_autos[3][:, n:].min()
+
+        fig, axs = pylab.subplots(
+            n_rows, n_cols, figsize=(30, 15), sharex=True)
+        axs = axs.flatten()   # make it 1-D
+
+        for i in range(self.Nants):
+            axs[i].semilogy(delays[n:], np.abs(
+                self.fft_autos[3][i, n:]), 'r-', alpha=0.6)
+            axs[i].set_title(tile_names[i], fontsize=8)
+            axs[i].tick_params(labelsize=6)
+            axs[i].set_ylim(min_amp, max_amp)
+            axs[i].set_xlim(min_d, max_d)
+            axs[i].text(0.07, 0.95,
+                        self.meta.cable_flavors[i],
+                        transform=axs[i].transAxes,
+                        fontsize=4,
+                        verticalalignment='top',
+                        bbox=dict(facecolor='white',
+                                  alpha=0.6, edgecolor='black')
+                        )
+
+        # Hide unused axes
+        for j in range(i+1, len(axs)):
+            axs[j].axis("off")
+
+        fig.supylabel("FFT Amplitude", fontsize=12)
+        fig.supxlabel("Delay (ns)", fontsize=12)
+        pylab.tight_layout()
+        pylab.savefig(self.data_path.replace(
+            '.fits', '_fft_autos_yy{}.png'.format(ext)), dpi=200)
+        pylab.close()
+
     def split_annames(self):
         """
         Splitting the antenna indeices as per antenna name conventions ('Tile', 'Hex')
@@ -164,7 +269,6 @@ class PrepvisMetrics(object):
                  if annames[i].startswith('Tile')]
         second = [i for i in range(len(annames))
                   if annames[i].startswith('Hex')]
-        # print(first, second)
         return first, second
 
     def calculate_rms(self, data):
@@ -183,7 +287,8 @@ class PrepvisMetrics(object):
         """
         _sh = data.shape
         count = len(np.where(~np.isnan(data))[0]) / _sh[0]
-        percent_gddata = np.count_nonzero(data > 0., axis=1) / count * 100
+        percent_gddata = np.count_nonzero(
+            data > 0., axis=1) / count * 100
         # discarding antenna with less than 50% of data
         inds = np.where(percent_gddata < 50.)
         return percent_gddata, inds
@@ -242,13 +347,13 @@ class PrepvisMetrics(object):
                 autos_amps_norm)
             if len(bd_inds) > 0:
                 bad_ants.append(self.metrics['ANNUMBERS'][bd_inds])
-            autos_amps_norm[bd_inds, :] = np.nan
-            bad_ants = np.atleast_1d(bad_ants).astype(
-                int)  # this will now be fine
-            self.metrics[p]['BAD_ANTS'] = bad_ants.tolist()
-            # calculating root mean square
-            rms = self.calculate_rms(
-                autos_amps_norm)
+                autos_amps_norm[bd_inds, :] = np.nan
+                bad_ants = np.atleast_1d(bad_ants).astype(
+                    int)  # this will now be fine
+                self.metrics[p]['BAD_ANTS'] = bad_ants.tolist()
+                # calculating root mean square
+                rms = self.calculate_rms(
+                    autos_amps_norm)
             if split_autos:
                 # splitting autos by antenna naming conventions
                 first, second = self.split_annames()

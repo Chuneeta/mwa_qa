@@ -40,7 +40,8 @@ class Metafits(object):
                 self.eorfield = 'Unknown'
             tdata = hdu['TILEDATA'].data
             self._check_data(tdata)
-            tdata = tdata[self.pol_index(tdata)::2]
+            inds = np.argsort(tdata['Antenna'])
+            tdata = tdata[inds][self.pol_index(tdata)::2]
             self.delays = tdata['Delays']
             self.dipole_gains = tdata['Calib_Gains']
             self.antenna_positions = np.array(
